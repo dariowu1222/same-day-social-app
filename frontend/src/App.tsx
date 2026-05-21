@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { demoLogin } from './api/client'
 import BottomNav, { type PageKey } from './components/BottomNav'
+import LoginPage from './components/LoginPage'
 import TodayPage from './pages/TodayPage'
 import RantBoardPage from './pages/RantBoardPage'
 import TasksPage from './pages/TasksPage'
@@ -38,22 +39,12 @@ function App() {
 
   if (!user) {
     return (
-      <main className="app-shell auth-shell">
-        <section className="hero-panel">
-          <p className="eyebrow">同頻 Today</p>
-          <h1>今天發生了一件事，我想遇到一個剛好懂的人。</h1>
-          <p>先用暱稱建立 Demo user，不需要真名，也不需要精準位置。</p>
-        </section>
-        <section className="panel">
-          <label>
-            暱稱
-            <input value={nickname} onChange={(event) => setNickname(event.target.value)} />
-          </label>
-          <button onClick={handleLogin} disabled={isLoading}>
-            {isLoading ? '建立中...' : '開始今天'}
-          </button>
-        </section>
-      </main>
+      <LoginPage
+        nickname={nickname}
+        isLoading={isLoading}
+        onNicknameChange={setNickname}
+        onLogin={handleLogin}
+      />
     )
   }
 

@@ -101,8 +101,9 @@ h3 {
 
 .auth-shell {
   display: grid;
-  align-content: center;
-  gap: 16px;
+  align-content: start;
+  gap: 18px;
+  padding-top: 22px;
 }
 
 .page {
@@ -136,6 +137,116 @@ h3 {
   padding: 16px;
   background: rgba(255, 253, 248, 0.92);
   box-shadow: 0 10px 24px rgba(54, 71, 70, 0.07);
+}
+
+.login-hero {
+  display: grid;
+  gap: 14px;
+  padding: 8px 2px 0;
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  background: #244845;
+  color: #fffdf8;
+  font-size: 24px;
+  font-weight: 900;
+  box-shadow: 0 12px 26px rgba(36, 72, 69, 0.2);
+}
+
+.hero-copy {
+  color: #637271;
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.phone-preview {
+  display: grid;
+  gap: 12px;
+  border: 1px solid #d8e7e2;
+  border-radius: 18px;
+  padding: 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 253, 248, 0.96), rgba(239, 248, 245, 0.96)),
+    #fffdf8;
+  box-shadow: 0 18px 42px rgba(54, 71, 70, 0.12);
+}
+
+.preview-topbar {
+  display: flex;
+  justify-content: space-between;
+}
+
+.preview-topbar span:first-child {
+  width: 72px;
+  height: 8px;
+  border-radius: 999px;
+  background: #d7efe9;
+}
+
+.preview-topbar span:last-child {
+  width: 28px;
+  height: 8px;
+  border-radius: 999px;
+  background: #e7e2d6;
+}
+
+.preview-card {
+  display: grid;
+  gap: 4px;
+  border: 1px solid #e1e0d9;
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(255, 253, 248, 0.92);
+}
+
+.preview-card.primary {
+  background: #e7f3ef;
+  border-color: #c5ddd6;
+}
+
+.preview-card small {
+  color: #4e9188;
+  font-weight: 800;
+}
+
+.preview-card p {
+  margin-bottom: 0;
+  color: #30413f;
+}
+
+.login-panel {
+  display: grid;
+  gap: 14px;
+  border: 1px solid #e1e0d9;
+  border-radius: 8px;
+  padding: 18px;
+  background: rgba(255, 253, 248, 0.96);
+  box-shadow: 0 12px 28px rgba(54, 71, 70, 0.09);
+}
+
+.login-panel h2 {
+  margin-bottom: 6px;
+}
+
+.login-panel p {
+  color: #637271;
+  line-height: 1.6;
+}
+
+.login-button {
+  min-height: 48px;
+  background: #244845;
+  color: #fffdf8;
+}
+
+.privacy-note {
+  margin-bottom: 0;
+  font-size: 13px;
 }
 
 .list {
@@ -266,5 +377,9 @@ blockquote {
 @media (min-width: 460px) {
   .field-grid {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .auth-shell {
+    padding-top: 34px;
   }
 }
