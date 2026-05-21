@@ -30,6 +30,13 @@ npm install
 
 ## 啟動方式
 
+Visual Studio:
+
+- 開啟 `SameDaySocialApp.sln`
+- 將 `backend` 設為啟動專案
+- 使用 `http` profile 啟動後端 API
+- 前端仍建議用下方 `npm run dev` 啟動
+
 Backend:
 
 ```powershell
