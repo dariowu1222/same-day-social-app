@@ -1,1 +1,14 @@
-[]
+[
+  {
+    "id": "user_6ac979d59e2c4acbb82938bece57ffdf",
+    "nickname": "Dario",
+    "ageRange": null,
+    "gender": null,
+    "locationArea": null,
+    "bio": "\u6162\u6162\u8A8D\u8B58\u5C31\u597D\u3002",
+    "interestTags": [],
+    "valueTags": [],
+    "responsePreference": "JUST_LISTEN",
+    "createdAt": "2026-05-21T10:27:00.0942794+00:00"
+  }
+]

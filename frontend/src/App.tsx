@@ -26,10 +26,10 @@ function App() {
     }
   }, [])
 
-  async function handleLogin() {
+  async function handleLogin(nicknameOverride?: string) {
     setIsLoading(true)
     try {
-      const result = await demoLogin(nickname)
+      const result = await demoLogin(nicknameOverride ?? nickname)
       localStorage.setItem('same-day-demo-user', JSON.stringify(result))
       setUser(result)
     } finally {

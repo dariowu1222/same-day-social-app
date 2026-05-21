@@ -1,1 +1,68 @@
-[]
+[
+  {
+    "id": "task_f4e4ec75dd9f49e7b5978ef8b65c021b",
+    "title": "\u6563\u6B65\u4E8C\u5341\u5206\u9418",
+    "description": "\u4ECA\u5929\u4E0D\u6025\u8457\u804A\u5929\uFF0C\u5148\u5404\u81EA\u53BB\u8D70\u4E00\u5C0F\u6BB5\u8DEF\u3002",
+    "category": "WALK",
+    "duration": "20 \u5206\u9418",
+    "difficulty": "EASY",
+    "participantLimit": 12,
+    "participantUserIds": [],
+    "createdAt": "2026-05-21T10:27:06.6450278+00:00"
+  },
+  {
+    "id": "task_736b61fe58a349e388c238126d2a320c",
+    "title": "\u4ECA\u665A\u65E9\u7761\u6311\u6230",
+    "description": "\u7D04\u597D\u4ECA\u5929\u63D0\u65E9\u653E\u4E0B\u624B\u6A5F\uFF0C\u660E\u5929\u518D\u5206\u4EAB\u7761\u5F97\u5982\u4F55\u3002",
+    "category": "EARLY_SLEEP",
+    "duration": "1 \u665A",
+    "difficulty": "EASY",
+    "participantLimit": 12,
+    "participantUserIds": [],
+    "createdAt": "2026-05-21T10:27:06.6454494+00:00"
+  },
+  {
+    "id": "task_dc520213d9b94541bbc3801c1d7ee340",
+    "title": "\u8B80\u5341\u9801\u66F8",
+    "description": "\u5404\u81EA\u8B80\u5341\u9801\uFF0C\u4EA4\u63DB\u4E00\u53E5\u6709\u611F\u89BA\u7684\u53E5\u5B50\u3002",
+    "category": "READ",
+    "duration": "30 \u5206\u9418",
+    "difficulty": "EASY",
+    "participantLimit": 12,
+    "participantUserIds": [],
+    "createdAt": "2026-05-21T10:27:06.6454536+00:00"
+  },
+  {
+    "id": "task_fff44b7ca37343bea22b7206cdbc68a8",
+    "title": "\u4F4E\u58D3\u904B\u52D5",
+    "description": "\u505A\u4E00\u500B\u4E0D\u52C9\u5F37\u81EA\u5DF1\u7684\u5C0F\u904B\u52D5\u3002",
+    "category": "EXERCISE",
+    "duration": "15 \u5206\u9418",
+    "difficulty": "EASY",
+    "participantLimit": 12,
+    "participantUserIds": [],
+    "createdAt": "2026-05-21T10:27:06.645455+00:00"
+  },
+  {
+    "id": "task_eb1f545df7d3464db92a97ab92c5041b",
+    "title": "\u4E00\u8D77\u770B\u4E00\u96C6\u52D5\u756B",
+    "description": "\u4E0D\u7528\u5373\u6642\u804A\u5929\uFF0C\u770B\u5B8C\u518D\u8AAA\u4E00\u53E5\u5FC3\u5F97\u3002",
+    "category": "MOVIE",
+    "duration": "1 \u96C6",
+    "difficulty": "EASY",
+    "participantLimit": 12,
+    "participantUserIds": [],
+    "createdAt": "2026-05-21T10:27:06.6454554+00:00"
+  },
+  {
+    "id": "task_24b07524f38c47acab496c088ff7540a",
+    "title": "\u5DE5\u7A0B\u5E2B\u5171\u5B78 25 \u5206\u9418",
+    "description": "\u5404\u81EA\u5B8C\u6210\u4E00\u500B\u5C0F\u6BB5\u843D\uFF0C\u7D50\u675F\u5F8C\u4E92\u76F8\u6253\u5361\u3002",
+    "category": "CODING",
+    "duration": "25 \u5206\u9418",
+    "difficulty": "EASY",
+    "participantLimit": 12,
+    "participantUserIds": [],
+    "createdAt": "2026-05-21T10:27:06.6454557+00:00"
+  }
+]
