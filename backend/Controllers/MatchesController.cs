@@ -20,7 +20,7 @@ public sealed class MatchesController(MatchService matchService) : ControllerBas
     {
         var match = matchService.Like(matchId);
         return match == null
-            ? NotFound(ApiResponse<MatchRecord>.Fail("MATCH_NOT_FOUND", "找不到配對。"))
+            ? NotFound(ApiResponse<MatchRecord>.Fail("MATCH_NOT_FOUND", "找不到這筆配對。"))
             : ApiResponse<MatchRecord>.Ok(match);
     }
 }

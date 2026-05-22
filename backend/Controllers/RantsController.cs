@@ -32,21 +32,27 @@ public sealed class RantsController(RantService rantService) : ControllerBase
     public ActionResult<ApiResponse<RantPost>> Understand(string rantId)
     {
         var post = rantService.Understand(rantId);
-        return post == null ? NotFound(ApiResponse<RantPost>.Fail("RANT_NOT_FOUND", "找不到文章。")) : ApiResponse<RantPost>.Ok(post);
+        return post == null
+            ? NotFound(ApiResponse<RantPost>.Fail("RANT_NOT_FOUND", "找不到這篇樹洞文章。"))
+            : ApiResponse<RantPost>.Ok(post);
     }
 
     [HttpPost("{rantId}/replies")]
     public ActionResult<ApiResponse<RantPost>> Reply(string rantId, [FromBody] CreateReplyRequest request)
     {
         var post = rantService.Reply(rantId, request.UserId, request.Nickname, request.Content);
-        return post == null ? NotFound(ApiResponse<RantPost>.Fail("RANT_NOT_FOUND", "找不到文章。")) : ApiResponse<RantPost>.Ok(post);
+        return post == null
+            ? NotFound(ApiResponse<RantPost>.Fail("RANT_NOT_FOUND", "找不到這篇樹洞文章。"))
+            : ApiResponse<RantPost>.Ok(post);
     }
 
     [HttpPost("{rantId}/report")]
     public ActionResult<ApiResponse<RantPost>> Report(string rantId)
     {
         var post = rantService.Report(rantId);
-        return post == null ? NotFound(ApiResponse<RantPost>.Fail("RANT_NOT_FOUND", "找不到文章。")) : ApiResponse<RantPost>.Ok(post);
+        return post == null
+            ? NotFound(ApiResponse<RantPost>.Fail("RANT_NOT_FOUND", "找不到這篇樹洞文章。"))
+            : ApiResponse<RantPost>.Ok(post);
     }
 }
 

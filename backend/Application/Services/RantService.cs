@@ -1,11 +1,27 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using SameDaySocialApp.Domain.Entities;
 using SameDaySocialApp.Domain.Enums;
 using SameDaySocialApp.Infrastructure.Persistence;
+using SameDaySocialApp.Infrastructure.Persistence.Models;
 
 namespace SameDaySocialApp.Application.Services;
 
-public sealed class RantService(JsonStorageService storage, TodayAnalyzerService analyzer, ModerationService moderation)
+public sealed class RantService
 {
+    private readonly JsonStorageService storage;
+    private readonly TodayAnalyzerService analyzer;
+    private readonly ModerationService moderation;
+    private readonly AppDbContext? db;
+
+    public RantService(JsonStorageService storage, TodayAnalyzerService analyzer, ModerationService moderation, IServiceProvider services)
+    {
+        this.storage = storage;
+        this.analyzer = analyzer;
+        this.moderation = moderation;
+        db = services.GetService<AppDbContext>();
+    }
+
     public (RantPost? Post, ModerationResult Moderation) Create(string userId, string nickname, string content, RantMode mode)
     {
         var check = moderation.Check(content);
@@ -19,11 +35,18 @@ public sealed class RantService(JsonStorageService storage, TodayAnalyzerService
         {
             Id = $"rant_{Guid.NewGuid():N}",
             UserId = userId,
-            Nickname = string.IsNullOrWhiteSpace(nickname) ? "匿名的今天" : nickname.Trim(),
+            Nickname = string.IsNullOrWhiteSpace(nickname) ? "同頻使用者" : nickname.Trim(),
             Content = content.Trim(),
             Mode = mode,
             EmotionTags = analysis.EmotionTags
         };
+
+        if (db != null)
+        {
+            db.RantPosts.Add(post.ToRecord());
+            db.SaveChanges();
+            return (post, check);
+        }
 
         storage.InsertOne("rantPosts", post);
         return (post, check);
@@ -31,34 +54,131 @@ public sealed class RantService(JsonStorageService storage, TodayAnalyzerService
 
     public List<RantPost> GetPublicPosts()
     {
+        if (db != null)
+        {
+            var posts = db.RantPosts.AsNoTracking()
+                .Where(x => !x.IsHidden)
+                .OrderByDescending(x => x.CreatedAt)
+                .ToList();
+            var postIds = posts.Select(x => x.Id).ToHashSet();
+            var replies = db.RantReplies.AsNoTracking()
+                .Where(x => postIds.Contains(x.RantPostId))
+                .ToList()
+                .GroupBy(x => x.RantPostId)
+                .ToDictionary(x => x.Key, x => x.AsEnumerable());
+            var likeCounts = db.RantReactions.AsNoTracking()
+                .Where(x => postIds.Contains(x.RantPostId) && x.ReactionType == "UNDERSTAND")
+                .ToList()
+                .GroupBy(x => x.RantPostId)
+                .ToDictionary(x => x.Key, x => x.Count());
+
+            return posts
+                .Select(x => x.ToDomain(
+                    replies.GetValueOrDefault(x.Id, Array.Empty<RantReplyRecord>()),
+                    likeCounts.GetValueOrDefault(x.Id)))
+                .ToList();
+        }
+
         return storage.ReadCollection<RantPost>("rantPosts")
             .Where(x => !x.IsHidden)
             .OrderByDescending(x => x.CreatedAt)
             .ToList();
     }
 
-    public RantPost? Understand(string rantId)
+    public RantPost? Understand(string rantId, string? userId = null)
     {
+        if (db != null)
+        {
+            var post = db.RantPosts.FirstOrDefault(x => x.Id == rantId);
+            if (post == null)
+            {
+                return null;
+            }
+
+            var reactionUserId = string.IsNullOrWhiteSpace(userId) ? post.UserId : userId.Trim();
+            var existingReaction = db.RantReactions.Any(x =>
+                x.RantPostId == rantId &&
+                x.UserId == reactionUserId &&
+                x.ReactionType == "UNDERSTAND");
+            if (!existingReaction)
+            {
+                db.RantReactions.Add(new RantReactionRecord
+                {
+                    Id = $"reaction_{Guid.NewGuid():N}",
+                    RantPostId = rantId,
+                    UserId = reactionUserId,
+                    ReactionType = "UNDERSTAND"
+                });
+                db.SaveChanges();
+            }
+            return BuildPost(post.Id);
+        }
+
         return storage.UpdateOne<RantPost>("rantPosts", rantId, post => post.LikeCount += 1);
     }
 
     public RantPost? Reply(string rantId, string userId, string nickname, string content)
     {
+        if (db != null)
+        {
+            var post = db.RantPosts.FirstOrDefault(x => x.Id == rantId);
+            if (post == null)
+            {
+                return null;
+            }
+
+            db.RantReplies.Add(new RantReplyRecord
+            {
+                Id = $"reply_{Guid.NewGuid():N}",
+                RantPostId = rantId,
+                UserId = userId,
+                Nickname = string.IsNullOrWhiteSpace(nickname) ? "同頻使用者" : nickname.Trim(),
+                Content = content.Trim()
+            });
+            db.SaveChanges();
+            return BuildPost(rantId);
+        }
+
         return storage.UpdateOne<RantPost>("rantPosts", rantId, post =>
         {
             post.Replies.Add(new RantReply
             {
                 Id = $"reply_{Guid.NewGuid():N}",
                 UserId = userId,
-                Nickname = string.IsNullOrWhiteSpace(nickname) ? "同頻的人" : nickname.Trim(),
+                Nickname = string.IsNullOrWhiteSpace(nickname) ? "同頻使用者" : nickname.Trim(),
                 Content = content.Trim()
             });
             post.ReplyCount = post.Replies.Count;
         });
     }
 
-    public RantPost? Report(string rantId)
+    public RantPost? Report(string rantId, string? userId = null)
     {
+        if (db != null)
+        {
+            var post = db.RantPosts.FirstOrDefault(x => x.Id == rantId);
+            if (post == null)
+            {
+                return null;
+            }
+
+            var reportUserId = string.IsNullOrWhiteSpace(userId) ? post.UserId : userId.Trim();
+            var existingReport = db.RantReports.Any(x => x.RantPostId == rantId && x.UserId == reportUserId);
+            if (!existingReport)
+            {
+                post.ReportCount += 1;
+                post.IsHidden = post.ReportCount >= 3;
+                db.RantReports.Add(new RantReportRecord
+                {
+                    Id = $"report_{Guid.NewGuid():N}",
+                    RantPostId = rantId,
+                    UserId = reportUserId
+                });
+                db.SaveChanges();
+            }
+            return BuildPost(rantId);
+        }
+
         return storage.UpdateOne<RantPost>("rantPosts", rantId, post =>
         {
             post.ReportCount += 1;
@@ -67,5 +187,26 @@ public sealed class RantService(JsonStorageService storage, TodayAnalyzerService
                 post.IsHidden = true;
             }
         });
+    }
+
+    private RantPost? BuildPost(string rantId)
+    {
+        if (db == null)
+        {
+            return null;
+        }
+
+        var post = db.RantPosts.AsNoTracking().FirstOrDefault(x => x.Id == rantId);
+        if (post == null)
+        {
+            return null;
+        }
+
+        var replies = db.RantReplies.AsNoTracking()
+            .Where(x => x.RantPostId == rantId)
+            .ToList();
+        var likeCount = db.RantReactions.AsNoTracking()
+            .Count(x => x.RantPostId == rantId && x.ReactionType == "UNDERSTAND");
+        return post.ToDomain(replies, likeCount);
     }
 }

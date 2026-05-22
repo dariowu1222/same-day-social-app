@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using SameDaySocialApp.Domain.Entities;
 using SameDaySocialApp.Domain.Enums;
 using SameDaySocialApp.Infrastructure.Persistence;
@@ -5,14 +7,21 @@ using MatchType = SameDaySocialApp.Domain.Enums.MatchType;
 
 namespace SameDaySocialApp.Application.Services;
 
-public sealed class MatchService(JsonStorageService storage)
+public sealed class MatchService
 {
+    private readonly JsonStorageService storage;
+    private readonly AppDbContext? db;
+
+    public MatchService(JsonStorageService storage, IServiceProvider services)
+    {
+        this.storage = storage;
+        db = services.GetService<AppDbContext>();
+    }
+
     public List<MatchResponse> GetTodayMatches(string userId)
     {
-        var users = storage.ReadCollection<User>("users");
-        var entries = storage.ReadCollection<TodayEntry>("todayEntries")
-            .Where(x => x.Visibility != Visibility.PRIVATE)
-            .ToList();
+        var users = LoadUsers();
+        var entries = LoadMatchableEntries();
         var current = entries.Where(x => x.UserId == userId).MaxBy(x => x.CreatedAt);
         if (current == null)
         {
@@ -31,7 +40,49 @@ public sealed class MatchService(JsonStorageService storage)
 
     public MatchRecord? Like(string matchId)
     {
+        if (db != null)
+        {
+            var record = db.Matches.FirstOrDefault(x => x.Id == matchId);
+            if (record == null)
+            {
+                return null;
+            }
+
+            record.UserLiked = true;
+            db.SaveChanges();
+            return record.ToDomain();
+        }
+
         return storage.UpdateOne<MatchRecord>("matches", matchId, match => match.UserLiked = true);
+    }
+
+    private List<User> LoadUsers()
+    {
+        if (db != null)
+        {
+            return db.Users.AsNoTracking()
+                .ToList()
+                .Select(x => x.ToDomain())
+                .ToList();
+        }
+
+        return storage.ReadCollection<User>("users");
+    }
+
+    private List<TodayEntry> LoadMatchableEntries()
+    {
+        if (db != null)
+        {
+            return db.TodayEntries.AsNoTracking()
+                .Where(x => x.Visibility != Visibility.PRIVATE.ToString())
+                .ToList()
+                .Select(x => x.ToDomain())
+                .ToList();
+        }
+
+        return storage.ReadCollection<TodayEntry>("todayEntries")
+            .Where(x => x.Visibility != Visibility.PRIVATE)
+            .ToList();
     }
 
     private MatchResponse BuildMatch(TodayEntry current, TodayEntry other, List<User> users)
@@ -74,33 +125,53 @@ public sealed class MatchService(JsonStorageService storage)
             MatchScore = score,
             MatchType = matchType,
             SharedTags = sharedTags.Distinct().ToList(),
-            Reason = BuildReason(current, other, matchType),
+            Reason = BuildReason(current, matchType),
             Icebreaker = BuildIcebreaker(current, matchType)
         };
 
-        var existing = storage.ReadCollection<MatchRecord>("matches")
-            .FirstOrDefault(x => x.UserId == match.UserId && x.MatchedUserId == match.MatchedUserId);
-        if (existing == null)
-        {
-            storage.InsertOne("matches", match);
-        }
-        else
-        {
-            match.Id = existing.Id;
-            match.UserLiked = existing.UserLiked;
-            match.MatchedUserLiked = existing.MatchedUserLiked;
-        }
+        PersistOrReuseMatch(match);
 
         return new MatchResponse(
             match.Id,
             match.MatchedUserId,
-            user?.Nickname ?? "同頻的人",
+            user?.Nickname ?? "同頻使用者",
             match.MatchScore,
             match.MatchType,
             match.SharedTags,
             match.Reason,
             match.Icebreaker,
             Summarize(other.Content));
+    }
+
+    private void PersistOrReuseMatch(MatchRecord match)
+    {
+        if (db != null)
+        {
+            var existing = db.Matches.FirstOrDefault(x => x.UserId == match.UserId && x.MatchedUserId == match.MatchedUserId);
+            if (existing == null)
+            {
+                db.Matches.Add(match.ToRecord());
+                db.SaveChanges();
+                return;
+            }
+
+            match.Id = existing.Id;
+            match.UserLiked = existing.UserLiked;
+            match.MatchedUserLiked = existing.MatchedUserLiked;
+            return;
+        }
+
+        var existingFileMatch = storage.ReadCollection<MatchRecord>("matches")
+            .FirstOrDefault(x => x.UserId == match.UserId && x.MatchedUserId == match.MatchedUserId);
+        if (existingFileMatch == null)
+        {
+            storage.InsertOne("matches", match);
+            return;
+        }
+
+        match.Id = existingFileMatch.Id;
+        match.UserLiked = existingFileMatch.UserLiked;
+        match.MatchedUserLiked = existingFileMatch.MatchedUserLiked;
     }
 
     private static bool IsCompatible(ResponseMode a, ResponseMode b)
@@ -110,22 +181,38 @@ public sealed class MatchService(JsonStorageService storage)
 
     private static MatchType ResolveMatchType(TodayEntry current, TodayEntry other, List<string> emotions, List<string> interests)
     {
-        if (current.EventType == other.EventType) return MatchType.SAME_EVENT;
-        if (interests.Count > 0) return MatchType.SAME_INTEREST;
-        if (IsCompatible(current.ResponseMode, other.ResponseMode)) return MatchType.COMPLEMENTARY;
-        if (emotions.Count > 0) return MatchType.SAME_EMOTION;
+        if (current.EventType == other.EventType)
+        {
+            return MatchType.SAME_EVENT;
+        }
+
+        if (interests.Count > 0)
+        {
+            return MatchType.SAME_INTEREST;
+        }
+
+        if (IsCompatible(current.ResponseMode, other.ResponseMode))
+        {
+            return MatchType.COMPLEMENTARY;
+        }
+
+        if (emotions.Count > 0)
+        {
+            return MatchType.SAME_EMOTION;
+        }
+
         return MatchType.TASK_COMPATIBLE;
     }
 
-    private static string BuildReason(TodayEntry current, TodayEntry other, MatchType type)
+    private static string BuildReason(TodayEntry current, MatchType type)
     {
         return type switch
         {
-            MatchType.SAME_EVENT => $"你們今天都遇到「{current.EventType}」相關的事，也許能理解彼此的卡住。",
-            MatchType.SAME_INTEREST => "你們今天提到相近的興趣，可以用低壓的小話題開始。",
-            MatchType.COMPLEMENTARY => "你們期待的回應方式相容，適合慢慢聊。",
-            MatchType.SAME_EMOTION => "雖然事情不同，但你們今天的情緒很接近。",
-            _ => "你們適合先從一個小任務開始，不急著聊天。"
+            MatchType.SAME_EVENT => $"你們今天都遇到 {current.EventType} 類型的事情，也都適合從理解開始。",
+            MatchType.SAME_INTEREST => "你們今天提到相近的興趣，可以從一件小事慢慢聊起。",
+            MatchType.COMPLEMENTARY => "你們期待的回應方式相容，適合低壓地互相聽聽看。",
+            MatchType.SAME_EMOTION => "事件不一定相同，但你們今天的情緒很接近。",
+            _ => "你們適合同步完成一個小任務，用低壓方式慢慢認識。"
         };
     }
 
@@ -134,9 +221,9 @@ public sealed class MatchService(JsonStorageService storage)
         return type switch
         {
             MatchType.SAME_EVENT when current.EventType == EventType.WORK_STRESS => "你今天也是那種明明很努力，卻被誤會的感覺嗎？",
-            MatchType.SAME_EMOTION => "你今天的那種感覺，是比較想被聽見，還是想先放空一下？",
-            MatchType.SAME_INTEREST => "你今天提到的那件小事，我也有點懂，可以聊聊嗎？",
-            _ => "如果不急著聊天，我們可以先一起完成一個小任務。"
+            MatchType.SAME_EMOTION => "你今天也有那種說不上來，但很想有人懂的感覺嗎？",
+            MatchType.SAME_INTEREST => "你今天提到的興趣我也有感，要不要先從一件小事聊起？",
+            _ => "如果今天不用急著聊天，要不要先一起完成一個小任務？"
         };
     }
 

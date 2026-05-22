@@ -1,4 +1,6 @@
 using System.Text.Json.Serialization;
+using Microsoft.EntityFrameworkCore;
+using SameDaySocialApp.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,7 +21,16 @@ builder.Services.AddCors(options =>
     });
 });
 
-builder.Services.AddSingleton<SameDaySocialApp.Infrastructure.Persistence.JsonStorageService>();
+var databaseConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (!string.IsNullOrWhiteSpace(databaseConnectionString))
+{
+    builder.Services.AddDbContext<AppDbContext>(options =>
+    {
+        options.UseNpgsql(databaseConnectionString);
+    });
+}
+
+builder.Services.AddSingleton<JsonStorageService>();
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.AuthService>();
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.TodayAnalyzerService>();
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.TodayEntryService>();
@@ -31,7 +42,6 @@ builder.Services.AddScoped<SameDaySocialApp.Application.Services.ChatService>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();

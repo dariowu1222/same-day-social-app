@@ -8,7 +8,7 @@
 
 - Frontend：React + Vite + TypeScript
 - Backend：ASP.NET Core Web API + C#
-- Storage：本機 JSON 檔案，封裝於 `JsonStorageService`
+- Storage：Supabase PostgreSQL / EF Core；本機 JSON 暫時保留給尚未改寫的 MVP API
 - Matching：rule-based 分數計算
 - Moderation：rule-based 內容檢查
 
@@ -19,6 +19,14 @@ Backend:
 ```powershell
 cd backend
 dotnet restore
+```
+
+Supabase connection string 不要寫進 Git。需要連正式資料庫時，使用 user-secrets：
+
+```powershell
+cd backend
+dotnet user-secrets init
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=db.uqacfftvowhehvkyafep.supabase.co;Port=5432;Database=postgres;Username=postgres;Password=YOUR_SUPABASE_DATABASE_PASSWORD;SSL Mode=Require;Trust Server Certificate=true"
 ```
 
 Frontend:
