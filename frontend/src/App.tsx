@@ -16,7 +16,7 @@ export type DemoUser = {
 function App() {
   const [activePage, setActivePage] = useState<PageKey>('today')
   const [user, setUser] = useState<DemoUser | null>(null)
-  const [nickname, setNickname] = useState('Dario')
+  const [nickname, setNickname] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {

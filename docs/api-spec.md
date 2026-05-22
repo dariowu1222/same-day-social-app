@@ -29,7 +29,7 @@ Request:
 
 ```json
 {
-  "nickname": "Dario"
+  "nickname": "使用者名稱"
 }
 ```
 
@@ -40,7 +40,7 @@ Response:
   "success": true,
   "data": {
     "userId": "user_xxx",
-    "nickname": "Dario"
+    "nickname": "使用者名稱"
   }
 }
 ```
