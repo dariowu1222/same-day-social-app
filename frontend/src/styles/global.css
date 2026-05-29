@@ -788,9 +788,12 @@ blockquote {
 }
 
 .field-icon {
-  left: 21px;
-  color: #826a58;
-  font-size: 24px;
+  left: 22px;
+  width: 22px;
+  height: 22px;
+  color: #92877c;
+  display: grid;
+  place-items: center;
 }
 
 .field-action {
@@ -804,6 +807,15 @@ blockquote {
   background: transparent;
   color: #826a58;
   font-size: 24px;
+}
+
+.eye-action {
+  border: 0;
+  background: transparent;
+}
+
+.eye-action.visible {
+  color: #d86c4e;
 }
 
 .field-suffix {
@@ -855,51 +867,9 @@ blockquote {
   letter-spacing: 0.08em;
 }
 
-.outline-login-button span,
-.guest-button span {
+.outline-login-button span {
   font-size: 28px;
   font-weight: 400;
-}
-
-.guest-divider {
-  display: grid;
-  grid-template-columns: 1fr auto auto auto 1fr;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  margin-top: 14px;
-  color: #8a705f;
-}
-
-.guest-divider span {
-  height: 1px;
-  background: #e5d4c4;
-}
-
-.guest-divider b {
-  color: #df8b6d;
-  font-size: 14px;
-}
-
-.guest-divider em {
-  font-style: normal;
-  font-weight: 700;
-}
-
-.guest-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  min-width: 190px;
-  height: 54px;
-  border: 1px solid #ead3bf;
-  border-radius: 18px;
-  background: rgba(255, 253, 248, 0.76);
-  color: #765f4e;
-  font-size: 20px;
-  font-weight: 800;
-  box-shadow: 0 10px 20px rgba(120, 74, 42, 0.08);
 }
 
 .login-decoration {
@@ -961,6 +931,26 @@ blockquote {
   font-size: inherit;
   text-decoration: underline;
   text-underline-offset: 6px;
+}
+
+.auth-notice {
+  width: 100%;
+  margin: 0;
+  border: 1px solid #d8e9df;
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: rgba(237, 248, 241, 0.86);
+  color: #476854;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.auth-notice.error {
+  border-color: #efc3b4;
+  background: rgba(255, 241, 235, 0.9);
+  color: #b24c34;
 }
 
 .register-heading {
@@ -1033,19 +1023,25 @@ blockquote {
 }
 
 .gender-icon {
+  width: 15px;
+  height: 15px;
+  border: 1.5px solid #a08a7b;
+  border-radius: 999px;
   color: #a08a7b;
   font-size: 16px;
   line-height: 1;
 }
 
 .gender-options button.selected {
-  border-color: #eca06e;
-  background: #fff3e9;
-  color: #c76649;
+  border-color: #e4d1c2;
+  background: rgba(255, 253, 248, 0.8);
+  color: #5b4537;
 }
 
 .gender-options button.selected .gender-icon {
-  color: #e8754e;
+  border-color: #e8754e;
+  box-shadow: inset 0 0 0 3px #fffdfa;
+  background: #e8754e;
 }
 
 .terms-row {
@@ -1064,8 +1060,32 @@ blockquote {
   accent-color: #e7835d;
 }
 
-.terms-row a {
+.terms-row button {
+  border: 0;
+  padding: 0;
+  background: transparent;
   color: #e8754e;
+  font: inherit;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.register-verify-copy {
+  margin: 0;
+  color: #7f6756;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.text-link-button {
+  border: 0;
+  background: transparent;
+  color: #c76649;
+  font-size: 15px;
+  font-weight: 800;
   text-decoration: underline;
   text-underline-offset: 4px;
 }
@@ -1077,6 +1097,105 @@ blockquote {
   color: #fff8f1;
   font-size: 22px;
   font-weight: 900;
+}
+
+.legal-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(48, 34, 24, 0.36);
+}
+
+.legal-modal {
+  width: min(92vw, 520px);
+  max-height: min(82vh, 720px);
+  overflow: hidden;
+  border: 1px solid #ead5c5;
+  border-radius: 18px;
+  background: #fffdfa;
+  box-shadow: 0 24px 60px rgba(81, 49, 31, 0.24);
+}
+
+.legal-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 22px 12px;
+  border-bottom: 1px solid #f0dfd1;
+}
+
+.legal-modal-header p,
+.legal-modal-header h2,
+.legal-updated,
+.legal-review-note {
+  margin: 0;
+}
+
+.legal-modal-header p {
+  color: #d36f4f;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.legal-modal-header h2 {
+  color: #3b1705;
+  font-size: 24px;
+}
+
+.legal-modal-header button {
+  width: 34px;
+  height: 34px;
+  border: 1px solid #ead5c5;
+  border-radius: 999px;
+  background: #fff8f1;
+  color: #7f6756;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.legal-updated {
+  padding: 12px 22px 0;
+  color: #9b8575;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.legal-modal-body {
+  max-height: 48vh;
+  overflow: auto;
+  padding: 14px 22px 18px;
+}
+
+.legal-modal-body section + section {
+  margin-top: 18px;
+}
+
+.legal-modal-body h3 {
+  margin: 0 0 8px;
+  color: #5b2a12;
+  font-size: 17px;
+}
+
+.legal-modal-body p {
+  margin: 8px 0 0;
+  color: #6e594a;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.7;
+}
+
+.legal-review-note {
+  padding: 13px 22px 18px;
+  border-top: 1px solid #f0dfd1;
+  color: #9b5a43;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.6;
 }
 
 .or-divider {

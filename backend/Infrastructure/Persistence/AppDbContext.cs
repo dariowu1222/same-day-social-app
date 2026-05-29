@@ -7,6 +7,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 {
     public DbSet<UserRecord> Users => Set<UserRecord>();
     public DbSet<AuthAccountRecord> AuthAccounts => Set<AuthAccountRecord>();
+    public DbSet<RegistrationVerificationTokenRecord> RegistrationVerificationTokens => Set<RegistrationVerificationTokenRecord>();
     public DbSet<PasswordResetTokenRecord> PasswordResetTokens => Set<PasswordResetTokenRecord>();
     public DbSet<TodayEntryRecord> TodayEntries => Set<TodayEntryRecord>();
     public DbSet<MatchRecordEntity> Matches => Set<MatchRecordEntity>();

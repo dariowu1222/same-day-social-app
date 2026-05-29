@@ -1,32 +1,26 @@
 # same-day-social-app
 
-暫定產品名：同頻 Today。
+暫定產品名：同頻 Today
 
-這是一個「生活共鳴型社交 APP」MVP。核心不是快速交友或看照片滑卡，而是讓使用者輸入「今天發生了什麼」，再透過今日事件、情緒與期待回應方式，找到剛好懂今天的陌生人。
+這是一個生活共鳴型社交 Web App / PWA MVP。核心不是滑照片或快速配對，而是讓使用者輸入「今天發生了什麼」，再透過今日事件、情緒與期待回應方式找到同頻的人。
 
 ## 技術架構
 
 - Frontend：React + Vite + TypeScript
 - Backend：ASP.NET Core Web API + C#
-- Storage：Supabase PostgreSQL / EF Core；本機 JSON 暫時保留給尚未改寫的 MVP API
+- Database：Supabase PostgreSQL + EF Core
+- Local fallback：部分 MVP API 保留 JSON storage，方便未設定資料庫時 demo
 - Matching：rule-based 分數計算
 - Moderation：rule-based 內容檢查
+- Email：SMTP 寄送忘記密碼驗證碼
 
-## 安裝方式
+## 安裝
 
 Backend:
 
 ```powershell
 cd backend
 dotnet restore
-```
-
-Supabase connection string 不要寫進 Git。需要連正式資料庫時，使用 user-secrets：
-
-```powershell
-cd backend
-dotnet user-secrets init
-dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=db.uqacfftvowhehvkyafep.supabase.co;Port=5432;Database=postgres;Username=postgres;Password=YOUR_SUPABASE_DATABASE_PASSWORD;SSL Mode=Require;Trust Server Certificate=true"
 ```
 
 Frontend:
@@ -36,23 +30,43 @@ cd frontend
 npm install
 ```
 
-## 啟動方式
+## 本機設定
+
+Supabase connection string 不要寫進 Git。請用 .NET User Secrets：
+
+```powershell
+cd backend
+dotnet user-secrets init
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=db.uqacfftvowhehvkyafep.supabase.co;Port=5432;Database=postgres;Username=postgres;Password=YOUR_SUPABASE_DATABASE_PASSWORD;SSL Mode=Require;Trust Server Certificate=true"
+```
+
+忘記密碼需要 SMTP，沒有設定時 API 會回傳 `SMTP_NOT_CONFIGURED`，不會假裝寄信成功。
+
+```powershell
+dotnet user-secrets set "Smtp:Host" "smtp.example.com"
+dotnet user-secrets set "Smtp:Port" "587"
+dotnet user-secrets set "Smtp:EnableSsl" "true"
+dotnet user-secrets set "Smtp:Username" "your-smtp-username"
+dotnet user-secrets set "Smtp:Password" "your-smtp-password"
+dotnet user-secrets set "Smtp:FromEmail" "no-reply@example.com"
+dotnet user-secrets set "Smtp:FromName" "同頻 Today"
+```
+
+## 啟動
 
 Visual Studio:
 
 - 開啟 `SameDaySocialApp.sln`
 - 將 `backend` 設為啟動專案
-- 使用 `http` profile 啟動後端 API
-- 前端仍建議用下方 `npm run dev` 啟動
+- 使用 `http` profile 啟動
+- 後端會透過 SPA proxy 啟動前端 Vite dev server
 
-Backend:
+手動啟動：
 
 ```powershell
 cd backend
 dotnet run --launch-profile http
 ```
-
-Frontend:
 
 ```powershell
 cd frontend
@@ -66,37 +80,32 @@ npm run dev
 
 ## MVP 功能
 
-- 建立 Demo user
-- 輸入今日事件
-- rule-based 今日事件分析
+- Demo user
+- 正式註冊 / 登入
+- 忘記密碼寄送 Email 驗證碼
+- 今日事件輸入與 rule-based 分析
 - 今日共鳴配對
-- 建立聊天室骨架
-- 樹洞發文
-- 樹洞「我懂」、留言、檢舉
-- 固定任務清單
-- 任務參加紀錄
-- 手機版優先 UI
-
-## Mock / 暫時簡化
-
-- 登入是 Demo user，不做第三方登入
-- 資料存本機 JSON，不接正式資料庫
-- 今日事件分析不串 AI
-- 配對演算法是規則分數
-- 內容安全檢查是關鍵字與 regex
-- 聊天不做即時推播、已讀、圖片、語音
+- 樹洞發文、我懂、留言、檢舉
+- 任務清單與參與紀錄
+- 文字聊天室骨架
 
 ## 尚未實作
 
-- 正式會員系統
-- AI 語意分析與破冰句生成
-- Supabase / PostgreSQL / SQL Server
-- SignalR 即時聊天
-- PWA 安裝設定
-- 手機驗證 / 真人驗證
-- 金流、訂閱、票券
-- App Store / Google Play 上架
+- 第三方登入
+- 手機驗證
+- 圖片上傳
+- 語音聊天
+- 推播
+- 金流
+- AI 語意分析與 AI 破冰句
+- 正式 RLS policy
 
 ## 未來規劃
 
-後端目前已有 Controller -> Service -> Storage 的分層。未來可將 `JsonStorageService` 替換成 SQLite / PostgreSQL / SQL Server repository，並將 `TodayAnalyzerService` 與 `MatchService` 的 rule-based 實作換成 AI matching service。
+- AI 今日事件語意分析
+- AI 詐騙偵測
+- 真人驗證
+- 小群共鳴房
+- 任務通行證
+- 付費同頻 Plus
+- PWA 安裝與 App 上架

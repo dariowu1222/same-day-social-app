@@ -25,6 +25,22 @@ create table if not exists auth_accounts (
 create unique index if not exists ux_auth_accounts_username on auth_accounts(username);
 create index if not exists ix_auth_accounts_user_id on auth_accounts(user_id);
 
+create table if not exists registration_verification_tokens (
+  id varchar(64) primary key,
+  email varchar(120) not null,
+  nickname varchar(80) not null,
+  password_hash varchar(500) not null,
+  birth_year varchar(40),
+  gender varchar(40),
+  code_hash varchar(500) not null,
+  terms_accepted_at timestamptz not null,
+  expires_at timestamptz not null,
+  used_at timestamptz,
+  created_at timestamptz not null default now()
+);
+create index if not exists ix_registration_verification_tokens_email_expires
+  on registration_verification_tokens(email, expires_at);
+
 create table if not exists password_reset_tokens (
   id varchar(64) primary key,
   user_id varchar(64) not null references users(id) on delete cascade,

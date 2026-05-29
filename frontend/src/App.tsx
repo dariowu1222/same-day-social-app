@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { demoLogin } from './api/client'
 import BottomNav, { type PageKey } from './components/BottomNav'
 import LoginPage from './components/LoginPage'
 import TodayPage from './pages/TodayPage'
@@ -11,13 +10,12 @@ import ProfilePage from './pages/ProfilePage'
 export type DemoUser = {
   userId: string
   nickname: string
+  email?: string
 }
 
 function App() {
   const [activePage, setActivePage] = useState<PageKey>('today')
   const [user, setUser] = useState<DemoUser | null>(null)
-  const [nickname, setNickname] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
     const saved = localStorage.getItem('same-day-demo-user')
@@ -26,24 +24,15 @@ function App() {
     }
   }, [])
 
-  async function handleLogin(nicknameOverride?: string) {
-    setIsLoading(true)
-    try {
-      const result = await demoLogin(nicknameOverride ?? nickname)
-      localStorage.setItem('same-day-demo-user', JSON.stringify(result))
-      setUser(result)
-    } finally {
-      setIsLoading(false)
-    }
+  function handleAuthenticated(nextUser: DemoUser) {
+    localStorage.setItem('same-day-demo-user', JSON.stringify(nextUser))
+    setUser(nextUser)
   }
 
   if (!user) {
     return (
       <LoginPage
-        nickname={nickname}
-        isLoading={isLoading}
-        onNicknameChange={setNickname}
-        onLogin={handleLogin}
+        onAuthenticated={handleAuthenticated}
       />
     )
   }

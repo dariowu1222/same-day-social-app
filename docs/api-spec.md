@@ -1,8 +1,8 @@
 # API 規格
 
-Base URL: `http://localhost:5000`
+Base URL：`http://localhost:5000`
 
-所有 API 回傳格式：
+成功回應：
 
 ```json
 {
@@ -11,19 +11,21 @@ Base URL: `http://localhost:5000`
 }
 ```
 
-錯誤格式：
+失敗回應：
 
 ```json
 {
   "success": false,
-  "code": "CONTENT_BLOCKED",
-  "message": "這篇內容可能包含個資、攻擊或高風險內容，請調整後再發布。"
+  "code": "INVALID_REQUEST",
+  "message": "錯誤說明"
 }
 ```
 
 ## Auth
 
 ### POST /api/auth/demo-login
+
+Demo 用假登入，不驗證密碼。
 
 Request:
 
@@ -33,15 +35,76 @@ Request:
 }
 ```
 
-Response:
+### POST /api/auth/register
+
+正式註冊，會寫入 `users` 與 `auth_accounts`。
+
+Request:
 
 ```json
 {
-  "success": true,
-  "data": {
-    "userId": "user_xxx",
-    "nickname": "使用者名稱"
-  }
+  "nickname": "小同",
+  "email": "user@example.com",
+  "password": "abc12345",
+  "confirmPassword": "abc12345",
+  "birthYear": "1995",
+  "gender": "PRIVATE"
+}
+```
+
+防呆規則：
+
+- nickname：2 到 20 字
+- email：必須是 Email 格式，且不可重複
+- password：8 到 64 碼，需同時包含英文與數字
+- confirmPassword：必須與 password 相同
+
+### POST /api/auth/login
+
+Request:
+
+```json
+{
+  "email": "user@example.com",
+  "password": "abc12345"
+}
+```
+
+### POST /api/auth/password-reset/request
+
+產生 6 位數驗證碼並透過 SMTP 寄信。SMTP 未設定或寄送失敗時，不回傳成功。
+
+Request:
+
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+### POST /api/auth/password-reset/verify
+
+Request:
+
+```json
+{
+  "email": "user@example.com",
+  "code": "123456"
+}
+```
+
+### POST /api/auth/password-reset/confirm
+
+驗證碼正確且未過期時，更新 `auth_accounts.password_hash`，並將 token 標記為已使用。
+
+Request:
+
+```json
+{
+  "email": "user@example.com",
+  "code": "123456",
+  "newPassword": "newabc12345",
+  "confirmPassword": "newabc12345"
 }
 ```
 
@@ -62,7 +125,7 @@ Request:
 
 ### GET /api/today-entries/user/:userId
 
-取得指定使用者的今日事件紀錄。
+取得指定使用者的今日事件。
 
 ## Match
 
@@ -72,13 +135,13 @@ Request:
 
 ### POST /api/matches/:matchId/like
 
-標記使用者想聊聊。
+對配對按「想聊聊」。
 
 ## Rant Board
 
 ### POST /api/rants
 
-建立樹洞文章。
+新增樹洞文章。
 
 ### GET /api/rants
 
@@ -94,17 +157,17 @@ Request:
 
 ### POST /api/rants/:rantId/report
 
-檢舉文章。第一版檢舉滿三次會隱藏。
+檢舉文章。
 
 ## Tasks
 
 ### GET /api/tasks
 
-取得固定任務清單。
+取得任務清單。
 
 ### POST /api/tasks/:taskId/join
 
-參加任務。
+加入任務。
 
 ## Chat
 
@@ -118,7 +181,7 @@ Request:
 
 ### GET /api/chats/:chatRoomId/messages
 
-取得訊息。
+取得聊天室訊息。
 
 ### POST /api/chats/:chatRoomId/messages
 
