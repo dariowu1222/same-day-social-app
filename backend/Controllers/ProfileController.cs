@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using SameDaySocialApp.Application.Dto;
 using SameDaySocialApp.Domain.Entities;
 using SameDaySocialApp.Infrastructure.Persistence;
@@ -7,11 +8,19 @@ namespace SameDaySocialApp.Controllers;
 
 [ApiController]
 [Route("api/profile")]
-public sealed class ProfileController(JsonStorageService storage) : ControllerBase
+public sealed class ProfileController(JsonStorageService storage, IServiceProvider services) : ControllerBase
 {
+    private readonly AppDbContext? db = services.GetService<AppDbContext>();
+
     [HttpGet("{userId}")]
-    public ActionResult<ApiResponse<User>> Get(string userId)
+    public async Task<ActionResult<ApiResponse<User>>> Get(string userId, CancellationToken cancellationToken)
     {
+        if (db != null)
+        {
+            var record = await db.Users.FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
+            if (record != null) return ApiResponse<User>.Ok(record.ToDomain());
+        }
+
         var user = storage.FindById<User>("users", userId);
         return user == null
             ? NotFound(ApiResponse<User>.Fail("USER_NOT_FOUND", "找不到使用者。"))
@@ -19,8 +28,23 @@ public sealed class ProfileController(JsonStorageService storage) : ControllerBa
     }
 
     [HttpPut("{userId}")]
-    public ActionResult<ApiResponse<User>> Update(string userId, [FromBody] UpdateProfileRequest request)
+    public async Task<ActionResult<ApiResponse<User>>> Update(string userId, [FromBody] UpdateProfileRequest request, CancellationToken cancellationToken)
     {
+        if (db != null)
+        {
+            var record = await db.Users.FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
+            if (record != null)
+            {
+                if (!string.IsNullOrWhiteSpace(request.Nickname)) record.Nickname = request.Nickname.Trim();
+                if (request.Bio != null) record.Bio = request.Bio.Trim();
+                if (request.InterestTags != null) record.InterestTags = [.. request.InterestTags];
+                if (request.ValueTags != null) record.ValueTags = [.. request.ValueTags];
+                record.UpdatedAt = DateTimeOffset.UtcNow;
+                await db.SaveChangesAsync(cancellationToken);
+                return ApiResponse<User>.Ok(record.ToDomain());
+            }
+        }
+
         var user = storage.UpdateOne<User>("users", userId, target =>
         {
             target.Nickname = request.Nickname?.Trim() ?? target.Nickname;

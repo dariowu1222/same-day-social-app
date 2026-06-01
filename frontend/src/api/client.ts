@@ -117,6 +117,18 @@ export async function confirmPasswordReset(payload: {
   return response.data
 }
 
+export async function updateProfile(userId: string, payload: {
+  nickname?: string
+  bio?: string
+  interestTags?: string[]
+  valueTags?: string[]
+}) {
+  return request<unknown>(`/api/profile/${userId}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  })
+}
+
 export async function createTodayEntry(payload: {
   userId: string
   content: string
