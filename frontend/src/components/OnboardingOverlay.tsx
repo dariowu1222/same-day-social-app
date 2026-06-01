@@ -1,11 +1,11 @@
 import { useRef, useState } from 'react'
 import type { DemoUser } from '../App'
 import { updateProfile } from '../api/client'
-import slide1 from '../assets/1.png'
-import slide2 from '../assets/2.png'
-import slide3 from '../assets/3.png'
-import slide4 from '../assets/4.png'
-import slide5 from '../assets/5.png'
+import slide1 from '../assets/1.webp'
+import slide2 from '../assets/2.webp'
+import slide3 from '../assets/3.webp'
+import slide4 from '../assets/4.webp'
+import slide5 from '../assets/5.webp'
 
 type Phase = 'slides' | 'setup'
 
