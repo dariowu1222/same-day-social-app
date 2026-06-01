@@ -19,6 +19,10 @@ public sealed class AuthAccountRecordConfiguration : IEntityTypeConfiguration<Au
         builder.Property(x => x.CreatedAt).HasColumnName("created_at");
         builder.Property(x => x.UpdatedAt).HasColumnName("updated_at");
         builder.HasIndex(x => x.Username).IsUnique();
+        builder.HasOne<UserRecord>()
+            .WithMany()
+            .HasForeignKey(x => x.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
         builder.HasIndex(x => x.UserId);
     }
 }
@@ -35,6 +39,10 @@ public sealed class PasswordResetTokenRecordConfiguration : IEntityTypeConfigura
         builder.Property(x => x.ExpiresAt).HasColumnName("expires_at");
         builder.Property(x => x.UsedAt).HasColumnName("used_at");
         builder.Property(x => x.CreatedAt).HasColumnName("created_at");
+        builder.HasOne<UserRecord>()
+            .WithMany()
+            .HasForeignKey(x => x.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
         builder.HasIndex(x => new { x.UserId, x.ExpiresAt });
     }
 }
