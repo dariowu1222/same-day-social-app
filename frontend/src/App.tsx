@@ -18,14 +18,20 @@ function App() {
   const [user, setUser] = useState<DemoUser | null>(null)
 
   useEffect(() => {
-    const saved = localStorage.getItem('same-day-demo-user')
+    const saved = localStorage.getItem('same-day-demo-user') ?? sessionStorage.getItem('same-day-demo-user')
     if (saved) {
       setUser(JSON.parse(saved))
     }
   }, [])
 
-  function handleAuthenticated(nextUser: DemoUser) {
-    localStorage.setItem('same-day-demo-user', JSON.stringify(nextUser))
+  function handleAuthenticated(nextUser: DemoUser, remember: boolean) {
+    if (remember) {
+      localStorage.setItem('same-day-demo-user', JSON.stringify(nextUser))
+      sessionStorage.removeItem('same-day-demo-user')
+    } else {
+      sessionStorage.setItem('same-day-demo-user', JSON.stringify(nextUser))
+      localStorage.removeItem('same-day-demo-user')
+    }
     setUser(nextUser)
   }
 

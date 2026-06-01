@@ -707,6 +707,24 @@ blockquote {
   color: #fff8f1;
 }
 
+.forgot-steps span.done {
+  background: #4e9188;
+  color: #fff8f1;
+}
+
+.step-connector {
+  flex: 1;
+  max-width: 28px;
+  height: 2px;
+  border-radius: 999px;
+  background: #eaded4;
+  transition: background 0.25s;
+}
+
+.step-connector.done {
+  background: #4e9188;
+}
+
 .inline-auth-row {
   display: grid;
   grid-template-columns: 1fr 108px;
@@ -1033,9 +1051,9 @@ blockquote {
 }
 
 .gender-options button.selected {
-  border-color: #e4d1c2;
-  background: rgba(255, 253, 248, 0.8);
-  color: #5b4537;
+  border-color: #e8754e;
+  background: rgba(232, 117, 78, 0.1);
+  color: #c25830;
 }
 
 .gender-options button.selected .gender-icon {
@@ -1148,13 +1166,18 @@ blockquote {
 }
 
 .legal-modal-header button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
   width: 34px;
   height: 34px;
+  padding: 0;
   border: 1px solid #ead5c5;
   border-radius: 999px;
   background: #fff8f1;
   color: #7f6756;
-  font-size: 24px;
+  font-size: 20px;
   line-height: 1;
 }
 
@@ -1271,4 +1294,85 @@ blockquote {
   .auth-shell {
     padding-top: 34px;
   }
+}
+
+.btn-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  border: 2px solid rgba(255, 248, 241, 0.35);
+  border-top-color: #fff8f1;
+  border-radius: 50%;
+  animation: btn-spin 0.65s linear infinite;
+  vertical-align: -3px;
+}
+
+@keyframes btn-spin {
+  to { transform: rotate(360deg); }
+}
+
+.password-strength {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 4px;
+}
+
+.strength-bars {
+  display: flex;
+  flex: 1;
+  gap: 5px;
+}
+
+.strength-bars span {
+  flex: 1;
+  height: 4px;
+  border-radius: 999px;
+  background: #eaded4;
+  transition: background 0.25s;
+}
+
+.password-strength.weak .strength-bars span:first-child { background: #e05c3a; }
+.password-strength.medium .strength-bars span:not(:last-child) { background: #e8a645; }
+.password-strength.strong .strength-bars span { background: #4e9188; }
+
+.password-strength > em {
+  min-width: 18px;
+  font-style: normal;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.password-strength.weak > em { color: #e05c3a; }
+.password-strength.medium > em { color: #e8a645; }
+.password-strength.strong > em { color: #4e9188; }
+
+.field-error {
+  display: block;
+  margin-top: 5px;
+  padding-left: 6px;
+  color: #e05c3a;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.login-field.has-error input {
+  border-color: #e05c3a;
+}
+
+.remember-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: -4px;
+  color: #8a705f;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.remember-row input {
+  width: 18px;
+  height: 18px;
+  accent-color: #e8754e;
 }
