@@ -14,8 +14,8 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   server: {
     androidScheme: 'https',
-    // url: 'http://10.0.2.2:5173',  // ← 開發時取消這行的 //
-    // cleartext: true,               // ← 開發時取消這行的 //
+    url: 'http://10.0.2.2:5173',  // 開發用 live reload，上架前改回來
+    cleartext: true,
   },
 }
 
