@@ -3,6 +3,7 @@ import BottomNav, { type PageKey } from './components/BottomNav'
 import LoginPage from './components/LoginPage'
 import OnboardingOverlay from './components/OnboardingOverlay'
 import TodayPage from './pages/TodayPage'
+import MatchResultPage from './pages/MatchResultPage'
 import RantBoardPage from './pages/RantBoardPage'
 import TasksPage from './pages/TasksPage'
 import ChatPage from './pages/ChatPage'
@@ -20,6 +21,7 @@ function onboardingKey(userId: string) {
 
 function App() {
   const [activePage, setActivePage] = useState<PageKey>('today')
+  const [showMatchResult, setShowMatchResult] = useState(false)
   const [user, setUser] = useState<DemoUser | null>(null)
   const [onboardingDone, setOnboardingDone] = useState(true)
 
@@ -56,7 +58,12 @@ function App() {
   return (
     <>
       <main className="app-shell">
-        {activePage === 'today' && <TodayPage user={user} />}
+        {activePage === 'today' && !showMatchResult && (
+          <TodayPage user={user} onGoToMatches={() => setShowMatchResult(true)} />
+        )}
+        {activePage === 'today' && showMatchResult && (
+          <MatchResultPage onBack={() => setShowMatchResult(false)} />
+        )}
         {activePage === 'rant' && <RantBoardPage user={user} />}
         {activePage === 'tasks' && <TasksPage user={user} />}
         {activePage === 'chat' && <ChatPage user={user} />}

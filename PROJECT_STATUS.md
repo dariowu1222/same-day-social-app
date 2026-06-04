@@ -1,7 +1,7 @@
 # 同頻 Today App — 目前狀態交接
 
 > 給 Codex 閱讀的專案現況說明
-> 更新時間：2026-06-03
+> 更新時間：2026-06-04
 
 ---
 
@@ -52,6 +52,15 @@
 - PNG → WebP，8.8MB 壓縮至 329KB
 - localStorage flag 記錄完成狀態（key：`same-day-onboarding-{userId}`）
 - **已驗證：第一次登入顯示教學，回頭用戶直接進內頁，邏輯正確**
+
+### TodayPage 心靈小語功能（2026-06-04，Codex 實作）
+
+- 移除原本固定顯示的大型名言卡
+- `TodayEntryForm.tsx`：新增 `SoulNote` 型別與收合式「心靈小語」區塊（預設收起，點擊展開）
+- `TodayPage.tsx`：依快速入口 key（`tired` / `wronged` / `talk`）對應心靈小語資料，隨機從對應組抽取一筆；選「今天還不錯」（`good`）不顯示小語
+- `global.css`：新增 `.soul-note`、`.soul-note-toggle`、`.soul-note-body`、`.soul-note-chevron` 等樣式與下拉動畫；移除舊名言卡樣式
+- 心靈小語內容：每個情境 2 則，附真實作者（Carl Rogers、Viktor Frankl、Daniel Kahneman、Albert Bandura）+ 原著出處 + 中文情境短語
+- 狀態提升至 `TodayPage`：`soulNote`（useMemo 計算）與 `isSoulNoteOpen` 由父層管理，`TodayEntryForm` 僅接收 props
 
 ### 行動端（Capacitor）
 - Android + iOS 專案已建立

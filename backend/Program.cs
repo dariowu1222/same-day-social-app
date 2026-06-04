@@ -29,7 +29,17 @@ if (!string.IsNullOrWhiteSpace(databaseConnectionString))
 {
     builder.Services.AddDbContext<AppDbContext>(options =>
     {
-        options.UseNpgsql(databaseConnectionString);
+        options.UseNpgsql(databaseConnectionString, npgsqlOptions =>
+        {
+            // 自動重試 transient 錯誤（連線中斷、timeout 等）
+            npgsqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 3,
+                maxRetryDelay: TimeSpan.FromSeconds(5),
+                errorCodesToAdd: null
+            );
+            // 指令 timeout 30 秒
+            npgsqlOptions.CommandTimeout(30);
+        });
     });
 }
 

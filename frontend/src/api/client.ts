@@ -11,11 +11,21 @@ type ApiResponse<T> = {
 async function request<T>(path: string, options?: RequestInit): Promise<ApiResponse<T>> {
   let response: Response
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
-      headers: { 'Content-Type': 'application/json', ...(options?.headers ?? {}) },
-      ...options,
-    })
-  } catch {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 30000)
+    try {
+      response = await fetch(`${API_BASE_URL}${path}`, {
+        headers: { 'Content-Type': 'application/json', ...(options?.headers ?? {}) },
+        signal: controller.signal,
+        ...options,
+      })
+    } finally {
+      clearTimeout(timer)
+    }
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new Error('連線逾時，請確認後端服務是否已啟動。')
+    }
     throw new Error('目前無法連線到伺服器，請確認後端是否已啟動。')
   }
 
