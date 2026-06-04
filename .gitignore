@@ -7,3 +7,9 @@ node_modules/
 *.user
 *.log
 .env
+
+# IDE 設定
+.idea/
+
+# .NET MAUI 專案（不使用，改用 Capacitor）
+mobile/
