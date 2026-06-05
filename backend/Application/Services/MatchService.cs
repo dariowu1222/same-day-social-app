@@ -28,14 +28,16 @@ public sealed class MatchService
             return [];
         }
 
-        return entries
+        var matches = entries
             .Where(x => x.UserId != userId)
             .GroupBy(x => x.UserId)
             .Select(g => g.MaxBy(x => x.CreatedAt)!)
             .Select(entry => BuildMatch(current, entry, users))
-            .Where(x => x.MatchScore >= 40)
             .OrderByDescending(x => x.MatchScore)
+            .Take(5)
             .ToList();
+
+        return ApplyDisplayScore(matches);
     }
 
     public MatchRecord? Like(string matchId)
@@ -230,6 +232,22 @@ public sealed class MatchService
     private static string Summarize(string content)
     {
         return content.Length <= 42 ? content : $"{content[..42]}...";
+    }
+
+    private static List<MatchResponse> ApplyDisplayScore(List<MatchResponse> matches)
+    {
+        if (matches.Count == 0) return matches;
+
+        var maxScore = matches.Max(x => x.MatchScore);
+        var minScore = matches.Min(x => x.MatchScore);
+        var range = maxScore == minScore ? 1 : maxScore - minScore;
+
+        return matches.Select(m =>
+        {
+            var normalized = (double)(m.MatchScore - minScore) / range;
+            var display = (int)Math.Round(80 + normalized * 18);
+            return m with { MatchScore = display };
+        }).ToList();
     }
 }
 

@@ -18,6 +18,7 @@ type Props = {
   content: string
   placeholder: string
   isSubmitting: boolean
+  hasSelectedEntry: boolean
   soulNote: SoulNote | null
   isSoulNoteOpen: boolean
   onQuickEntrySelect: (entry: TodayQuickEntry) => void
@@ -65,6 +66,7 @@ export default function TodayEntryForm({
   content,
   placeholder,
   isSubmitting,
+  hasSelectedEntry,
   soulNote,
   isSoulNoteOpen,
   onQuickEntrySelect,
@@ -132,7 +134,7 @@ export default function TodayEntryForm({
       <button
         className="today-submit-btn"
         onClick={onSubmit}
-        disabled={isSubmitting || content.trim().length === 0}
+        disabled={isSubmitting || !hasSelectedEntry}
       >
         {isSubmitting ? '正在找同頻的人…' : '找找今天懂我的人'}
       </button>

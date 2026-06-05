@@ -1,1 +1,98 @@
-[]
+[
+  {
+    "Id": "user_seed_001",
+    "Nickname": "晨光裡的貓",
+    "Age": 26,
+    "City": "台北",
+    "ZodiacSign": "天蠍座",
+    "Bio": "平常喜歡在咖啡廳發呆，偶爾寫寫日記。",
+    "AvatarUrl": null,
+    "Photos": [],
+    "InterestTags": ["咖啡", "寫作", "獨處", "爵士樂"],
+    "CreatedAt": "2025-01-01T00:00:00Z"
+  },
+  {
+    "Id": "user_seed_002",
+    "Nickname": "雨天的窗",
+    "Age": 24,
+    "City": "台中",
+    "ZodiacSign": "雙魚座",
+    "Bio": "在圖書館上班，喜歡下雨天的聲音。",
+    "AvatarUrl": null,
+    "Photos": [],
+    "InterestTags": ["閱讀", "電影", "散步"],
+    "CreatedAt": "2025-01-01T00:00:00Z"
+  },
+  {
+    "Id": "user_seed_003",
+    "Nickname": "還好的一天",
+    "Age": 28,
+    "City": "新竹",
+    "ZodiacSign": "摩羯座",
+    "Bio": "工程師，下班後喜歡跑步清空腦袋。",
+    "AvatarUrl": null,
+    "Photos": [],
+    "InterestTags": ["跑步", "程式", "咖啡"],
+    "CreatedAt": "2025-01-01T00:00:00Z"
+  },
+  {
+    "Id": "user_seed_004",
+    "Nickname": "溫柔的海浪",
+    "Age": 23,
+    "City": "高雄",
+    "ZodiacSign": "巨蟹座",
+    "Bio": "設計系學生，習慣用畫畫整理心情。",
+    "AvatarUrl": null,
+    "Photos": [],
+    "InterestTags": ["插畫", "音樂", "貓"],
+    "CreatedAt": "2025-01-01T00:00:00Z"
+  },
+  {
+    "Id": "user_seed_005",
+    "Nickname": "慢慢來的人",
+    "Age": 30,
+    "City": "台北",
+    "ZodiacSign": "天秤座",
+    "Bio": "自由接案，喜歡一個人騎腳踏車。",
+    "AvatarUrl": null,
+    "Photos": [],
+    "InterestTags": ["攝影", "單車", "咖啡"],
+    "CreatedAt": "2025-01-01T00:00:00Z"
+  },
+  {
+    "Id": "user_seed_006",
+    "Nickname": "小小的光",
+    "Age": 25,
+    "City": "台南",
+    "ZodiacSign": "射手座",
+    "Bio": "餐廳服務生，下班後喜歡追劇放空。",
+    "AvatarUrl": null,
+    "Photos": [],
+    "InterestTags": ["影集", "料理", "貓"],
+    "CreatedAt": "2025-01-01T00:00:00Z"
+  },
+  {
+    "Id": "user_seed_007",
+    "Nickname": "深夜的書頁",
+    "Age": 27,
+    "City": "台北",
+    "ZodiacSign": "處女座",
+    "Bio": "出版社編輯，習慣在深夜整理思緒。",
+    "AvatarUrl": null,
+    "Photos": [],
+    "InterestTags": ["閱讀", "寫作", "散步"],
+    "CreatedAt": "2025-01-01T00:00:00Z"
+  },
+  {
+    "Id": "user_seed_008",
+    "Nickname": "剛剛好的溫度",
+    "Age": 29,
+    "City": "桃園",
+    "ZodiacSign": "金牛座",
+    "Bio": "護理師，工作壓力大但喜歡照顧人。",
+    "AvatarUrl": null,
+    "Photos": [],
+    "InterestTags": ["瑜珈", "料理", "音樂"],
+    "CreatedAt": "2025-01-01T00:00:00Z"
+  }
+]

@@ -7,6 +7,7 @@ type EnrichedMatch = MatchResult & {
   bio: string
   zodiac: string
   interests: string[]
+  photos: string[]
   avatarGradient: [string, string]
   emoji: string
 }
@@ -24,6 +25,7 @@ const FAKE_MATCHES: EnrichedMatch[] = [
     age: 26, city: '台北', zodiac: '天蠍座',
     bio: '平常喜歡在咖啡廳發呆，偶爾寫寫日記。',
     interests: ['咖啡', '寫作', '獨處', '爵士樂'],
+    photos: ['https://picsum.photos/seed/cat1/400/500', 'https://picsum.photos/seed/cat2/400/500', 'https://picsum.photos/seed/cat3/400/500'],
     avatarGradient: ['#a8d8cf', '#7bb8b0'], emoji: '🐈',
   },
   {
@@ -34,6 +36,7 @@ const FAKE_MATCHES: EnrichedMatch[] = [
     sharedTags: ['需要被聽見', '有點空', '工作壓力'],
     icebreaker: '你今天最想聊什麼？',
     age: 29, city: '台中', zodiac: '雙魚座',
+    photos: ['https://picsum.photos/seed/rain1/400/500', 'https://picsum.photos/seed/rain2/400/500', 'https://picsum.photos/seed/rain3/400/500'],
     bio: '設計師，習慣用觀察取代開口。',
     interests: ['設計', '電影', '散步', '手沖咖啡'],
     avatarGradient: ['#b8d4e8', '#8ab0cc'], emoji: '🌧️',
@@ -46,6 +49,7 @@ const FAKE_MATCHES: EnrichedMatch[] = [
     sharedTags: ['委屈', '撐著', '需要被理解'],
     icebreaker: '今天有沒有一個讓你覺得「還好有撐過去」的瞬間？',
     age: 31, city: '台北', zodiac: '摩羯座',
+    photos: ['https://picsum.photos/seed/night1/400/500', 'https://picsum.photos/seed/night2/400/500'],
     bio: '愛讀書、寫字，睡前總是思緒紛飛。',
     interests: ['閱讀', '寫日記', '文學', '黑膠唱片'],
     avatarGradient: ['#c8b8e8', '#a090cc'], emoji: '✍️',
@@ -58,6 +62,7 @@ const FAKE_MATCHES: EnrichedMatch[] = [
     sharedTags: ['說不出口', '疲憊', '低落'],
     icebreaker: '如果今天可以跟人說一句話，你會說什麼？',
     age: 24, city: '高雄', zodiac: '天秤座',
+    photos: ['https://picsum.photos/seed/soft1/400/500', 'https://picsum.photos/seed/soft2/400/500'],
     bio: '喜歡安靜的地方和長時間的散步。',
     interests: ['散步', '貓咖', '攝影', '植物'],
     avatarGradient: ['#f0c8b8', '#d8a090'], emoji: '🕊️',
@@ -70,6 +75,7 @@ const FAKE_MATCHES: EnrichedMatch[] = [
     sharedTags: ['需要散步', '自我空間', '慢慢來'],
     icebreaker: '今天路上有沒有看到什麼讓你停下來的東西？',
     age: 28, city: '新竹', zodiac: '射手座',
+    photos: ['https://picsum.photos/seed/travel1/400/500', 'https://picsum.photos/seed/travel2/400/500', 'https://picsum.photos/seed/travel3/400/500'],
     bio: '喜歡去沒去過的街道，一個人旅行。',
     interests: ['旅行', '街拍', '在地小吃', '騎單車'],
     avatarGradient: ['#d4e8c8', '#a8cc98'], emoji: '🧳',
@@ -82,6 +88,7 @@ const FAKE_MATCHES: EnrichedMatch[] = [
     sharedTags: ['陪伴', '安靜', '需要存在感'],
     icebreaker: '如果現在可以跟誰坐著，你希望是誰？',
     age: 27, city: '台南', zodiac: '金牛座',
+    photos: ['https://picsum.photos/seed/tea1/400/500', 'https://picsum.photos/seed/tea2/400/500'],
     bio: '茶控，相信沉默也是一種溝通。',
     interests: ['手搖茶', '烘焙', '老屋', '冥想'],
     avatarGradient: ['#e8d8b0', '#ccb888'], emoji: '🍵',
@@ -94,6 +101,7 @@ const FAKE_MATCHES: EnrichedMatch[] = [
     sharedTags: ['努力中', '懷疑意義', '需要方向'],
     icebreaker: '你今天做的事，有哪件讓你覺得「這值得」？',
     age: 30, city: '台北', zodiac: '處女座',
+    photos: ['https://picsum.photos/seed/walk1/400/500', 'https://picsum.photos/seed/walk2/400/500'],
     bio: '工程師，喜歡跑步和想很多事情。',
     interests: ['跑步', '健身', 'Podcast', '科幻小說'],
     avatarGradient: ['#c8d8e8', '#98b0c8'], emoji: '👣',
@@ -106,6 +114,7 @@ const FAKE_MATCHES: EnrichedMatch[] = [
     sharedTags: ['睡不著', '腦子轉', '想太多'],
     icebreaker: '你今天腦子裡跑最多的是什麼？',
     age: 25, city: '桃園', zodiac: '雙子座',
+    photos: ['https://picsum.photos/seed/moon1/400/500', 'https://picsum.photos/seed/moon2/400/500', 'https://picsum.photos/seed/moon3/400/500'],
     bio: '晚睡星人，習慣凌晨兩點回想白天的事。',
     interests: ['動漫', '鋼琴', '甜點', '夜間散步'],
     avatarGradient: ['#d8c8e8', '#b0a0cc'], emoji: '🌙',
@@ -118,6 +127,7 @@ const FAKE_MATCHES: EnrichedMatch[] = [
     sharedTags: ['忍住了', '快撐不住', '需要接住'],
     icebreaker: '那個差點的瞬間，是什麼讓你撐過去的？',
     age: 23, city: '基隆', zodiac: '巨蟹座',
+    photos: ['https://picsum.photos/seed/wave1/400/500', 'https://picsum.photos/seed/wave2/400/500'],
     bio: '學生，喜歡海邊和雨天。',
     interests: ['海邊', '攝影', '獨立音樂', '下廚'],
     avatarGradient: ['#e8c8c8', '#cc9898'], emoji: '🌊',
@@ -130,6 +140,7 @@ const FAKE_MATCHES: EnrichedMatch[] = [
     sharedTags: ['觀察者', '細膩', '安靜的溫柔'],
     icebreaker: '今天你觀察到什麼有趣或有點感傷的事？',
     age: 32, city: '台北', zodiac: '水瓶座',
+    photos: ['https://picsum.photos/seed/window1/400/500', 'https://picsum.photos/seed/window2/400/500', 'https://picsum.photos/seed/window3/400/500'],
     bio: '攝影師，習慣記錄比說話多。',
     interests: ['攝影', '展覽', '黑白電影', '咖啡廳選書'],
     avatarGradient: ['#c8e8d8', '#90c8a8'], emoji: '🪟',
@@ -138,6 +149,8 @@ const FAKE_MATCHES: EnrichedMatch[] = [
 
 type Props = {
   onBack: () => void
+  onGoToRant: () => void
+  moodLabel?: string
 }
 
 type SwipeDir = 'left' | 'right' | null
@@ -146,10 +159,6 @@ const ZODIAC_ICON: Record<string, string> = {
   '牡羊座': '♈', '金牛座': '♉', '雙子座': '♊', '巨蟹座': '♋',
   '獅子座': '♌', '處女座': '♍', '天秤座': '♎', '天蠍座': '♏',
   '射手座': '♐', '摩羯座': '♑', '水瓶座': '♒', '雙魚座': '♓',
-}
-
-function getAvatarChar(name: string) {
-  return name.charAt(0)
 }
 
 function SwipeCard({
@@ -170,11 +179,14 @@ function SwipeCard({
   const [dragX, setDragX] = useState(0)
   const [dragging, setDragging] = useState(false)
   const [flyDir, setFlyDir] = useState<SwipeDir>(null)
+  const [photoIndex, setPhotoIndex] = useState(0)
+  const [showProfile, setShowProfile] = useState(false)
 
   const THRESHOLD = 80
+  const TAP_THRESHOLD = 8
 
   function onPointerDown(e: React.PointerEvent) {
-    if (!isTop) return
+    if (!isTop || showProfile) return
     startX.current = e.clientX
     startY.current = e.clientY
     currentX.current = 0
@@ -183,16 +195,38 @@ function SwipeCard({
   }
 
   function onPointerMove(e: React.PointerEvent) {
-    if (!dragging) return
+    if (!dragging || showProfile) return
     const dx = e.clientX - startX.current
     currentX.current = dx
     setDragX(dx)
   }
 
-  function onPointerUp() {
+  function onPointerUp(e: React.PointerEvent) {
     if (!dragging) return
     setDragging(false)
     const dx = currentX.current
+    const dy = e.clientY - startY.current
+
+    // 點擊判斷：移動距離極小 → 切換照片
+    if (Math.abs(dx) < TAP_THRESHOLD && Math.abs(dy) < TAP_THRESHOLD) {
+      const card = cardRef.current
+      if (card && match.photos.length > 1) {
+        const rect = card.getBoundingClientRect()
+        const relY = e.clientY - rect.top
+        const photoAreaHeight = rect.width * 1.05
+        if (relY < photoAreaHeight) {
+          const relX = e.clientX - rect.left
+          if (relX < rect.width / 2) {
+            setPhotoIndex(i => Math.max(0, i - 1))
+          } else {
+            setPhotoIndex(i => Math.min(match.photos.length - 1, i + 1))
+          }
+          setDragX(0)
+          return
+        }
+      }
+    }
+
     if (Math.abs(dx) >= THRESHOLD) {
       const dir: SwipeDir = dx > 0 ? 'right' : 'left'
       setFlyDir(dir)
@@ -217,9 +251,9 @@ function SwipeCard({
     position: 'absolute',
     inset: 0,
     zIndex: 10 - stackOffset,
-    cursor: isTop ? 'grab' : 'default',
+    cursor: isTop && !showProfile ? 'grab' : 'default',
     userSelect: 'none',
-    touchAction: 'none',
+    touchAction: showProfile ? 'pan-y' : 'none',
     ...flyStyle,
   }
 
@@ -237,23 +271,39 @@ function SwipeCard({
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
+      onPointerCancel={(e) => onPointerUp(e)}
     >
       {/* 同頻 / 跳過 overlay */}
       <div className="swipe-label swipe-label-like" style={{ opacity: likeOpacity }}>同頻 ✦</div>
       <div className="swipe-label swipe-label-nope" style={{ opacity: nopeOpacity }}>跳過 ✕</div>
 
-      {/* 頭像區 */}
-      <div
-        className="swipe-avatar"
-        style={{ background: `linear-gradient(135deg, ${match.avatarGradient[0]}, ${match.avatarGradient[1]})` }}
-      >
-        <span className="swipe-avatar-emoji">{match.emoji}</span>
-        <span className="swipe-avatar-char">{getAvatarChar(match.nickname)}</span>
+      {/* 照片區 — 展開時被擠壓縮短 */}
+      <div className={`swipe-photo-wrap${showProfile ? ' compressed' : ''}`}>
+        <img
+          key={photoIndex}
+          src={match.photos[photoIndex]}
+          alt={match.nickname}
+          className="swipe-photo"
+          draggable={false}
+        />
+        {match.photos.length > 1 && (
+          <>
+            <div className="swipe-photo-hint left" />
+            <div className="swipe-photo-hint right" />
+            <div className="swipe-photo-dots">
+              {match.photos.map((_, i) => (
+                <span key={i} className={`swipe-photo-dot${i === photoIndex ? ' active' : ''}`} />
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
-      {/* 卡片資訊 */}
-      <div className="swipe-card-info">
+      {/* 文字框架 — 展開時長高 */}
+      <div
+        className={`swipe-card-info${showProfile ? ' expanded' : ''}`}
+        onClick={() => isTop && !showProfile && setShowProfile(true)}
+      >
         <div className="swipe-name-row">
           <h2 className="swipe-name">{match.nickname}</h2>
           <span className="swipe-age">{match.age}</span>
@@ -267,19 +317,81 @@ function SwipeCard({
 
         <div className="swipe-divider" />
 
+        <div className="swipe-resonance-strip">
+          <span className="swipe-resonance-dot" />
+          <span>{match.reason}</span>
+        </div>
+
+        {/* 收合狀態：今天想說的話（截斷）+ 標籤 + 指數 */}
         <p className="swipe-today-label">今天想說的話</p>
-        <p className="swipe-today-text">「{match.todaySummary}」</p>
+        <p className={`swipe-today-text${showProfile ? '' : ' clamped'}`}>
+          「{match.todaySummary}」
+        </p>
 
         <div className="swipe-tags">
-          {match.interests.map((tag) => (
+          {match.interests.slice(0, showProfile ? undefined : 3).map(tag => (
             <span key={tag} className="swipe-tag">{tag}</span>
           ))}
+          {!showProfile && match.interests.length > 3 && (
+            <span className="swipe-tag swipe-tag-more">+{match.interests.length - 3}</span>
+          )}
         </div>
 
         <p className="swipe-score-row">
           <span className="swipe-score-dot" />
           共鳴指數 {match.matchScore}%
         </p>
+
+        {/* 展開後多顯示破冰問題 */}
+        {showProfile && (
+          <>
+            <div className="profile-sheet-icebreaker">
+              <p className="swipe-today-label">破冰問題</p>
+              <p className="profile-sheet-icebreaker-text">「{match.icebreaker}」</p>
+            </div>
+
+            {/* 展開後的配對按鈕 */}
+            <div className="swipe-profile-actions">
+              <button
+                className="swipe-action-btn nope"
+                onClick={e => {
+                  e.stopPropagation()
+                  setFlyDir('left')
+                  setTimeout(() => onSwipe('left'), 320)
+                }}
+              >
+                <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                  <path d="M5 5L17 17M17 5L5 17" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/>
+                </svg>
+                跳過
+              </button>
+              <button
+                className="swipe-action-btn like"
+                onClick={e => {
+                  e.stopPropagation()
+                  setFlyDir('right')
+                  setTimeout(() => onSwipe('right'), 320)
+                }}
+              >
+                <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                  <path d="M11 17C11 17 4 13 4 8.5C4 6.5 5.5 5 7.5 5C9 5 10.2 5.8 11 7C11.8 5.8 13 5 14.5 5C16.5 5 18 6.5 18 8.5C18 13 11 17 11 17Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                同頻
+              </button>
+            </div>
+
+            <button
+              className="swipe-collapse-btn"
+              onClick={e => { e.stopPropagation(); setShowProfile(false) }}
+            >
+              收合介紹
+            </button>
+          </>
+        )}
+
+        {!showProfile && (
+          <p className="swipe-tap-hint">看更多關於他今天的狀態 ↓</p>
+        )}
       </div>
     </div>
   )
@@ -353,7 +465,7 @@ function SwipeTutorial({ onStart }: { onStart: () => void }) {
   )
 }
 
-export default function MatchResultPage({ onBack }: Props) {
+export default function MatchResultPage({ onBack, onGoToRant, moodLabel }: Props) {
   const [phase, setPhase] = useState<'loading' | 'tutorial' | 'done'>('loading')
   const [currentIndex, setCurrentIndex] = useState(0)
   const [swipedCount, setSwipedCount] = useState(0)
@@ -372,10 +484,6 @@ export default function MatchResultPage({ onBack }: Props) {
     setLastDir(dir)
     setSwipedCount((n) => n + 1)
     setCurrentIndex((i) => i + 1)
-  }
-
-  function handleActionBtn(dir: SwipeDir) {
-    handleSwipe(dir)
   }
 
   const remaining = matches.length - currentIndex
@@ -408,9 +516,6 @@ export default function MatchResultPage({ onBack }: Props) {
               </svg>
               返回
             </button>
-            <span className="match-remain-badge">
-              {allDone ? '全部看完' : `${remaining} 位`}
-            </span>
           </header>
 
           {/* 卡片區 */}
@@ -424,15 +529,17 @@ export default function MatchResultPage({ onBack }: Props) {
                   <circle cx="44" cy="30" r="2.5" fill="#b8d4ce" />
                 </svg>
               </div>
-              <p className="match-empty-title">
-                {swipedCount > 0 ? '今天的都看完了' : '今天還沒有同頻的人'}
+              <p className="match-empty-title">今天的緣分到這裡了。</p>
+              <p className="match-empty-desc">
+                {moodLabel ? `今天${moodLabel}的你，已經把今天的人都看過了。` : '今天的人都看過了。'}
               </p>
               <p className="match-empty-desc">
-                {swipedCount > 0
-                  ? `你今天滑過了 ${swipedCount} 位，\n已記錄右滑的同頻配對。`
-                  : '世界很大，可以明天再來看看。'}
+                去樹洞看看今天還有誰在，或是換個心情再試試？
               </p>
-              <button className="match-empty-back" onClick={onBack}>回到今日</button>
+              <div className="match-empty-actions">
+                <button className="match-empty-rant" onClick={onGoToRant}>去樹洞看看</button>
+                <button className="match-empty-back" onClick={onBack}>回到今日</button>
+              </div>
             </div>
           ) : (
             <>

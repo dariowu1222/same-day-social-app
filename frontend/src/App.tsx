@@ -22,6 +22,7 @@ function onboardingKey(userId: string) {
 function App() {
   const [activePage, setActivePage] = useState<PageKey>('today')
   const [showMatchResult, setShowMatchResult] = useState(false)
+  const [selectedMoodLabel, setSelectedMoodLabel] = useState<string>('')
   const [user, setUser] = useState<DemoUser | null>(null)
   const [onboardingDone, setOnboardingDone] = useState(true)
 
@@ -59,10 +60,14 @@ function App() {
     <>
       <main className="app-shell">
         {activePage === 'today' && !showMatchResult && (
-          <TodayPage user={user} onGoToMatches={() => setShowMatchResult(true)} />
+          <TodayPage user={user} onGoToMatches={(label) => { setSelectedMoodLabel(label); setShowMatchResult(true) }} />
         )}
         {activePage === 'today' && showMatchResult && (
-          <MatchResultPage onBack={() => setShowMatchResult(false)} />
+          <MatchResultPage
+            moodLabel={selectedMoodLabel}
+            onBack={() => setShowMatchResult(false)}
+            onGoToRant={() => { setShowMatchResult(false); setActivePage('rant') }}
+          />
         )}
         {activePage === 'rant' && <RantBoardPage user={user} />}
         {activePage === 'tasks' && <TasksPage user={user} />}

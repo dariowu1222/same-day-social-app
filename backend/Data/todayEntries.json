@@ -1,1 +1,98 @@
-[]
+[
+  {
+    "Id": "today_seed_001",
+    "UserId": "user_seed_001",
+    "Content": "加班到很晚，回家路上突然不想說話，只想靜靜坐著發呆。不知道是累了還是心裡有什麼，就是提不起勁。",
+    "EventType": "WORK_STRESS",
+    "EmotionTags": ["TIRED"],
+    "ValueTags": ["GENTLE_COMPANY"],
+    "InterestTags": [],
+    "ResponseMode": "COMFORT_ME",
+    "Visibility": "MATCH_ONLY",
+    "CreatedAt": "2026-06-05T08:00:00Z"
+  },
+  {
+    "Id": "today_seed_002",
+    "UserId": "user_seed_002",
+    "Content": "今天被主管說了一句話，明明我已經很努力了，感覺很委屈但又不知道怎麼開口說。",
+    "EventType": "WORK_STRESS",
+    "EmotionTags": ["WRONGED", "TIRED"],
+    "ValueTags": ["FAIRNESS", "RESPECT"],
+    "InterestTags": [],
+    "ResponseMode": "COMFORT_ME",
+    "Visibility": "MATCH_ONLY",
+    "CreatedAt": "2026-06-05T08:30:00Z"
+  },
+  {
+    "Id": "today_seed_003",
+    "UserId": "user_seed_003",
+    "Content": "今天有一個瞬間，突然很想找人說說，不是要解決什麼，就是想有個人聽著。下班後跑了步，好一點了但還是有點空。",
+    "EventType": "RANDOM",
+    "EmotionTags": ["LONELY", "CALM"],
+    "ValueTags": ["GENTLE_COMPANY"],
+    "InterestTags": ["EXERCISE"],
+    "ResponseMode": "JUST_LISTEN",
+    "Visibility": "MATCH_ONLY",
+    "CreatedAt": "2026-06-05T09:00:00Z"
+  },
+  {
+    "Id": "today_seed_004",
+    "UserId": "user_seed_004",
+    "Content": "今天有一件小事讓我覺得還不錯，早上出門看到一隻貓在曬太陽，心情突然就好了。分享給你們。",
+    "EventType": "SMALL_HAPPINESS",
+    "EmotionTags": ["HAPPY"],
+    "ValueTags": [],
+    "InterestTags": [],
+    "ResponseMode": "DISTRACT_ME",
+    "Visibility": "MATCH_ONLY",
+    "CreatedAt": "2026-06-05T09:30:00Z"
+  },
+  {
+    "Id": "today_seed_005",
+    "UserId": "user_seed_005",
+    "Content": "又是累到說不清楚的一天，不是那種很激烈的累，是那種連說話都懶得說的疲倦感。",
+    "EventType": "RANDOM",
+    "EmotionTags": ["TIRED"],
+    "ValueTags": ["GENTLE_COMPANY"],
+    "InterestTags": [],
+    "ResponseMode": "COMFORT_ME",
+    "Visibility": "MATCH_ONLY",
+    "CreatedAt": "2026-06-05T10:00:00Z"
+  },
+  {
+    "Id": "today_seed_006",
+    "UserId": "user_seed_006",
+    "Content": "今天在想一件事但沒有人可以說，不是什麼大事，就是想有個人陪著聽一聽。",
+    "EventType": "RANDOM",
+    "EmotionTags": ["LONELY"],
+    "ValueTags": ["GENTLE_COMPANY"],
+    "InterestTags": [],
+    "ResponseMode": "JUST_LISTEN",
+    "Visibility": "MATCH_ONLY",
+    "CreatedAt": "2026-06-05T10:30:00Z"
+  },
+  {
+    "Id": "today_seed_007",
+    "UserId": "user_seed_007",
+    "Content": "朋友說了一句話讓我有點委屈，我知道他不是故意的，但還是有點卡在心裡。",
+    "EventType": "FRIENDSHIP",
+    "EmotionTags": ["WRONGED", "SAD"],
+    "ValueTags": ["FAIRNESS"],
+    "InterestTags": [],
+    "ResponseMode": "COMFORT_ME",
+    "Visibility": "MATCH_ONLY",
+    "CreatedAt": "2026-06-05T11:00:00Z"
+  },
+  {
+    "Id": "today_seed_008",
+    "UserId": "user_seed_008",
+    "Content": "今天下班後去了一家新開的咖啡廳，點了一杯拿鐵，坐在窗邊看雨，意外地很舒服。",
+    "EventType": "SMALL_HAPPINESS",
+    "EmotionTags": ["HAPPY", "CALM"],
+    "ValueTags": [],
+    "InterestTags": ["FOOD"],
+    "ResponseMode": "DISTRACT_ME",
+    "Visibility": "MATCH_ONLY",
+    "CreatedAt": "2026-06-05T11:30:00Z"
+  }
+]

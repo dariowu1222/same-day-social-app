@@ -5,7 +5,7 @@ import TodayEntryForm, { type SoulNote, type TodayQuickEntry } from '../componen
 
 type Props = {
   user: DemoUser
-  onGoToMatches: () => void
+  onGoToMatches: (label: string) => void
 }
 
 type SoulNoteGroup = SoulNote & {
@@ -94,8 +94,10 @@ export default function TodayPage({ user, onGoToMatches }: Props) {
   const [content, setContent] = useState('')
   const [currentPrompt, setCurrentPrompt] = useState('不用想得太正式，像跟朋友說話一樣就好。')
   const [message, setMessage] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const isSubmitting = false
   const [selectedQuickEntryKey, setSelectedQuickEntryKey] = useState<string | null>(null)
+  const [selectedResponseMode, setSelectedResponseMode] = useState<string>('JUST_LISTEN')
+  const [selectedMoodLabel, setSelectedMoodLabel] = useState<string>('')
   const [isSoulNoteOpen, setIsSoulNoteOpen] = useState(false)
 
   const soulNote = useMemo(() => {
@@ -138,6 +140,8 @@ export default function TodayPage({ user, onGoToMatches }: Props) {
 
   function selectQuickEntry(entry: TodayQuickEntry) {
     setSelectedQuickEntryKey(entry.key)
+    setSelectedResponseMode(entry.responseMode)
+    setSelectedMoodLabel(entry.label)
     setIsSoulNoteOpen(false)
     setContent('')
     setCurrentPrompt(entry.prompt)
@@ -146,8 +150,8 @@ export default function TodayPage({ user, onGoToMatches }: Props) {
 
   function submitToday() {
     // 先導頁，API 呼叫背景執行（不阻塞 UI）
-    onGoToMatches()
-    createTodayEntry({ userId: user.userId, content, responseMode: 'AUTO', visibility: 'MATCH_ONLY' })
+    onGoToMatches(selectedMoodLabel)
+    createTodayEntry({ userId: user.userId, content, responseMode: selectedResponseMode, visibility: 'MATCH_ONLY' })
       .catch(() => {/* 靜默失敗，假資料仍正常顯示 */})
   }
 
@@ -176,6 +180,7 @@ export default function TodayPage({ user, onGoToMatches }: Props) {
       <TodayEntryForm
         content={content}
         isSubmitting={isSubmitting}
+        hasSelectedEntry={selectedQuickEntryKey !== null}
         soulNote={soulNote}
         isSoulNoteOpen={isSoulNoteOpen}
         onQuickEntrySelect={selectQuickEntry}
