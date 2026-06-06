@@ -1,5 +1,14 @@
 import type { RantPost } from '../api/client'
 
+const MODE_LABELS: Record<string, string> = {
+  JUST_SAYING: '只是想說',
+  COMFORT_ME: '想被安慰',
+  GIVE_ADVICE: '想聽建議',
+  RANT_TOGETHER: '想一起抱怨',
+  DISTRACT_ME: '想轉移注意力',
+  FIND_SIMILAR: '想找同類',
+}
+
 type Props = {
   post: RantPost
   replyText: string
@@ -14,7 +23,7 @@ export default function RantPostCard({ post, replyText, onReplyTextChange, onUnd
     <article className="card">
       <div className="card-title-row">
         <h3>{post.nickname}</h3>
-        <span className="tag">{post.mode}</span>
+        <span className="tag">{MODE_LABELS[post.mode] ?? post.mode}</span>
       </div>
       <p>{post.content}</p>
       <div className="tag-row">
