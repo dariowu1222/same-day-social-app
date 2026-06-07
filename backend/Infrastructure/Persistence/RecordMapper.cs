@@ -112,7 +112,7 @@ public static class RecordMapper
         };
     }
 
-    public static RantPost ToDomain(this RantPostRecord record, IEnumerable<RantReplyRecord> replies, int likeCount)
+    public static RantPost ToDomain(this RantPostRecord record, IEnumerable<RantReplyRecord> replies, int likeCount, bool likedByMe = false)
     {
         var domainReplies = replies
             .OrderBy(x => x.CreatedAt)
@@ -122,6 +122,7 @@ public static class RecordMapper
                 UserId = x.UserId,
                 Nickname = x.Nickname,
                 Content = x.Content,
+                ParentReplyId = x.ParentReplyId,
                 CreatedAt = x.CreatedAt
             })
             .ToList();
@@ -136,6 +137,7 @@ public static class RecordMapper
             EmotionTags = record.EmotionTags.Select(x => ParseEnum(x, EmotionTag.CALM)).ToList(),
             CreatedAt = record.CreatedAt,
             LikeCount = likeCount,
+            LikedByMe = likedByMe,
             ReplyCount = domainReplies.Count,
             IsHidden = record.IsHidden,
             ReportCount = record.ReportCount,

@@ -155,19 +155,23 @@ export async function getTodayMatches(userId: string) {
   return request<MatchResult[]>(`/api/matches/today/${userId}`)
 }
 
-export async function getRants() {
-  return request<RantPost[]>('/api/rants')
+export async function getRants(userId?: string) {
+  const url = userId ? `/api/rants?userId=${encodeURIComponent(userId)}` : '/api/rants'
+  return request<RantPost[]>(url)
 }
 
-export async function createRant(payload: { userId: string; nickname: string; content: string; mode: string }) {
+export async function createRant(payload: { userId: string; nickname: string; content: string; mode: string; visibility?: string }) {
   return request<RantPost>('/api/rants', { method: 'POST', body: JSON.stringify(payload) })
 }
 
-export async function understandRant(rantId: string) {
-  return request<RantPost>(`/api/rants/${rantId}/understand`, { method: 'POST' })
+export async function understandRant(rantId: string, userId: string) {
+  return request<RantPost>(`/api/rants/${rantId}/understand`, {
+    method: 'POST',
+    body: JSON.stringify({ userId }),
+  })
 }
 
-export async function replyRant(rantId: string, payload: { userId: string; nickname: string; content: string }) {
+export async function replyRant(rantId: string, payload: { userId: string; nickname: string; content: string; parentReplyId?: string }) {
   return request<RantPost>(`/api/rants/${rantId}/replies`, { method: 'POST', body: JSON.stringify(payload) })
 }
 
@@ -233,12 +237,14 @@ export type RantPost = {
   nickname: string
   content: string
   mode: string
+  visibility: string
   emotionTags: string[]
   createdAt: string
   likeCount: number
+  likedByMe: boolean
   replyCount: number
   reportCount: number
-  replies: { id: string; nickname: string; content: string }[]
+  replies: { id: string; nickname: string; content: string; parentReplyId?: string | null }[]
 }
 
 export type SocialTask = {

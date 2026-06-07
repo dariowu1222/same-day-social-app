@@ -52,7 +52,7 @@ public sealed class RantService
         return (post, check);
     }
 
-    public List<RantPost> GetPublicPosts()
+    public List<RantPost> GetPublicPosts(string? userId = null)
     {
         if (db != null)
         {
@@ -66,16 +66,21 @@ public sealed class RantService
                 .ToList()
                 .GroupBy(x => x.RantPostId)
                 .ToDictionary(x => x.Key, x => x.AsEnumerable());
-            var likeCounts = db.RantReactions.AsNoTracking()
+            var reactions = db.RantReactions.AsNoTracking()
                 .Where(x => postIds.Contains(x.RantPostId) && x.ReactionType == "UNDERSTAND")
-                .ToList()
+                .ToList();
+            var likeCounts = reactions
                 .GroupBy(x => x.RantPostId)
                 .ToDictionary(x => x.Key, x => x.Count());
+            var likedByMeSet = !string.IsNullOrWhiteSpace(userId)
+                ? reactions.Where(x => x.UserId == userId).Select(x => x.RantPostId).ToHashSet()
+                : [];
 
             return posts
                 .Select(x => x.ToDomain(
                     replies.GetValueOrDefault(x.Id, Array.Empty<RantReplyRecord>()),
-                    likeCounts.GetValueOrDefault(x.Id)))
+                    likeCounts.GetValueOrDefault(x.Id),
+                    likedByMeSet.Contains(x.Id)))
                 .ToList();
         }
 
@@ -96,12 +101,19 @@ public sealed class RantService
             }
 
             var reactionUserId = string.IsNullOrWhiteSpace(userId) ? post.UserId : userId.Trim();
-            var existingReaction = db.RantReactions.Any(x =>
+            var existingReaction = db.RantReactions.FirstOrDefault(x =>
                 x.RantPostId == rantId &&
                 x.UserId == reactionUserId &&
                 x.ReactionType == "UNDERSTAND");
-            if (!existingReaction)
+
+            if (existingReaction != null)
             {
+                // 已按過，收回愛心
+                db.RantReactions.Remove(existingReaction);
+            }
+            else
+            {
+                // 新增愛心
                 db.RantReactions.Add(new RantReactionRecord
                 {
                     Id = $"reaction_{Guid.NewGuid():N}",
@@ -109,15 +121,15 @@ public sealed class RantService
                     UserId = reactionUserId,
                     ReactionType = "UNDERSTAND"
                 });
-                db.SaveChanges();
             }
-            return BuildPost(post.Id);
+            db.SaveChanges();
+            return BuildPost(post.Id, reactionUserId);
         }
 
         return storage.UpdateOne<RantPost>("rantPosts", rantId, post => post.LikeCount += 1);
     }
 
-    public RantPost? Reply(string rantId, string userId, string nickname, string content)
+    public RantPost? Reply(string rantId, string userId, string nickname, string content, string? parentReplyId = null)
     {
         if (db != null)
         {
@@ -133,7 +145,8 @@ public sealed class RantService
                 RantPostId = rantId,
                 UserId = userId,
                 Nickname = string.IsNullOrWhiteSpace(nickname) ? "同頻使用者" : nickname.Trim(),
-                Content = content.Trim()
+                Content = content.Trim(),
+                ParentReplyId = string.IsNullOrWhiteSpace(parentReplyId) ? null : parentReplyId.Trim()
             });
             db.SaveChanges();
             return BuildPost(rantId);
@@ -189,7 +202,7 @@ public sealed class RantService
         });
     }
 
-    private RantPost? BuildPost(string rantId)
+    private RantPost? BuildPost(string rantId, string? userId = null)
     {
         if (db == null)
         {
@@ -205,8 +218,11 @@ public sealed class RantService
         var replies = db.RantReplies.AsNoTracking()
             .Where(x => x.RantPostId == rantId)
             .ToList();
-        var likeCount = db.RantReactions.AsNoTracking()
-            .Count(x => x.RantPostId == rantId && x.ReactionType == "UNDERSTAND");
-        return post.ToDomain(replies, likeCount);
+        var reactions = db.RantReactions.AsNoTracking()
+            .Where(x => x.RantPostId == rantId && x.ReactionType == "UNDERSTAND")
+            .ToList();
+        var likeCount = reactions.Count;
+        var likedByMe = !string.IsNullOrWhiteSpace(userId) && reactions.Any(x => x.UserId == userId);
+        return post.ToDomain(replies, likeCount, likedByMe);
     }
 }

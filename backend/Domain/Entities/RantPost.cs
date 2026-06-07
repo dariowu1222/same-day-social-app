@@ -12,6 +12,7 @@ public sealed class RantPost
     public List<EmotionTag> EmotionTags { get; set; } = [];
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public int LikeCount { get; set; }
+    public bool LikedByMe { get; set; }
     public int ReplyCount { get; set; }
     public bool IsHidden { get; set; }
     public int ReportCount { get; set; }
@@ -24,5 +25,6 @@ public sealed class RantReply
     public string UserId { get; set; } = "";
     public string Nickname { get; set; } = "";
     public string Content { get; set; } = "";
+    public string? ParentReplyId { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

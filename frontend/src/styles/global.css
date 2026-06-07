@@ -2823,3 +2823,685 @@ blockquote {
   text-align: center;
   padding: 4px;
 }
+
+
+/* ── 樹洞頁 ───────────────────────────────── */
+.rant-page {
+  padding-bottom: 100px;
+}
+
+.rant-header {
+  padding: 24px 20px 8px;
+}
+
+.rant-header-inner {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rant-header-inner .rant-title {
+  margin-bottom: 0;
+  flex: 1;
+}
+
+.rant-tree-icon {
+  flex-shrink: 0;
+  width: 100px;
+  height: 100px;
+  object-fit: contain;
+  margin-bottom: -8px;
+  filter: drop-shadow(0 4px 12px rgba(180, 140, 80, 0.2));
+}
+
+.rant-eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: #a0928a;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.rant-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: #2e2a26;
+  line-height: 1.35;
+  margin-bottom: 8px;
+}
+
+.rant-subtitle {
+  font-size: 14px;
+  color: #a0928a;
+}
+
+.rant-compose {
+  margin: 16px 16px 0;
+  background: #fff;
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+}
+
+.rant-section-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #8c7a70;
+  margin-bottom: 12px;
+}
+
+.rant-mode-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.rant-mode-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1.5px solid #ede8e4;
+  background: #faf8f6;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.rant-mode-btn strong {
+  font-size: 14px;
+  color: #2e2a26;
+}
+
+.rant-mode-btn span:last-child {
+  font-size: 11px;
+  color: #a0928a;
+}
+
+.rant-mode-emoji {
+  font-size: 20px;
+  margin-bottom: 4px;
+}
+
+.rant-mode-btn.selected {
+  border-color: #a8c4be;
+  background: #eef6f4;
+}
+
+.rant-mode-btn.selected strong {
+  color: #3d6b63;
+}
+
+.rant-textarea {
+  width: 100%;
+  border: 1.5px solid #ede8e4;
+  border-radius: 14px;
+  padding: 14px;
+  font-size: 15px;
+  color: #2e2a26;
+  background: #faf8f6;
+  resize: none;
+  outline: none;
+  line-height: 1.65;
+  margin-bottom: 14px;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+
+.rant-textarea:focus {
+  border-color: #a8c4be;
+  background: #f4faf8;
+}
+
+.rant-anonymous {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  cursor: pointer;
+}
+
+.rant-anonymous input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #5a9e94;
+  cursor: pointer;
+}
+
+.rant-anonymous span:nth-child(2) {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2e2a26;
+}
+
+.rant-anonymous-hint {
+  font-size: 12px;
+  color: #a0928a;
+  margin-left: 2px;
+}
+
+.rant-submit-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #7eb8b0, #5a9e94);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s;
+}
+
+.rant-submit-btn:disabled {
+  background: linear-gradient(135deg, #c8deda, #b0ceca);
+  opacity: 0.7;
+}
+
+.rant-message {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #5a9e94;
+  text-align: center;
+}
+
+.rant-list {
+  padding: 20px 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rant-empty {
+  text-align: center;
+  color: #b0a098;
+  font-size: 14px;
+  padding: 32px 0;
+}
+
+
+/* ── 樹洞夜晚風格 ─────────────────────────── */
+.rant-page {
+  position: relative;
+  min-height: calc(100vh - 56px);
+  padding-bottom: 100px;
+  overflow: hidden;
+}
+
+/* 螢火蟲 */
+@keyframes firefly-float {
+  0%   { transform: translate(0, 0) scale(1);   opacity: 0; }
+  20%  { opacity: 0.9; }
+  50%  { transform: translate(var(--fx), var(--fy)) scale(1.2); opacity: 0.6; }
+  80%  { opacity: 0.8; }
+  100% { transform: translate(calc(var(--fx) * 1.6), calc(var(--fy) * 0.5)) scale(0.9); opacity: 0; }
+}
+
+.rant-fireflies {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.rant-firefly {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffe066 0%, #ffd700 40%, transparent 70%);
+  box-shadow: 0 0 8px 3px rgba(255, 220, 80, 0.5);
+  animation: firefly-float 5s ease-in-out infinite;
+}
+
+.rant-firefly-1 { top: 20%; left: 15%; --fx: 30px;  --fy: -20px; animation-delay: 0s;    animation-duration: 6s; }
+.rant-firefly-2 { top: 40%; left: 75%; --fx: -25px; --fy: -30px; animation-delay: 1.2s; animation-duration: 7s; }
+.rant-firefly-3 { top: 65%; left: 30%; --fx: 20px;  --fy: -15px; animation-delay: 2.4s; animation-duration: 5.5s; }
+.rant-firefly-4 { top: 30%; left: 55%; --fx: -15px; --fy: 25px;  animation-delay: 0.8s; animation-duration: 8s; }
+.rant-firefly-5 { top: 75%; left: 80%; --fx: -20px; --fy: -20px; animation-delay: 3.1s; animation-duration: 6.5s; }
+.rant-firefly-6 { top: 55%; left: 10%; --fx: 25px;  --fy: 15px;  animation-delay: 1.8s; animation-duration: 7.5s; }
+
+/* 選擇回應模式 */
+@keyframes rant-mode-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.rant-choose-phase {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 0 4px;
+  gap: 12px;
+}
+
+.rant-choose-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #2e2a26;
+  animation: rant-mode-in 0.5s ease both;
+  margin: 0;
+}
+
+.rant-choose-sub {
+  font-size: 14px;
+  color: #9a8b80;
+  animation: rant-mode-in 0.5s ease 0.1s both;
+  margin: 0;
+}
+
+.rant-response-modes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.rant-response-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: 16px;
+  border: 1.5px solid #ede8e4;
+  background: #faf8f6;
+  color: #2e2a26;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: left;
+  opacity: 0;
+  animation: rant-mode-in 0.4s ease both;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.rant-response-btn:active {
+  background: #eef6f4;
+  border-color: #a8c4be;
+}
+
+.rant-response-emoji {
+  font-size: 22px;
+}
+
+.rant-skip-btn {
+  background: transparent;
+  color: #b0a098;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px;
+  animation: rant-mode-in 0.4s ease 0.36s both;
+  opacity: 0;
+}
+
+/* 完成畫面 */
+@keyframes rant-done-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.rant-done-phase {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 0;
+  gap: 8px;
+  animation: rant-done-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.rant-done-icon {
+  font-size: 40px;
+  animation: rant-done-in 0.6s ease 0.1s both;
+  opacity: 0;
+}
+
+.rant-done-text {
+  font-size: 20px;
+  font-weight: 700;
+  color: #2e2a26;
+  margin: 0;
+}
+
+.rant-done-sub {
+  font-size: 14px;
+  color: #9a8b80;
+  margin: 0;
+}
+
+
+/* ── 樹洞 Feed 頁 ─────────────────────────── */
+.rant-header { padding: 8px 4px 0; }
+.rant-title  { font-size: 22px; font-weight: 800; color: #2e2a26; margin: 0; }
+
+.rant-empty-state { text-align: center; padding: 48px 0 24px; }
+.rant-empty     { font-size: 16px; color: #9a8b80; margin: 0 0 6px; }
+.rant-empty-sub { font-size: 13px; color: #b8ada6; margin: 0; }
+
+/* 浮動 + 按鈕 */
+.rant-fab {
+  position: fixed;
+  right: 20px;
+  bottom: 80px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7eb8b0, #5a9e94);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(90,158,148,0.4);
+  z-index: 50;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.rant-fab:active { transform: scale(0.92); box-shadow: 0 2px 8px rgba(90,158,148,0.3); }
+
+/* ── 撰寫頁 ─────────────────────────────── */
+.rant-compose-view { display: flex; flex-direction: column; gap: 0; }
+
+.rant-compose-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 0 16px;
+}
+
+.rant-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  color: #6a6a6a;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 6px 0;
+  flex-shrink: 0;
+}
+
+.rant-compose-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #2e2a26;
+  margin: 0;
+}
+
+/* 可見度 toggle */
+.rant-visibility {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.rant-visibility-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #8c7a70;
+  flex-shrink: 0;
+}
+
+.rant-visibility-toggle {
+  display: flex;
+  gap: 6px;
+}
+
+.rant-vis-btn {
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1.5px solid #ede8e4;
+  background: #faf8f6;
+  color: #8c7a70;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.15s;
+}
+
+.rant-vis-btn.active {
+  border-color: #a8c4be;
+  background: #eef6f4;
+  color: #3d6b63;
+  font-weight: 600;
+}
+
+/* ── 貼文卡片 (Threads 風格) ─────────────── */
+.rant-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 1px 8px rgba(0,0,0,0.06);
+}
+
+.rant-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.rant-card-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #c8e0cc, #a8c4b8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.rant-card-meta {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.rant-card-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #2e2a26;
+}
+
+.rant-card-time {
+  font-size: 12px;
+  color: #b0a098;
+}
+
+.rant-card-mode {
+  font-size: 11px;
+  font-weight: 600;
+  color: #7a9e9a;
+  background: #eef6f4;
+  padding: 3px 8px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.rant-card-content {
+  font-size: 15px;
+  color: #2e2a26;
+  line-height: 1.7;
+  margin: 0 0 10px;
+  white-space: pre-wrap;
+}
+
+.rant-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.rant-card-tag {
+  font-size: 11px;
+  color: #8c7a70;
+  background: #f5eeec;
+  padding: 3px 8px;
+  border-radius: 10px;
+}
+
+.rant-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-top: 8px;
+  border-top: 1px solid #f0ece8;
+}
+
+.rant-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  color: #9a8b80;
+  font-size: 13px;
+  padding: 4px 0;
+}
+
+.rant-action-btn span { font-size: 13px; }
+.rant-action-label { color: #9a8b80; }
+
+.rant-action-liked {
+  color: #e8453c;
+}
+.rant-action-liked .rant-action-label {
+  color: #e8453c;
+}
+.rant-action-liked svg {
+  filter: drop-shadow(0 0 4px rgba(232, 69, 60, 0.45));
+  transform: scale(1.15);
+}
+
+.rant-action-report {
+  margin-left: auto;
+  background: transparent;
+  color: #c0a8a0;
+  font-size: 12px;
+  padding: 4px 0;
+}
+
+.rant-reply-input {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.rant-reply-input input {
+  flex: 1;
+  border: 1.5px solid #ede8e4;
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-size: 14px;
+  background: #faf8f6;
+}
+
+.rant-reply-send {
+  padding: 8px 14px;
+  border-radius: 12px;
+  background: #e8f0ee;
+  color: #3d6b63;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.rant-replies { margin-top: 10px; }
+
+.rant-replies-toggle {
+  background: transparent;
+  color: #7a9e9a;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 0;
+}
+
+/* ── Threads 樹狀回覆 ── */
+.rant-thread-list {
+  margin-top: 4px;
+}
+
+/* 每個節點的容器，透過 JS 的 marginLeft 做縮排 */
+.rant-thread-item {
+  position: relative;
+  padding: 8px 0 2px;
+  border-top: 1px solid #f5f0ec;
+}
+
+/* 左側豎線（縮排時才顯示） */
+.rant-thread-line {
+  position: absolute;
+  left: -12px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #e0dbd5;
+  border-radius: 1px;
+}
+
+/* 頭像 + 內文的橫排 */
+.rant-thread-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.rant-reply-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #e8e0d8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #6a6a6a;
+  flex-shrink: 0;
+}
+
+.rant-thread-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.rant-reply-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #3a3a3a;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.rant-reply-content {
+  font-size: 13px;
+  color: #4a4a4a;
+  line-height: 1.5;
+  margin: 0 0 4px;
+}
+
+/* @mention 高亮 */
+.rant-mention {
+  color: #4a90a4;
+  font-weight: 600;
+}
+
+/* 每則 reply 的回應按鈕 */
+.rant-reply-action {
+  background: transparent;
+  border: none;
+  padding: 2px 0;
+  font-size: 12px;
+  color: #a09890;
+  cursor: pointer;
+  font-weight: 600;
+}
+.rant-reply-action:hover {
+  color: #5a5a5a;
+}
