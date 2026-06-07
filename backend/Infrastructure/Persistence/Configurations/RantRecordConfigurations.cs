@@ -34,6 +34,7 @@ public sealed class RantReplyRecordConfiguration : IEntityTypeConfiguration<Rant
         builder.Property(x => x.UserId).HasColumnName("user_id").HasMaxLength(64).IsRequired();
         builder.Property(x => x.Nickname).HasColumnName("nickname").HasMaxLength(80).IsRequired();
         builder.Property(x => x.Content).HasColumnName("content").HasMaxLength(1000).IsRequired();
+        builder.Property(x => x.ParentReplyId).HasColumnName("parent_reply_id").HasMaxLength(64);
         builder.Property(x => x.CreatedAt).HasColumnName("created_at");
         builder.HasIndex(x => new { x.RantPostId, x.CreatedAt });
     }
