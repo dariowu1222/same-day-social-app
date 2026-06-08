@@ -3266,3 +3266,118 @@ blockquote {
   text-align: center;
   padding: 4px;
 }
+
+/* ── Card clickable area ── */
+.card-clickable {
+  cursor: pointer;
+}
+
+/* ── Rant Detail Page ── */
+.detail-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #fffcf7;
+}
+
+.detail-topbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #fffcf7;
+  border-bottom: 1px solid #f0ebe0;
+  flex-shrink: 0;
+}
+
+.detail-back-btn {
+  background: transparent;
+  padding: 4px;
+  color: #4a6360;
+  display: flex;
+  align-items: center;
+}
+
+.detail-topbar-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #263238;
+}
+
+.detail-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 24px;
+}
+
+.detail-post {
+  padding: 16px;
+  border-bottom: 8px solid #f0ebe0;
+}
+
+.detail-post-content {
+  font-size: 16px;
+  line-height: 1.6;
+  color: #263238;
+  margin: 12px 0;
+  white-space: pre-wrap;
+}
+
+.detail-action-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.detail-reply-form {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0ebe0;
+}
+
+.detail-reply-input-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.detail-reply-input-wrap input {
+  border: 1px solid #d9cfc0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: #faf6ef;
+  font-size: 14px;
+  outline: none;
+}
+
+.detail-reply-input-wrap input:focus {
+  border-color: #7ab7ad;
+}
+
+.detail-reply-list {
+  padding: 8px 0;
+}
+
+.detail-reply-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid #f7f3ea;
+}
+
+.detail-reply-item .flat-reply-body {
+  flex: 1;
+}
+
+.detail-reply-item .flat-reply-content {
+  font-size: 14px;
+  color: #3d4f4d;
+  margin: 2px 0 0;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}

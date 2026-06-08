@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Heart, MessageCircle } from 'lucide-react'
 import type { RantPost } from '../api/client'
 import MediaInput, { type MediaState } from './MediaInput'
 
@@ -31,6 +33,7 @@ export default function RantPostCard({
   onReplyTextChange, onReplyMediaChange,
   onUnderstand, onReply, onReport,
 }: Props) {
+  const navigate = useNavigate()
   const [showReplies, setShowReplies] = useState(false)
   const [showReplyForm, setShowReplyForm] = useState(false)
   const canReply = replyText.trim() || replyMedia.imageDataUrl || replyMedia.audioDataUrl
@@ -42,20 +45,22 @@ export default function RantPostCard({
 
   return (
     <article className="card">
-      {/* 貼文作者列 */}
-      <div className="post-author-row">
-        <div className="avatar-circle">{avatarLetter(post.nickname)}</div>
-        <div className="post-author-info">
-          <span className="post-author-name">{post.nickname}</span>
-          <span className="post-time">{new Date(post.createdAt).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+      {/* 貼文作者列 + 內容（點擊進詳細頁） */}
+      <div className="card-clickable" onClick={() => navigate(`/rant/${post.id}`)}>
+        <div className="post-author-row">
+          <div className="avatar-circle">{avatarLetter(post.nickname)}</div>
+          <div className="post-author-info">
+            <span className="post-author-name">{post.nickname}</span>
+            <span className="post-time">{new Date(post.createdAt).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+          </div>
+          <span className="tag">{MODE_LABELS[post.mode] ?? post.mode}</span>
         </div>
-        <span className="tag">{MODE_LABELS[post.mode] ?? post.mode}</span>
-      </div>
 
-      {/* 內容 */}
-      <p className="post-content">{post.content}</p>
-      {post.imageDataUrl && <img src={post.imageDataUrl} className="post-media-img" alt="貼文圖片" />}
-      {post.audioDataUrl && <audio controls src={post.audioDataUrl} className="post-media-audio" />}
+        {/* 內容 */}
+        <p className="post-content">{post.content}</p>
+        {post.imageDataUrl && <img src={post.imageDataUrl} className="post-media-img" alt="貼文圖片" />}
+        {post.audioDataUrl && <audio controls src={post.audioDataUrl} className="post-media-audio" />}
+      </div>
 
       {/* Tags */}
       {post.hashtags?.length > 0 && (
@@ -72,10 +77,10 @@ export default function RantPostCard({
       {/* 動作列 */}
       <div className="post-action-row">
         <button className="post-action-btn" onClick={onUnderstand}>
-          <span>♡</span> {post.likeCount}
+          <Heart size={16} /> {post.likeCount}
         </button>
-        <button className="post-action-btn" onClick={() => { setShowReplies(true); setShowReplyForm(true) }}>
-          <span>💬</span> {post.replies.length}
+        <button className="post-action-btn" onClick={(e) => { e.stopPropagation(); setShowReplies(true); setShowReplyForm(true) }}>
+          <MessageCircle size={16} /> {post.replies.length}
         </button>
         <button className="post-action-btn report-btn" onClick={onReport}>檢舉</button>
       </div>

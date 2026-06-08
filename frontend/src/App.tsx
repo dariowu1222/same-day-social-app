@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import BottomNav, { type PageKey } from './components/BottomNav'
 import LoginPage from './components/LoginPage'
 import OnboardingOverlay from './components/OnboardingOverlay'
 import TodayPage from './pages/TodayPage'
 import MatchResultPage from './pages/MatchResultPage'
 import RantBoardPage from './pages/RantBoardPage'
+import RantDetailPage from './pages/RantDetailPage'
 import TasksPage from './pages/TasksPage'
 import ChatPage from './pages/ChatPage'
 import ProfilePage from './pages/ProfilePage'
@@ -20,11 +22,24 @@ function onboardingKey(userId: string) {
 }
 
 function App() {
-  const [activePage, setActivePage] = useState<PageKey>('today')
+  const navigate = useNavigate()
+  const location = useLocation()
   const [showMatchResult, setShowMatchResult] = useState(false)
   const [selectedMoodLabel, setSelectedMoodLabel] = useState<string>('')
   const [user, setUser] = useState<DemoUser | null>(null)
   const [onboardingDone, setOnboardingDone] = useState(true)
+
+  const pathToPage: Record<string, PageKey> = {
+    '/': 'today', '/rant': 'rant', '/tasks': 'tasks', '/chat': 'chat', '/profile': 'profile',
+  }
+  const activePage: PageKey = pathToPage[location.pathname] ?? 'today'
+
+  function setActivePage(page: PageKey) {
+    const pageToPath: Record<PageKey, string> = {
+      today: '/', rant: '/rant', tasks: '/tasks', chat: '/chat', profile: '/profile',
+    }
+    navigate(pageToPath[page])
+  }
 
   useEffect(() => {
     const saved = localStorage.getItem('same-day-demo-user') ?? sessionStorage.getItem('same-day-demo-user')
@@ -56,24 +71,24 @@ function App() {
     return <LoginPage onAuthenticated={handleAuthenticated} />
   }
 
+  const isDetail = location.pathname.startsWith('/rant/')
+
   return (
     <>
       <main className="app-shell">
-        {activePage === 'today' && !showMatchResult && (
-          <TodayPage user={user} onGoToMatches={(label) => { setSelectedMoodLabel(label); setShowMatchResult(true) }} />
-        )}
-        {activePage === 'today' && showMatchResult && (
-          <MatchResultPage
-            moodLabel={selectedMoodLabel}
-            onBack={() => setShowMatchResult(false)}
-            onGoToRant={() => { setShowMatchResult(false); setActivePage('rant') }}
-          />
-        )}
-        {activePage === 'rant' && <RantBoardPage user={user} />}
-        {activePage === 'tasks' && <TasksPage user={user} />}
-        {activePage === 'chat' && <ChatPage user={user} />}
-        {activePage === 'profile' && <ProfilePage user={user} setUser={setUser} />}
-        <BottomNav activePage={activePage} onChange={setActivePage} />
+        <Routes>
+          <Route path="/" element={
+            !showMatchResult
+              ? <TodayPage user={user} onGoToMatches={(label) => { setSelectedMoodLabel(label); setShowMatchResult(true) }} />
+              : <MatchResultPage moodLabel={selectedMoodLabel} onBack={() => setShowMatchResult(false)} onGoToRant={() => { setShowMatchResult(false); navigate('/rant') }} />
+          } />
+          <Route path="/rant" element={<RantBoardPage user={user} />} />
+          <Route path="/rant/:rantId" element={<RantDetailPage user={user} />} />
+          <Route path="/tasks" element={<TasksPage user={user} />} />
+          <Route path="/chat" element={<ChatPage user={user} />} />
+          <Route path="/profile" element={<ProfilePage user={user} setUser={setUser} />} />
+        </Routes>
+        {!isDetail && <BottomNav activePage={activePage} onChange={setActivePage} />}
       </main>
       {!onboardingDone && (
         <OnboardingOverlay user={user} onComplete={handleOnboardingComplete} />
