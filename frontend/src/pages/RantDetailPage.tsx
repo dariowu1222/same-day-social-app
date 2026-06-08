@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Heart, MessageCircle, ChevronLeft, Flag } from 'lucide-react'
 import type { DemoUser } from '../App'
-import { getRants, replyRant, reportRant, understandRant, type RantPost } from '../api/client'
+import { flattenReplies, getRants, replyRant, reportRant, understandRant, type RantPost } from '../api/client'
 import MediaInput, { EMPTY_MEDIA, type MediaState } from '../components/MediaInput'
 
 const MODE_LABELS: Record<string, string> = {
@@ -165,10 +165,10 @@ export default function RantDetailPage({ user }: Props) {
           </button>
         </div>
 
-        {/* 第一層回覆（平鋪） */}
+        {/* 所有回覆（遞迴展平） */}
         {post.replies.length > 0 && (
           <div className="detail-reply-list">
-            {post.replies.map((reply) => (
+            {flattenReplies(post.replies).map((reply) => (
               <div key={reply.id} className="detail-reply-item">
                 <div className="avatar-circle avatar-sm">{avatarLetter(reply.nickname)}</div>
                 <div className="flat-reply-body">

@@ -227,6 +227,15 @@ export type MatchResult = {
   todaySummary: string
 }
 
+export type RantReply = {
+  id: string
+  nickname: string
+  content: string
+  imageDataUrl?: string | null
+  audioDataUrl?: string | null
+  replies?: RantReply[]
+}
+
 export type RantPost = {
   id: string
   userId: string
@@ -241,7 +250,11 @@ export type RantPost = {
   likeCount: number
   replyCount: number
   reportCount: number
-  replies: { id: string; nickname: string; content: string; imageDataUrl?: string | null; audioDataUrl?: string | null }[]
+  replies: RantReply[]
+}
+
+export function flattenReplies(replies: RantReply[]): RantReply[] {
+  return replies.flatMap((r) => [r, ...flattenReplies(r.replies ?? [])])
 }
 
 export type SocialTask = {

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Heart, MessageCircle } from 'lucide-react'
-import type { RantPost } from '../api/client'
+import { flattenReplies, type RantPost } from '../api/client'
 import MediaInput, { type MediaState } from './MediaInput'
 
 const MODE_LABELS: Record<string, string> = {
@@ -85,16 +85,16 @@ export default function RantPostCard({
         <button className="post-action-btn report-btn" onClick={onReport}>檢舉</button>
       </div>
 
-      {/* 回覆列表（平鋪，預設收合） */}
+      {/* 回覆列表（遞迴展平，預設收合） */}
       {post.replies.length > 0 && (
         <button className="reply-toggle-btn" onClick={() => setShowReplies((v) => !v)}>
-          {showReplies ? '收起回應' : `查看 ${post.replies.length} 則回應`}
+          {showReplies ? '收起回應' : `查看 ${flattenReplies(post.replies).length} 則回應`}
         </button>
       )}
 
       {showReplies && (
         <div className="flat-reply-list">
-          {post.replies.map((reply) => (
+          {flattenReplies(post.replies).map((reply) => (
             <div key={reply.id} className="flat-reply-item">
               <div className="avatar-circle avatar-sm">{avatarLetter(reply.nickname)}</div>
               <div className="flat-reply-body">
