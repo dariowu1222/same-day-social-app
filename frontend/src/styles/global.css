@@ -1495,6 +1495,134 @@ blockquote {
   gap: 8px;
 }
 
+/* ── Report button ── */
+.report-btn {
+  color: #d93025 !important;
+}
+
+/* ── Media Input ── */
+.media-input-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.media-file-hidden {
+  display: none;
+}
+
+.media-icon-btn {
+  background: #f0f7f5;
+  border: 1px solid #c8d8d5;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 18px;
+  cursor: pointer;
+  line-height: 1;
+  transition: background 0.15s;
+}
+
+.media-icon-btn:hover {
+  background: #d7efe9;
+}
+
+.media-icon-btn.recording {
+  background: #ffe5e5;
+  border-color: #d93025;
+  animation: pulse-rec 1s infinite;
+}
+
+@keyframes pulse-rec {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.recording-hint {
+  font-size: 12px;
+  color: #d93025;
+  font-weight: 600;
+}
+
+.media-preview-item {
+  position: relative;
+  display: inline-flex;
+  align-items: flex-start;
+}
+
+.media-preview-img {
+  max-width: 100px;
+  max-height: 100px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid #c8d8d5;
+}
+
+.media-preview-audio {
+  height: 36px;
+  max-width: 180px;
+}
+
+.media-remove-btn {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: #2d3f3e;
+  color: #fff;
+  border: none;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+/* ── Post media display ── */
+.post-media-img {
+  width: 100%;
+  max-height: 260px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #e1e0d9;
+}
+
+.post-media-audio {
+  width: 100%;
+  height: 36px;
+}
+
+.reply-media-img {
+  max-width: 120px;
+  border-radius: 6px;
+  margin-top: 4px;
+  border: 1px solid #e1e0d9;
+}
+
+.reply-item {
+  display: grid;
+  gap: 4px;
+}
+
+.reply-item p {
+  margin: 0;
+  color: #516260;
+}
+
+/* ── Reply form ── */
+.reply-form {
+  display: grid;
+  gap: 8px;
+}
+
+.reply-form > button {
+  justify-self: end;
+}
+
 /* ── Hashtag Input ── */
 .hashtag-input-wrapper {
   display: grid;

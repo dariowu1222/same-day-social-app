@@ -11,6 +11,8 @@ public sealed class RantPost
     public RantMode Mode { get; set; } = RantMode.JUST_SAYING;
     public List<EmotionTag> EmotionTags { get; set; } = [];
     public List<string> HashTags { get; set; } = [];
+    public string? ImageDataUrl { get; set; }
+    public string? AudioDataUrl { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public int LikeCount { get; set; }
     public int ReplyCount { get; set; }
@@ -25,5 +27,7 @@ public sealed class RantReply
     public string UserId { get; set; } = "";
     public string Nickname { get; set; } = "";
     public string Content { get; set; } = "";
+    public string? ImageDataUrl { get; set; }
+    public string? AudioDataUrl { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

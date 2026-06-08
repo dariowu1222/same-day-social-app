@@ -22,7 +22,7 @@ public sealed class RantService
         db = services.GetService<AppDbContext>();
     }
 
-    public (RantPost? Post, ModerationResult Moderation) Create(string userId, string nickname, string content, RantMode mode, List<string>? hashTags = null)
+    public (RantPost? Post, ModerationResult Moderation) Create(string userId, string nickname, string content, RantMode mode, List<string>? hashTags = null, string? imageDataUrl = null, string? audioDataUrl = null)
     {
         var check = moderation.Check(content);
         if (check.IsBlocked)
@@ -39,7 +39,9 @@ public sealed class RantService
             Content = content.Trim(),
             Mode = mode,
             EmotionTags = analysis.EmotionTags,
-            HashTags = hashTags?.Select(t => t.Trim()).Where(t => t.Length > 0).Take(5).ToList() ?? []
+            HashTags = hashTags?.Select(t => t.Trim()).Where(t => t.Length > 0).Take(5).ToList() ?? [],
+            ImageDataUrl = imageDataUrl,
+            AudioDataUrl = audioDataUrl
         };
 
         if (db != null)
@@ -118,7 +120,7 @@ public sealed class RantService
         return storage.UpdateOne<RantPost>("rantPosts", rantId, post => post.LikeCount += 1);
     }
 
-    public RantPost? Reply(string rantId, string userId, string nickname, string content)
+    public RantPost? Reply(string rantId, string userId, string nickname, string content, string? imageDataUrl = null, string? audioDataUrl = null)
     {
         if (db != null)
         {
@@ -134,7 +136,9 @@ public sealed class RantService
                 RantPostId = rantId,
                 UserId = userId,
                 Nickname = string.IsNullOrWhiteSpace(nickname) ? "同頻使用者" : nickname.Trim(),
-                Content = content.Trim()
+                Content = content.Trim(),
+                ImageDataUrl = imageDataUrl,
+                AudioDataUrl = audioDataUrl
             });
             db.SaveChanges();
             return BuildPost(rantId);

@@ -9,6 +9,8 @@ public sealed class RantPostRecord
     public string Mode { get; set; } = "JUST_SAYING";
     public string[] EmotionTags { get; set; } = [];
     public string[] HashTags { get; set; } = [];
+    public string? ImageDataUrl { get; set; }
+    public string? AudioDataUrl { get; set; }
     public bool IsHidden { get; set; }
     public int ReportCount { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
@@ -21,6 +23,8 @@ public sealed class RantReplyRecord
     public string UserId { get; set; } = "";
     public string Nickname { get; set; } = "";
     public string Content { get; set; } = "";
+    public string? ImageDataUrl { get; set; }
+    public string? AudioDataUrl { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { DemoUser } from '../App'
 import { createRant, getRants, replyRant, reportRant, understandRant, type RantPost } from '../api/client'
 import HashtagInput from '../components/HashtagInput'
+import MediaInput, { EMPTY_MEDIA, type MediaState } from '../components/MediaInput'
 import RantPostCard from '../components/RantPostCard'
 
 type Props = {
@@ -13,7 +14,9 @@ export default function RantBoardPage({ user }: Props) {
   const [content, setContent] = useState('')
   const [mode, setMode] = useState('JUST_SAYING')
   const [hashtags, setHashtags] = useState<string[]>([])
+  const [postMedia, setPostMedia] = useState<MediaState>(EMPTY_MEDIA)
   const [replies, setReplies] = useState<Record<string, string>>({})
+  const [replyMedia, setReplyMedia] = useState<Record<string, MediaState>>({})
   const [message, setMessage] = useState('')
 
   useEffect(() => {
@@ -28,9 +31,10 @@ export default function RantBoardPage({ user }: Props) {
   async function submitPost() {
     setMessage('')
     try {
-      const response = await createRant({ userId: user.userId, nickname: user.nickname, content, mode, hashtags })
+      const response = await createRant({ userId: user.userId, nickname: user.nickname, content, mode, hashtags, ...postMedia })
       setContent('')
       setHashtags([])
+      setPostMedia(EMPTY_MEDIA)
       setMessage(response.warning ?? '已放進樹洞。')
       await loadPosts()
     } catch (error) {
@@ -52,6 +56,7 @@ export default function RantBoardPage({ user }: Props) {
       </header>
       <section className="panel">
         <textarea rows={5} value={content} onChange={(event) => setContent(event.target.value)} placeholder="今天有點卡住的事..." />
+        <MediaInput value={postMedia} onChange={setPostMedia} />
         <HashtagInput value={hashtags} onChange={setHashtags} />
         <select value={mode} onChange={(event) => setMode(event.target.value)}>
           <option value="JUST_SAYING">只是想說</option>
@@ -75,8 +80,10 @@ export default function RantBoardPage({ user }: Props) {
             onReplyTextChange={(value) => setReplies({ ...replies, [post.id]: value })}
             onUnderstand={() => updatePost(() => understandRant(post.id))}
             onReport={() => updatePost(() => reportRant(post.id))}
+            replyMedia={replyMedia[post.id] ?? EMPTY_MEDIA}
+            onReplyMediaChange={(media) => setReplyMedia({ ...replyMedia, [post.id]: media })}
             onReply={() =>
-              updatePost(() => replyRant(post.id, { userId: user.userId, nickname: user.nickname, content: replies[post.id] ?? '' }))
+              updatePost(() => replyRant(post.id, { userId: user.userId, nickname: user.nickname, content: replies[post.id] ?? '', ...(replyMedia[post.id] ?? EMPTY_MEDIA) }))
             }
           />
         ))}

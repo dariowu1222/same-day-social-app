@@ -159,7 +159,7 @@ export async function getRants() {
   return request<RantPost[]>('/api/rants')
 }
 
-export async function createRant(payload: { userId: string; nickname: string; content: string; mode: string; hashtags?: string[] }) {
+export async function createRant(payload: { userId: string; nickname: string; content: string; mode: string; hashtags?: string[]; imageDataUrl?: string | null; audioDataUrl?: string | null }) {
   return request<RantPost>('/api/rants', { method: 'POST', body: JSON.stringify(payload) })
 }
 
@@ -167,7 +167,7 @@ export async function understandRant(rantId: string) {
   return request<RantPost>(`/api/rants/${rantId}/understand`, { method: 'POST' })
 }
 
-export async function replyRant(rantId: string, payload: { userId: string; nickname: string; content: string }) {
+export async function replyRant(rantId: string, payload: { userId: string; nickname: string; content: string; imageDataUrl?: string | null; audioDataUrl?: string | null }) {
   return request<RantPost>(`/api/rants/${rantId}/replies`, { method: 'POST', body: JSON.stringify(payload) })
 }
 
@@ -235,11 +235,13 @@ export type RantPost = {
   mode: string
   emotionTags: string[]
   hashtags: string[]
+  imageDataUrl?: string | null
+  audioDataUrl?: string | null
   createdAt: string
   likeCount: number
   replyCount: number
   reportCount: number
-  replies: { id: string; nickname: string; content: string }[]
+  replies: { id: string; nickname: string; content: string; imageDataUrl?: string | null; audioDataUrl?: string | null }[]
 }
 
 export type SocialTask = {
