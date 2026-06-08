@@ -1755,6 +1755,37 @@ blockquote {
   padding: 0;
 }
 
+/* ── Rant compose toggle ── */
+.rant-compose-toggle {
+  padding: 8px 16px 0;
+  display: flex;
+}
+
+.rant-compose-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #e8f3f0;
+  color: #3d7a72;
+  border: 1.5px solid #b2d4ce;
+  border-radius: 20px;
+  padding: 7px 16px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.rant-compose-trigger:hover {
+  background: #d2ece7;
+}
+
+.rant-compose-trigger.open {
+  background: #f5e8e0;
+  border-color: #d9a58a;
+  color: #8c4a2a;
+}
+
 /* ── Post input block (textarea + media toolbar) ── */
 .post-input-block {
   border: 1px solid #d9cfc0;
