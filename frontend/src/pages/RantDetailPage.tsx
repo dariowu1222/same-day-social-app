@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Heart, MessageCircle, ChevronLeft, Flag } from 'lucide-react'
 import type { DemoUser } from '../App'
-import { flattenReplies, getRants, replyRant, reportRant, understandRant, type RantPost } from '../api/client'
+import { getRants, replyRant, reportRant, understandRant, type RantPost } from '../api/client'
 import MediaInput, { EMPTY_MEDIA, type MediaState } from '../components/MediaInput'
+import ReplyItem from '../components/ReplyItem'
 
 const MODE_LABELS: Record<string, string> = {
   JUST_SAYING: '只是想說',
@@ -165,19 +166,18 @@ export default function RantDetailPage({ user }: Props) {
           </button>
         </div>
 
-        {/* 所有回覆（遞迴展平） */}
+        {/* 第一層回覆（子回覆各自展開） */}
         {post.replies.length > 0 && (
           <div className="detail-reply-list">
-            {flattenReplies(post.replies).map((reply) => (
-              <div key={reply.id} className="detail-reply-item">
-                <div className="avatar-circle avatar-sm">{avatarLetter(reply.nickname)}</div>
-                <div className="flat-reply-body">
-                  <span className="post-author-name">{reply.nickname}</span>
-                  <p className="flat-reply-content">{reply.content}</p>
-                  {reply.imageDataUrl && <img src={reply.imageDataUrl} className="reply-media-img" alt="" />}
-                  {reply.audioDataUrl && <audio controls src={reply.audioDataUrl} className="post-media-audio" />}
-                </div>
-              </div>
+            {post.replies.map((reply) => (
+              <ReplyItem
+                key={reply.id}
+                reply={reply}
+                onReply={() => {
+                  const input = document.querySelector<HTMLInputElement>('.detail-reply-input-wrap input')
+                  input?.focus()
+                }}
+              />
             ))}
           </div>
         )}

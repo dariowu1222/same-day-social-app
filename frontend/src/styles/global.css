@@ -1620,6 +1620,51 @@ blockquote {
   line-height: 1.5;
 }
 
+/* 每筆回覆底部的動作列 */
+.reply-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.reply-sub-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 12px;
+  color: #5b8f8a;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.reply-sub-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 12px;
+  color: #8a9e9c;
+  cursor: pointer;
+}
+
+.reply-sub-btn:hover,
+.reply-sub-toggle:hover {
+  color: #3d7a72;
+}
+
+/* 子回覆列表（縮排一點區隔） */
+.sub-reply-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+  padding-left: 8px;
+  border-left: 2px solid #e0ede9;
+}
+
+.sub-reply-item {
+  padding: 0;
+}
+
 /* ── Reply form ── */
 .reply-form {
   display: grid;

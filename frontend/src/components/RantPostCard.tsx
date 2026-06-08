@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Heart, MessageCircle } from 'lucide-react'
 import { flattenReplies, type RantPost } from '../api/client'
 import MediaInput, { type MediaState } from './MediaInput'
+import ReplyItem from './ReplyItem'
 
 const MODE_LABELS: Record<string, string> = {
   JUST_SAYING: '只是想說',
@@ -85,7 +86,7 @@ export default function RantPostCard({
         <button className="post-action-btn report-btn" onClick={onReport}>檢舉</button>
       </div>
 
-      {/* 回覆列表（遞迴展平，預設收合） */}
+      {/* 第一層回覆（預設收合，子回覆各自展開） */}
       {post.replies.length > 0 && (
         <button className="reply-toggle-btn" onClick={() => setShowReplies((v) => !v)}>
           {showReplies ? '收起回應' : `查看 ${flattenReplies(post.replies).length} 則回應`}
@@ -94,16 +95,12 @@ export default function RantPostCard({
 
       {showReplies && (
         <div className="flat-reply-list">
-          {flattenReplies(post.replies).map((reply) => (
-            <div key={reply.id} className="flat-reply-item">
-              <div className="avatar-circle avatar-sm">{avatarLetter(reply.nickname)}</div>
-              <div className="flat-reply-body">
-                <span className="post-author-name">{reply.nickname}</span>
-                <p className="flat-reply-content">{reply.content}</p>
-                {reply.imageDataUrl && <img src={reply.imageDataUrl} className="reply-media-img" alt="" />}
-                {reply.audioDataUrl && <audio controls src={reply.audioDataUrl} className="post-media-audio" />}
-              </div>
-            </div>
+          {post.replies.map((reply) => (
+            <ReplyItem
+              key={reply.id}
+              reply={reply}
+              onReply={() => { setShowReplyForm(true) }}
+            />
           ))}
         </div>
       )}
