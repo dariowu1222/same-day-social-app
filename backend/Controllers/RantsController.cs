@@ -13,7 +13,7 @@ public sealed class RantsController(RantService rantService) : ControllerBase
     [HttpPost]
     public ActionResult<ApiResponse<RantPost>> Create([FromBody] CreateRantRequest request)
     {
-        var result = rantService.Create(request.UserId, request.Nickname, request.Content, request.Mode);
+        var result = rantService.Create(request.UserId, request.Nickname, request.Content, request.Mode, request.HashTags);
         if (result.Moderation.IsBlocked)
         {
             return BadRequest(ApiResponse<RantPost>.Fail(result.Moderation.Code!, result.Moderation.Message!));
@@ -56,5 +56,5 @@ public sealed class RantsController(RantService rantService) : ControllerBase
     }
 }
 
-public sealed record CreateRantRequest(string UserId, string Nickname, string Content, RantMode Mode);
+public sealed record CreateRantRequest(string UserId, string Nickname, string Content, RantMode Mode, List<string>? HashTags = null);
 public sealed record CreateReplyRequest(string UserId, string Nickname, string Content);

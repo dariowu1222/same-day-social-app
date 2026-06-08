@@ -8,6 +8,7 @@ public sealed class RantPostRecord
     public string Content { get; set; } = "";
     public string Mode { get; set; } = "JUST_SAYING";
     public string[] EmotionTags { get; set; } = [];
+    public string[] HashTags { get; set; } = [];
     public bool IsHidden { get; set; }
     public int ReportCount { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;

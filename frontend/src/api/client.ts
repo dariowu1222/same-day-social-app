@@ -159,7 +159,7 @@ export async function getRants() {
   return request<RantPost[]>('/api/rants')
 }
 
-export async function createRant(payload: { userId: string; nickname: string; content: string; mode: string }) {
+export async function createRant(payload: { userId: string; nickname: string; content: string; mode: string; hashtags?: string[] }) {
   return request<RantPost>('/api/rants', { method: 'POST', body: JSON.stringify(payload) })
 }
 
@@ -234,6 +234,7 @@ export type RantPost = {
   content: string
   mode: string
   emotionTags: string[]
+  hashtags: string[]
   createdAt: string
   likeCount: number
   replyCount: number

@@ -22,7 +22,7 @@ public sealed class RantService
         db = services.GetService<AppDbContext>();
     }
 
-    public (RantPost? Post, ModerationResult Moderation) Create(string userId, string nickname, string content, RantMode mode)
+    public (RantPost? Post, ModerationResult Moderation) Create(string userId, string nickname, string content, RantMode mode, List<string>? hashTags = null)
     {
         var check = moderation.Check(content);
         if (check.IsBlocked)
@@ -38,7 +38,8 @@ public sealed class RantService
             Nickname = string.IsNullOrWhiteSpace(nickname) ? "同頻使用者" : nickname.Trim(),
             Content = content.Trim(),
             Mode = mode,
-            EmotionTags = analysis.EmotionTags
+            EmotionTags = analysis.EmotionTags,
+            HashTags = hashTags?.Select(t => t.Trim()).Where(t => t.Length > 0).Take(5).ToList() ?? []
         };
 
         if (db != null)

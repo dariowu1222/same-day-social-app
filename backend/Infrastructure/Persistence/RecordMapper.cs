@@ -134,6 +134,7 @@ public static class RecordMapper
             Content = record.Content,
             Mode = ParseEnum(record.Mode, RantMode.JUST_SAYING),
             EmotionTags = record.EmotionTags.Select(x => ParseEnum(x, EmotionTag.CALM)).ToList(),
+            HashTags = record.HashTags.ToList(),
             CreatedAt = record.CreatedAt,
             LikeCount = likeCount,
             ReplyCount = domainReplies.Count,
@@ -153,6 +154,7 @@ public static class RecordMapper
             Content = post.Content,
             Mode = post.Mode.ToString(),
             EmotionTags = post.EmotionTags.Select(x => x.ToString()).ToArray(),
+            HashTags = post.HashTags.ToArray(),
             IsHidden = post.IsHidden,
             ReportCount = post.ReportCount,
             CreatedAt = post.CreatedAt

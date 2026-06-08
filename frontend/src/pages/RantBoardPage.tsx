@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { DemoUser } from '../App'
 import { createRant, getRants, replyRant, reportRant, understandRant, type RantPost } from '../api/client'
+import HashtagInput from '../components/HashtagInput'
 import RantPostCard from '../components/RantPostCard'
 
 type Props = {
@@ -11,6 +12,7 @@ export default function RantBoardPage({ user }: Props) {
   const [posts, setPosts] = useState<RantPost[]>([])
   const [content, setContent] = useState('')
   const [mode, setMode] = useState('JUST_SAYING')
+  const [hashtags, setHashtags] = useState<string[]>([])
   const [replies, setReplies] = useState<Record<string, string>>({})
   const [message, setMessage] = useState('')
 
@@ -26,8 +28,9 @@ export default function RantBoardPage({ user }: Props) {
   async function submitPost() {
     setMessage('')
     try {
-      const response = await createRant({ userId: user.userId, nickname: user.nickname, content, mode })
+      const response = await createRant({ userId: user.userId, nickname: user.nickname, content, mode, hashtags })
       setContent('')
+      setHashtags([])
       setMessage(response.warning ?? '已放進樹洞。')
       await loadPosts()
     } catch (error) {
@@ -49,6 +52,7 @@ export default function RantBoardPage({ user }: Props) {
       </header>
       <section className="panel">
         <textarea rows={5} value={content} onChange={(event) => setContent(event.target.value)} placeholder="今天有點卡住的事..." />
+        <HashtagInput value={hashtags} onChange={setHashtags} />
         <select value={mode} onChange={(event) => setMode(event.target.value)}>
           <option value="JUST_SAYING">只是想說</option>
           <option value="COMFORT_ME">想被安慰</option>

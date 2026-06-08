@@ -26,6 +26,13 @@ export default function RantPostCard({ post, replyText, onReplyTextChange, onUnd
         <span className="tag">{MODE_LABELS[post.mode] ?? post.mode}</span>
       </div>
       <p>{post.content}</p>
+      {post.hashtags?.length > 0 && (
+        <div className="hashtag-row">
+          {post.hashtags.map((tag) => (
+            <span key={tag} className="hashtag-tag">#{tag}</span>
+          ))}
+        </div>
+      )}
       <div className="tag-row">
         {post.emotionTags.map((tag) => (
           <span key={tag} className="tag">

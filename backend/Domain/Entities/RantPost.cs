@@ -10,6 +10,7 @@ public sealed class RantPost
     public string Content { get; set; } = "";
     public RantMode Mode { get; set; } = RantMode.JUST_SAYING;
     public List<EmotionTag> EmotionTags { get; set; } = [];
+    public List<string> HashTags { get; set; } = [];
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public int LikeCount { get; set; }
     public int ReplyCount { get; set; }
