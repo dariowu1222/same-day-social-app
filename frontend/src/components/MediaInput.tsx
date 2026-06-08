@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { Image, Mic, MicOff, X } from 'lucide-react'
 
 export type MediaState = {
   imageDataUrl: string | null
@@ -54,37 +55,52 @@ export default function MediaInput({ value, onChange }: Props) {
   }
 
   return (
-    <div className="media-input-bar">
-      {/* 照片 */}
-      <input ref={fileInputRef} type="file" accept="image/*" className="media-file-hidden" onChange={handleImagePick} />
-      <button type="button" className="media-icon-btn" onClick={() => fileInputRef.current?.click()} title="加上照片">
-        📷
-      </button>
-
-      {/* 錄音 */}
-      <button
-        type="button"
-        className={`media-icon-btn${isRecording ? ' recording' : ''}`}
-        onClick={toggleRecording}
-        title={isRecording ? '停止錄音' : '開始錄音'}
-      >
-        {isRecording ? '⏹' : '🎙'}
-      </button>
-      {isRecording && <span className="recording-hint">錄音中…點⏹停止</span>}
-
-      {/* 預覽 */}
-      {value.imageDataUrl && (
-        <div className="media-preview-item">
-          <img src={value.imageDataUrl} className="media-preview-img" alt="預覽" />
-          <button type="button" className="media-remove-btn" onClick={() => onChange({ ...value, imageDataUrl: null })}>×</button>
+    <div className="media-input-wrap">
+      {/* 預覽區 */}
+      {(value.imageDataUrl || value.audioDataUrl) && (
+        <div className="media-preview-row">
+          {value.imageDataUrl && (
+            <div className="media-preview-item">
+              <img src={value.imageDataUrl} className="media-preview-img" alt="預覽" />
+              <button type="button" className="media-remove-btn" onClick={() => onChange({ ...value, imageDataUrl: null })}>
+                <X size={11} />
+              </button>
+            </div>
+          )}
+          {value.audioDataUrl && (
+            <div className="media-preview-item media-preview-audio-wrap">
+              <audio controls src={value.audioDataUrl} className="media-preview-audio" />
+              <button type="button" className="media-remove-btn" onClick={() => onChange({ ...value, audioDataUrl: null })}>
+                <X size={11} />
+              </button>
+            </div>
+          )}
         </div>
       )}
-      {value.audioDataUrl && (
-        <div className="media-preview-item">
-          <audio controls src={value.audioDataUrl} className="media-preview-audio" />
-          <button type="button" className="media-remove-btn" onClick={() => onChange({ ...value, audioDataUrl: null })}>×</button>
-        </div>
-      )}
+
+      {/* 工具列 */}
+      <div className="media-toolbar">
+        <input ref={fileInputRef} type="file" accept="image/*" className="media-file-hidden" onChange={handleImagePick} />
+        <button
+          type="button"
+          className="media-tool-btn"
+          onClick={() => fileInputRef.current?.click()}
+          title="加上照片"
+        >
+          <Image size={20} />
+        </button>
+
+        <button
+          type="button"
+          className={`media-tool-btn${isRecording ? ' recording' : ''}`}
+          onClick={toggleRecording}
+          title={isRecording ? '停止錄音' : '語音留言'}
+        >
+          {isRecording ? <MicOff size={20} /> : <Mic size={20} />}
+        </button>
+
+        {isRecording && <span className="recording-hint">錄音中…再按停止</span>}
+      </div>
     </div>
   )
 }

@@ -55,8 +55,12 @@ export default function RantBoardPage({ user }: Props) {
         <p>可以抱怨，但不要攻擊、肉搜或公開他人個資。</p>
       </header>
       <section className="panel">
-        <textarea rows={5} value={content} onChange={(event) => setContent(event.target.value)} placeholder="今天有點卡住的事..." />
-        <MediaInput value={postMedia} onChange={setPostMedia} />
+        <div className="post-input-block">
+          <textarea rows={5} value={content} onChange={(event) => setContent(event.target.value)} placeholder="今天有點卡住的事，說出來就好…" />
+          <div className="post-input-toolbar">
+            <MediaInput value={postMedia} onChange={setPostMedia} />
+          </div>
+        </div>
         <HashtagInput value={hashtags} onChange={setHashtags} />
         <select value={mode} onChange={(event) => setMode(event.target.value)}>
           <option value="JUST_SAYING">只是想說</option>

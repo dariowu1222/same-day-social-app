@@ -1654,53 +1654,75 @@ blockquote {
 }
 
 /* ── Media Input ── */
-.media-input-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
 .media-file-hidden {
   display: none;
 }
 
-.media-icon-btn {
-  background: #f0f7f5;
-  border: 1px solid #c8d8d5;
+.media-input-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Icon toolbar row */
+.media-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 0;
+}
+
+.media-tool-btn {
+  background: transparent;
+  border: none;
+  padding: 6px;
   border-radius: 8px;
-  padding: 6px 10px;
-  font-size: 18px;
+  color: #6b9a94;
   cursor: pointer;
-  line-height: 1;
-  transition: background 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
 }
 
-.media-icon-btn:hover {
-  background: #d7efe9;
+.media-tool-btn:hover {
+  background: #e6f2f0;
+  color: #3d7a72;
 }
 
-.media-icon-btn.recording {
-  background: #ffe5e5;
-  border-color: #d93025;
+.media-tool-btn.recording {
+  color: #d93025;
   animation: pulse-rec 1s infinite;
 }
 
 @keyframes pulse-rec {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+  50% { opacity: 0.55; }
 }
 
 .recording-hint {
   font-size: 12px;
   color: #d93025;
   font-weight: 600;
+  margin-left: 4px;
+}
+
+/* Preview row */
+.media-preview-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 0;
 }
 
 .media-preview-item {
   position: relative;
   display: inline-flex;
   align-items: flex-start;
+}
+
+.media-preview-audio-wrap {
+  align-items: center;
 }
 
 .media-preview-img {
@@ -1713,26 +1735,54 @@ blockquote {
 
 .media-preview-audio {
   height: 36px;
-  max-width: 180px;
+  max-width: 200px;
 }
 
 .media-remove-btn {
   position: absolute;
   top: -6px;
   right: -6px;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   border-radius: 999px;
   background: #2d3f3e;
   color: #fff;
   border: none;
-  font-size: 14px;
-  line-height: 1;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
+}
+
+/* ── Post input block (textarea + media toolbar) ── */
+.post-input-block {
+  border: 1px solid #d9cfc0;
+  border-radius: 12px;
+  background: #faf6ef;
+  overflow: hidden;
+}
+
+.post-input-block textarea {
+  border: none;
+  background: transparent;
+  border-radius: 0;
+  padding: 12px 14px 6px;
+  resize: none;
+  outline: none;
+  width: 100%;
+}
+
+.post-input-block textarea:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.post-input-toolbar {
+  border-top: 1px solid #ede8de;
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
 }
 
 /* ── Post media display ── */
