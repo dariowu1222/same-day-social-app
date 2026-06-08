@@ -29,5 +29,7 @@ public sealed class RantReply
     public string Content { get; set; } = "";
     public string? ImageDataUrl { get; set; }
     public string? AudioDataUrl { get; set; }
+    public string? ParentReplyId { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public List<RantReply> Replies { get; set; } = [];
 }

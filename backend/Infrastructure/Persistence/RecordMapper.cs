@@ -114,18 +114,30 @@ public static class RecordMapper
 
     public static RantPost ToDomain(this RantPostRecord record, IEnumerable<RantReplyRecord> replies, int likeCount)
     {
-        var domainReplies = replies
-            .OrderBy(x => x.CreatedAt)
-            .Select(x => new RantReply
-            {
-                Id = x.Id,
-                UserId = x.UserId,
-                Nickname = x.Nickname,
-                Content = x.Content,
-                ImageDataUrl = x.ImageDataUrl,
-                AudioDataUrl = x.AudioDataUrl,
-                CreatedAt = x.CreatedAt
-            })
+        var allReplies = replies.OrderBy(x => x.CreatedAt).ToList();
+
+        // Build children lookup: parentId -> list of child records
+        var byParent = allReplies
+            .Where(x => x.ParentReplyId != null)
+            .GroupBy(x => x.ParentReplyId!)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        RantReply BuildReply(RantReplyRecord r) => new RantReply
+        {
+            Id = r.Id,
+            UserId = r.UserId,
+            Nickname = r.Nickname,
+            Content = r.Content,
+            ImageDataUrl = r.ImageDataUrl,
+            AudioDataUrl = r.AudioDataUrl,
+            ParentReplyId = r.ParentReplyId,
+            CreatedAt = r.CreatedAt,
+            Replies = byParent.GetValueOrDefault(r.Id, []).Select(BuildReply).ToList()
+        };
+
+        var domainReplies = allReplies
+            .Where(x => x.ParentReplyId == null)
+            .Select(BuildReply)
             .ToList();
 
         return new RantPost
@@ -141,7 +153,7 @@ public static class RecordMapper
             AudioDataUrl = record.AudioDataUrl,
             CreatedAt = record.CreatedAt,
             LikeCount = likeCount,
-            ReplyCount = domainReplies.Count,
+            ReplyCount = allReplies.Count,
             IsHidden = record.IsHidden,
             ReportCount = record.ReportCount,
             Replies = domainReplies

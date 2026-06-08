@@ -104,8 +104,8 @@ export default function RantBoardPage({ user }: Props) {
             onReport={() => updatePost(() => reportRant(post.id))}
             replyMedia={replyMedia[post.id] ?? EMPTY_MEDIA}
             onReplyMediaChange={(media) => setReplyMedia({ ...replyMedia, [post.id]: media })}
-            onReply={() =>
-              updatePost(() => replyRant(post.id, { userId: user.userId, nickname: user.nickname, content: replies[post.id] ?? '', ...(replyMedia[post.id] ?? EMPTY_MEDIA) }))
+            onReply={(parentReplyId) =>
+              updatePost(() => replyRant(post.id, { userId: user.userId, nickname: user.nickname, content: replies[post.id] ?? '', ...(replyMedia[post.id] ?? EMPTY_MEDIA), parentReplyId }))
             }
           />
         ))}

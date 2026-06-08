@@ -40,7 +40,7 @@ public sealed class RantsController(RantService rantService) : ControllerBase
     [HttpPost("{rantId}/replies")]
     public ActionResult<ApiResponse<RantPost>> Reply(string rantId, [FromBody] CreateReplyRequest request)
     {
-        var post = rantService.Reply(rantId, request.UserId, request.Nickname, request.Content, request.ImageDataUrl, request.AudioDataUrl);
+        var post = rantService.Reply(rantId, request.UserId, request.Nickname, request.Content, request.ImageDataUrl, request.AudioDataUrl, request.ParentReplyId);
         return post == null
             ? NotFound(ApiResponse<RantPost>.Fail("RANT_NOT_FOUND", "找不到這篇樹洞文章。"))
             : ApiResponse<RantPost>.Ok(post);
@@ -57,4 +57,4 @@ public sealed class RantsController(RantService rantService) : ControllerBase
 }
 
 public sealed record CreateRantRequest(string UserId, string Nickname, string Content, RantMode Mode, List<string>? HashTags = null, string? ImageDataUrl = null, string? AudioDataUrl = null);
-public sealed record CreateReplyRequest(string UserId, string Nickname, string Content, string? ImageDataUrl = null, string? AudioDataUrl = null);
+public sealed record CreateReplyRequest(string UserId, string Nickname, string Content, string? ImageDataUrl = null, string? AudioDataUrl = null, string? ParentReplyId = null);

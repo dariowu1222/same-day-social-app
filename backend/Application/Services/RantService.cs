@@ -120,7 +120,7 @@ public sealed class RantService
         return storage.UpdateOne<RantPost>("rantPosts", rantId, post => post.LikeCount += 1);
     }
 
-    public RantPost? Reply(string rantId, string userId, string nickname, string content, string? imageDataUrl = null, string? audioDataUrl = null)
+    public RantPost? Reply(string rantId, string userId, string nickname, string content, string? imageDataUrl = null, string? audioDataUrl = null, string? parentReplyId = null)
     {
         if (db != null)
         {
@@ -134,6 +134,7 @@ public sealed class RantService
             {
                 Id = $"reply_{Guid.NewGuid():N}",
                 RantPostId = rantId,
+                ParentReplyId = parentReplyId,
                 UserId = userId,
                 Nickname = string.IsNullOrWhiteSpace(nickname) ? "同頻使用者" : nickname.Trim(),
                 Content = content.Trim(),

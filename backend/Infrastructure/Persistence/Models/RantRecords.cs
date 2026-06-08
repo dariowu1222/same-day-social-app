@@ -20,6 +20,7 @@ public sealed class RantReplyRecord
 {
     public string Id { get; set; } = "";
     public string RantPostId { get; set; } = "";
+    public string? ParentReplyId { get; set; }
     public string UserId { get; set; } = "";
     public string Nickname { get; set; } = "";
     public string Content { get; set; } = "";

@@ -16,6 +16,9 @@ public sealed class RantPostRecordConfiguration : IEntityTypeConfiguration<RantP
         builder.Property(x => x.Content).HasColumnName("content").HasMaxLength(3000).IsRequired();
         builder.Property(x => x.Mode).HasColumnName("mode").HasMaxLength(40);
         builder.Property(x => x.EmotionTags).HasColumnName("emotion_tags").HasColumnType("text[]");
+        builder.Property(x => x.HashTags).HasColumnName("hash_tags").HasColumnType("text[]");
+        builder.Property(x => x.ImageDataUrl).HasColumnName("image_data_url");
+        builder.Property(x => x.AudioDataUrl).HasColumnName("audio_data_url");
         builder.Property(x => x.IsHidden).HasColumnName("is_hidden");
         builder.Property(x => x.ReportCount).HasColumnName("report_count");
         builder.Property(x => x.CreatedAt).HasColumnName("created_at");
@@ -31,11 +34,15 @@ public sealed class RantReplyRecordConfiguration : IEntityTypeConfiguration<Rant
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id).HasColumnName("id").HasMaxLength(64);
         builder.Property(x => x.RantPostId).HasColumnName("rant_post_id").HasMaxLength(64).IsRequired();
+        builder.Property(x => x.ParentReplyId).HasColumnName("parent_reply_id").HasMaxLength(64);
         builder.Property(x => x.UserId).HasColumnName("user_id").HasMaxLength(64).IsRequired();
         builder.Property(x => x.Nickname).HasColumnName("nickname").HasMaxLength(80).IsRequired();
         builder.Property(x => x.Content).HasColumnName("content").HasMaxLength(1000).IsRequired();
+        builder.Property(x => x.ImageDataUrl).HasColumnName("image_data_url");
+        builder.Property(x => x.AudioDataUrl).HasColumnName("audio_data_url");
         builder.Property(x => x.CreatedAt).HasColumnName("created_at");
         builder.HasIndex(x => new { x.RantPostId, x.CreatedAt });
+        builder.HasIndex(x => x.ParentReplyId);
     }
 }
 

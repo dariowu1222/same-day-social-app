@@ -33,6 +33,7 @@ export default function RantDetailPage({ user }: Props) {
   const [post, setPost] = useState<RantPost | null>(null)
   const [replyText, setReplyText] = useState('')
   const [replyMedia, setReplyMedia] = useState<MediaState>(EMPTY_MEDIA)
+  const [replyTarget, setReplyTarget] = useState<{ id: string; nickname: string } | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
@@ -70,13 +71,20 @@ export default function RantDetailPage({ user }: Props) {
         nickname: user.nickname,
         content: replyText,
         ...replyMedia,
+        parentReplyId: replyTarget?.id ?? null,
       })
       setReplyText('')
       setReplyMedia(EMPTY_MEDIA)
+      setReplyTarget(null)
       await loadPost()
     } finally {
       setSubmitting(false)
     }
+  }
+
+  function handleReplyToReply(replyId: string, nickname: string) {
+    setReplyTarget({ id: replyId, nickname })
+    document.querySelector<HTMLInputElement>('.detail-reply-input-wrap input')?.focus()
   }
 
   const canReply = replyText.trim() || replyMedia.imageDataUrl || replyMedia.audioDataUrl
@@ -150,10 +158,15 @@ export default function RantDetailPage({ user }: Props) {
         <div className="detail-reply-form">
           <div className="avatar-circle avatar-sm">{avatarLetter(user.nickname)}</div>
           <div className="detail-reply-input-wrap">
+            {replyTarget && (
+              <div className="reply-target-hint">↩ 回覆 @{replyTarget.nickname}
+                <button className="reply-target-clear" onClick={() => setReplyTarget(null)}>×</button>
+              </div>
+            )}
             <input
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
-              placeholder="留下回應…"
+              placeholder={replyTarget ? `回覆 @${replyTarget.nickname}…` : '留下回應…'}
             />
             <MediaInput value={replyMedia} onChange={setReplyMedia} />
           </div>
@@ -173,10 +186,7 @@ export default function RantDetailPage({ user }: Props) {
               <ReplyItem
                 key={reply.id}
                 reply={reply}
-                onReply={() => {
-                  const input = document.querySelector<HTMLInputElement>('.detail-reply-input-wrap input')
-                  input?.focus()
-                }}
+                onReply={handleReplyToReply}
               />
             ))}
           </div>

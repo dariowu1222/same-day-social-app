@@ -25,7 +25,7 @@ type Props = {
   onReplyTextChange: (value: string) => void
   onReplyMediaChange: (media: MediaState) => void
   onUnderstand: () => void
-  onReply: () => void
+  onReply: (parentReplyId?: string) => void
   onReport: () => void
 }
 
@@ -37,11 +37,25 @@ export default function RantPostCard({
   const navigate = useNavigate()
   const [showReplies, setShowReplies] = useState(false)
   const [showReplyForm, setShowReplyForm] = useState(false)
+  const [replyTarget, setReplyTarget] = useState<{ id: string; nickname: string } | null>(null)
   const canReply = replyText.trim() || replyMedia.imageDataUrl || replyMedia.audioDataUrl
 
   function handleReply() {
-    onReply()
+    onReply(replyTarget?.id)
     setShowReplyForm(false)
+    setReplyTarget(null)
+  }
+
+  function openReplyToPost() {
+    setReplyTarget(null)
+    setShowReplyForm(true)
+    setShowReplies(true)
+  }
+
+  function openReplyToReply(replyId: string, nickname: string) {
+    setReplyTarget({ id: replyId, nickname })
+    setShowReplyForm(true)
+    setShowReplies(true)
   }
 
   return (
@@ -56,8 +70,6 @@ export default function RantPostCard({
           </div>
           <span className="tag">{MODE_LABELS[post.mode] ?? post.mode}</span>
         </div>
-
-        {/* 內容 */}
         <p className="post-content">{post.content}</p>
         {post.imageDataUrl && <img src={post.imageDataUrl} className="post-media-img" alt="貼文圖片" />}
         {post.audioDataUrl && <audio controls src={post.audioDataUrl} className="post-media-audio" />}
@@ -80,8 +92,8 @@ export default function RantPostCard({
         <button className="post-action-btn" onClick={onUnderstand}>
           <Heart size={16} /> {post.likeCount}
         </button>
-        <button className="post-action-btn" onClick={(e) => { e.stopPropagation(); setShowReplies(true); setShowReplyForm(true) }}>
-          <MessageCircle size={16} /> {post.replies.length}
+        <button className="post-action-btn" onClick={(e) => { e.stopPropagation(); openReplyToPost() }}>
+          <MessageCircle size={16} /> {post.replyCount}
         </button>
         <button className="post-action-btn report-btn" onClick={onReport}>檢舉</button>
       </div>
@@ -89,7 +101,7 @@ export default function RantPostCard({
       {/* 第一層回覆（預設收合，子回覆各自展開） */}
       {post.replies.length > 0 && (
         <button className="reply-toggle-btn" onClick={() => setShowReplies((v) => !v)}>
-          {showReplies ? '收起回應' : `查看 ${flattenReplies(post.replies).length} 則回應`}
+          {showReplies ? '收起回應' : `查看 ${post.replyCount} 則回應`}
         </button>
       )}
 
@@ -99,7 +111,7 @@ export default function RantPostCard({
             <ReplyItem
               key={reply.id}
               reply={reply}
-              onReply={() => { setShowReplyForm(true) }}
+              onReply={openReplyToReply}
             />
           ))}
         </div>
@@ -108,6 +120,9 @@ export default function RantPostCard({
       {/* 回覆表單 */}
       {showReplyForm ? (
         <div className="reply-form">
+          {replyTarget && (
+            <div className="reply-target-hint">↩ 回覆 @{replyTarget.nickname}</div>
+          )}
           <input
             value={replyText}
             onChange={(e) => onReplyTextChange(e.target.value)}
@@ -116,12 +131,12 @@ export default function RantPostCard({
           />
           <MediaInput value={replyMedia} onChange={onReplyMediaChange} />
           <div className="reply-form-actions">
-            <button className="ghost" onClick={() => setShowReplyForm(false)}>取消</button>
+            <button className="ghost" onClick={() => { setShowReplyForm(false); setReplyTarget(null) }}>取消</button>
             <button className="secondary" onClick={handleReply} disabled={!canReply}>送出</button>
           </div>
         </div>
       ) : (
-        <button className="reply-open-btn" onClick={() => { setShowReplyForm(true); setShowReplies(true) }}>
+        <button className="reply-open-btn" onClick={openReplyToPost}>
           留下回應…
         </button>
       )}

@@ -7,7 +7,7 @@ function avatarLetter(nickname: string) {
 
 type Props = {
   reply: RantReply
-  onReply: () => void
+  onReply: (replyId: string, nickname: string) => void
 }
 
 export default function ReplyItem({ reply, onReply }: Props) {
@@ -29,7 +29,7 @@ export default function ReplyItem({ reply, onReply }: Props) {
               {showSubs ? '收起' : `查看 ${subReplies.length} 則回應`}
             </button>
           )}
-          <button className="reply-sub-btn" onClick={onReply}>回應</button>
+          <button className="reply-sub-btn" onClick={() => onReply(reply.id, reply.nickname)}>回應</button>
         </div>
 
         {showSubs && (

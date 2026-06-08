@@ -167,7 +167,7 @@ export async function understandRant(rantId: string) {
   return request<RantPost>(`/api/rants/${rantId}/understand`, { method: 'POST' })
 }
 
-export async function replyRant(rantId: string, payload: { userId: string; nickname: string; content: string; imageDataUrl?: string | null; audioDataUrl?: string | null }) {
+export async function replyRant(rantId: string, payload: { userId: string; nickname: string; content: string; imageDataUrl?: string | null; audioDataUrl?: string | null; parentReplyId?: string | null }) {
   return request<RantPost>(`/api/rants/${rantId}/replies`, { method: 'POST', body: JSON.stringify(payload) })
 }
 
