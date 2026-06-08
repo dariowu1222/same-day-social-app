@@ -175,6 +175,10 @@ export async function reportRant(rantId: string) {
   return request<RantPost>(`/api/rants/${rantId}/report`, { method: 'POST' })
 }
 
+export async function deleteRant(rantId: string, userId: string) {
+  return request<boolean>(`/api/rants/${rantId}?userId=${encodeURIComponent(userId)}`, { method: 'DELETE' })
+}
+
 export async function getTasks() {
   return request<SocialTask[]>('/api/tasks')
 }

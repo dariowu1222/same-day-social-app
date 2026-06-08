@@ -46,6 +46,15 @@ public sealed class RantsController(RantService rantService) : ControllerBase
             : ApiResponse<RantPost>.Ok(post);
     }
 
+    [HttpDelete("{rantId}")]
+    public ActionResult<ApiResponse<bool>> Delete(string rantId, [FromQuery] string userId)
+    {
+        var deleted = rantService.Delete(rantId, userId);
+        return deleted
+            ? ApiResponse<bool>.Ok(true)
+            : NotFound(ApiResponse<bool>.Fail("RANT_NOT_FOUND", "找不到貼文，或你沒有權限刪除。"));
+    }
+
     [HttpPost("{rantId}/report")]
     public ActionResult<ApiResponse<RantPost>> Report(string rantId)
     {

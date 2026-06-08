@@ -4,6 +4,7 @@ import { Heart, MessageCircle } from 'lucide-react'
 import { flattenReplies, type RantPost } from '../api/client'
 import MediaInput, { type MediaState } from './MediaInput'
 import ReplyItem from './ReplyItem'
+import PostMenu from './PostMenu'
 
 const MODE_LABELS: Record<string, string> = {
   JUST_SAYING: '只是想說',
@@ -27,12 +28,14 @@ type Props = {
   onUnderstand: () => void
   onReply: (parentReplyId?: string) => void
   onReport: () => void
+  onDelete: () => void
+  currentUserId: string
 }
 
 export default function RantPostCard({
   post, replyText, replyMedia,
   onReplyTextChange, onReplyMediaChange,
-  onUnderstand, onReply, onReport,
+  onUnderstand, onReply, onReport, onDelete, currentUserId,
 }: Props) {
   const navigate = useNavigate()
   const [showReplies, setShowReplies] = useState(false)
@@ -69,6 +72,9 @@ export default function RantPostCard({
             <span className="post-time">{new Date(post.createdAt).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
           </div>
           <span className="tag">{MODE_LABELS[post.mode] ?? post.mode}</span>
+          <div onClick={(e) => e.stopPropagation()}>
+            <PostMenu postId={post.id} isOwner={post.userId === currentUserId} onDelete={onDelete} />
+          </div>
         </div>
         <p className="post-content">{post.content}</p>
         {post.imageDataUrl && <img src={post.imageDataUrl} className="post-media-img" alt="貼文圖片" />}

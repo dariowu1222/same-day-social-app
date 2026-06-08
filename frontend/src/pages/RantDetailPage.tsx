@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Heart, MessageCircle, ChevronLeft, Flag } from 'lucide-react'
 import type { DemoUser } from '../App'
-import { getRants, replyRant, reportRant, understandRant, type RantPost } from '../api/client'
+import { deleteRant, getRants, replyRant, reportRant, understandRant, type RantPost } from '../api/client'
 import MediaInput, { EMPTY_MEDIA, type MediaState } from '../components/MediaInput'
 import ReplyItem from '../components/ReplyItem'
+import PostMenu from '../components/PostMenu'
 
 const MODE_LABELS: Record<string, string> = {
   JUST_SAYING: '只是想說',
@@ -111,6 +112,13 @@ export default function RantDetailPage({ user }: Props) {
           <ChevronLeft size={22} />
         </button>
         <span className="detail-topbar-title">貼文</span>
+        {post && (
+          <PostMenu
+            postId={post.id}
+            isOwner={post.userId === user.userId}
+            onDelete={async () => { await deleteRant(post.id, user.userId); navigate(-1) }}
+          />
+        )}
       </div>
 
       <div className="detail-scroll">

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { PenLine, ChevronDown } from 'lucide-react'
 import type { DemoUser } from '../App'
-import { createRant, getRants, replyRant, reportRant, understandRant, type RantPost } from '../api/client'
+import { createRant, deleteRant, getRants, replyRant, reportRant, understandRant, type RantPost } from '../api/client'
 import HashtagInput from '../components/HashtagInput'
 import MediaInput, { EMPTY_MEDIA, type MediaState } from '../components/MediaInput'
 import RantPostCard from '../components/RantPostCard'
@@ -107,6 +107,8 @@ export default function RantBoardPage({ user }: Props) {
             onReply={(parentReplyId) =>
               updatePost(() => replyRant(post.id, { userId: user.userId, nickname: user.nickname, content: replies[post.id] ?? '', ...(replyMedia[post.id] ?? EMPTY_MEDIA), parentReplyId }))
             }
+            onDelete={() => updatePost(() => deleteRant(post.id, user.userId))}
+            currentUserId={user.userId}
           />
         ))}
       </section>

@@ -59,6 +59,16 @@ public sealed class JsonStorageService
         return item;
     }
 
+    public bool DeleteOne<T>(string name, string id)
+    {
+        var data = ReadCollection<T>(name);
+        var before = data.Count;
+        data.RemoveAll(x => GetId(x) == id);
+        if (data.Count == before) return false;
+        WriteCollection(name, data);
+        return true;
+    }
+
     public T? FindById<T>(string name, string id) where T : class
     {
         return ReadCollection<T>(name).FirstOrDefault(x => GetId(x) == id);

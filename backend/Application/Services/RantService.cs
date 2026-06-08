@@ -158,6 +158,26 @@ public sealed class RantService
         });
     }
 
+    public bool Delete(string rantId, string userId)
+    {
+        if (db != null)
+        {
+            var post = db.RantPosts.FirstOrDefault(x => x.Id == rantId && x.UserId == userId);
+            if (post == null) return false;
+            db.RantReplies.RemoveRange(db.RantReplies.Where(x => x.RantPostId == rantId));
+            db.RantReactions.RemoveRange(db.RantReactions.Where(x => x.RantPostId == rantId));
+            db.RantReports.RemoveRange(db.RantReports.Where(x => x.RantPostId == rantId));
+            db.RantPosts.Remove(post);
+            db.SaveChanges();
+            return true;
+        }
+
+        var found = storage.ReadCollection<RantPost>("rantPosts").Any(x => x.Id == rantId && x.UserId == userId);
+        if (!found) return false;
+        storage.DeleteOne("rantPosts", rantId);
+        return true;
+    }
+
     public RantPost? Report(string rantId, string? userId = null)
     {
         if (db != null)
