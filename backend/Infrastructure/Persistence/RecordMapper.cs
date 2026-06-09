@@ -131,6 +131,7 @@ public static class RecordMapper
             ImageDataUrl = r.ImageDataUrl,
             AudioDataUrl = r.AudioDataUrl,
             ParentReplyId = r.ParentReplyId,
+            LikeCount = r.LikeCount,
             CreatedAt = r.CreatedAt,
             Replies = byParent.GetValueOrDefault(r.Id, []).Select(BuildReply).ToList()
         };

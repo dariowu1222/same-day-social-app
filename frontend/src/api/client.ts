@@ -171,6 +171,10 @@ export async function replyRant(rantId: string, payload: { userId: string; nickn
   return request<RantPost>(`/api/rants/${rantId}/replies`, { method: 'POST', body: JSON.stringify(payload) })
 }
 
+export async function likeReply(rantId: string, replyId: string) {
+  return request<RantPost>(`/api/rants/${rantId}/replies/${replyId}/understand`, { method: 'POST' })
+}
+
 export async function reportRant(rantId: string) {
   return request<RantPost>(`/api/rants/${rantId}/report`, { method: 'POST' })
 }
@@ -237,6 +241,7 @@ export type RantReply = {
   content: string
   imageDataUrl?: string | null
   audioDataUrl?: string | null
+  likeCount: number
   replies?: RantReply[]
 }
 

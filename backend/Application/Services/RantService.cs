@@ -158,6 +158,29 @@ public sealed class RantService
         });
     }
 
+    public RantPost? LikeReply(string rantId, string replyId)
+    {
+        if (db != null)
+        {
+            var reply = db.RantReplies.FirstOrDefault(x => x.Id == replyId && x.RantPostId == rantId);
+            if (reply == null) return null;
+            reply.LikeCount += 1;
+            db.SaveChanges();
+            return BuildPost(rantId);
+        }
+
+        return storage.UpdateOne<RantPost>("rantPosts", rantId, post =>
+        {
+            void IncrementReply(List<RantReply> list)
+            {
+                var target = list.FirstOrDefault(x => x.Id == replyId);
+                if (target != null) { target.LikeCount += 1; return; }
+                foreach (var r in list) IncrementReply(r.Replies);
+            }
+            IncrementReply(post.Replies);
+        });
+    }
+
     public bool Delete(string rantId, string userId)
     {
         if (db != null)

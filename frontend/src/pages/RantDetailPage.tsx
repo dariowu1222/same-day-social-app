@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Heart, MessageCircle, ChevronLeft, Flag } from 'lucide-react'
 import type { DemoUser } from '../App'
-import { deleteRant, getRants, replyRant, reportRant, understandRant, type RantPost } from '../api/client'
+import { deleteRant, getRants, likeReply, replyRant, reportRant, understandRant, type RantPost } from '../api/client'
 import MediaInput, { EMPTY_MEDIA, type MediaState } from '../components/MediaInput'
 import ReplyItem from '../components/ReplyItem'
 import PostMenu from '../components/PostMenu'
@@ -195,6 +195,7 @@ export default function RantDetailPage({ user }: Props) {
                 key={reply.id}
                 reply={reply}
                 onReply={handleReplyToReply}
+                onLike={(replyId) => rantId && likeReply(rantId, replyId).then(loadPost)}
               />
             ))}
           </div>

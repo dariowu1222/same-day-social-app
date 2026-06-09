@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Heart } from 'lucide-react'
 import { flattenReplies, type RantReply } from '../api/client'
 
 function avatarLetter(nickname: string) {
@@ -8,9 +9,10 @@ function avatarLetter(nickname: string) {
 type Props = {
   reply: RantReply
   onReply: (replyId: string, nickname: string) => void
+  onLike: (replyId: string) => void
 }
 
-export default function ReplyItem({ reply, onReply }: Props) {
+export default function ReplyItem({ reply, onReply, onLike }: Props) {
   const [showSubs, setShowSubs] = useState(false)
   const subReplies = flattenReplies(reply.replies ?? [])
 
@@ -24,6 +26,9 @@ export default function ReplyItem({ reply, onReply }: Props) {
         {reply.audioDataUrl && <audio controls src={reply.audioDataUrl} className="post-media-audio" />}
 
         <div className="reply-item-actions">
+          <button className="reply-like-btn" onClick={() => onLike(reply.id)}>
+            <Heart size={13} /> {reply.likeCount > 0 ? reply.likeCount : ''}
+          </button>
           {subReplies.length > 0 && (
             <button className="reply-sub-toggle" onClick={() => setShowSubs((v) => !v)}>
               {showSubs ? '收起' : `查看 ${subReplies.length} 則回應`}
@@ -42,6 +47,12 @@ export default function ReplyItem({ reply, onReply }: Props) {
                   <p className="flat-reply-content">{sub.content}</p>
                   {sub.imageDataUrl && <img src={sub.imageDataUrl} className="reply-media-img" alt="" />}
                   {sub.audioDataUrl && <audio controls src={sub.audioDataUrl} className="post-media-audio" />}
+                  <div className="reply-item-actions">
+                    <button className="reply-like-btn" onClick={() => onLike(sub.id)}>
+                      <Heart size={13} /> {sub.likeCount > 0 ? sub.likeCount : ''}
+                    </button>
+                    <button className="reply-sub-btn" onClick={() => onReply(sub.id, sub.nickname)}>回應</button>
+                  </div>
                 </div>
               </div>
             ))}

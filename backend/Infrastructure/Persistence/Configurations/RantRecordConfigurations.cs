@@ -40,6 +40,7 @@ public sealed class RantReplyRecordConfiguration : IEntityTypeConfiguration<Rant
         builder.Property(x => x.Content).HasColumnName("content").HasMaxLength(1000).IsRequired();
         builder.Property(x => x.ImageDataUrl).HasColumnName("image_data_url");
         builder.Property(x => x.AudioDataUrl).HasColumnName("audio_data_url");
+        builder.Property(x => x.LikeCount).HasColumnName("like_count");
         builder.Property(x => x.CreatedAt).HasColumnName("created_at");
         builder.HasIndex(x => new { x.RantPostId, x.CreatedAt });
         builder.HasIndex(x => x.ParentReplyId);

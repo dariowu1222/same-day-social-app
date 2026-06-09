@@ -26,6 +26,7 @@ public sealed class RantReplyRecord
     public string Content { get; set; } = "";
     public string? ImageDataUrl { get; set; }
     public string? AudioDataUrl { get; set; }
+    public int LikeCount { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 

@@ -108,6 +108,7 @@ export default function RantBoardPage({ user }: Props) {
               updatePost(() => replyRant(post.id, { userId: user.userId, nickname: user.nickname, content: replies[post.id] ?? '', ...(replyMedia[post.id] ?? EMPTY_MEDIA), parentReplyId }))
             }
             onDelete={() => updatePost(() => deleteRant(post.id, user.userId))}
+            onLikedReply={loadPosts}
             currentUserId={user.userId}
           />
         ))}

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Heart, MessageCircle } from 'lucide-react'
-import { type RantPost } from '../api/client'
+import { likeReply, type RantPost } from '../api/client'
 import MediaInput, { type MediaState } from './MediaInput'
 import ReplyItem from './ReplyItem'
 import PostMenu from './PostMenu'
@@ -29,13 +29,14 @@ type Props = {
   onReply: (parentReplyId?: string) => void
   onReport: () => void
   onDelete: () => void
+  onLikedReply: () => void
   currentUserId: string
 }
 
 export default function RantPostCard({
   post, replyText, replyMedia,
   onReplyTextChange, onReplyMediaChange,
-  onUnderstand, onReply, onReport, onDelete, currentUserId,
+  onUnderstand, onReply, onReport, onDelete, onLikedReply, currentUserId,
 }: Props) {
   const navigate = useNavigate()
   const [showReplies, setShowReplies] = useState(false)
@@ -118,6 +119,7 @@ export default function RantPostCard({
               key={reply.id}
               reply={reply}
               onReply={openReplyToReply}
+              onLike={(replyId) => likeReply(post.id, replyId).then(onLikedReply)}
             />
           ))}
         </div>

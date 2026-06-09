@@ -55,6 +55,15 @@ public sealed class RantsController(RantService rantService) : ControllerBase
             : NotFound(ApiResponse<bool>.Fail("RANT_NOT_FOUND", "找不到貼文，或你沒有權限刪除。"));
     }
 
+    [HttpPost("{rantId}/replies/{replyId}/understand")]
+    public ActionResult<ApiResponse<RantPost>> LikeReply(string rantId, string replyId)
+    {
+        var post = rantService.LikeReply(rantId, replyId);
+        return post == null
+            ? NotFound(ApiResponse<RantPost>.Fail("REPLY_NOT_FOUND", "找不到這則回應。"))
+            : ApiResponse<RantPost>.Ok(post);
+    }
+
     [HttpPost("{rantId}/report")]
     public ActionResult<ApiResponse<RantPost>> Report(string rantId)
     {
