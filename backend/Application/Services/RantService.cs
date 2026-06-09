@@ -88,6 +88,20 @@ public sealed class RantService
             .ToList();
     }
 
+    public RantPost? GetPost(string rantId)
+    {
+        if (db != null)
+        {
+            var post = db.RantPosts.AsNoTracking().FirstOrDefault(x => x.Id == rantId && !x.IsHidden);
+            if (post == null) return null;
+            var replies = db.RantReplies.AsNoTracking().Where(x => x.RantPostId == rantId).ToList();
+            var likeCount = db.RantReactions.AsNoTracking()
+                .Count(x => x.RantPostId == rantId && x.ReactionType == "UNDERSTAND");
+            return post.ToDomain(replies, likeCount);
+        }
+        return storage.ReadCollection<RantPost>("rantPosts").FirstOrDefault(x => x.Id == rantId && !x.IsHidden);
+    }
+
     public RantPost? Understand(string rantId, string? userId = null)
     {
         if (db != null)
