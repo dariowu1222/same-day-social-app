@@ -174,7 +174,7 @@ public sealed class RantService
 
         var found = storage.ReadCollection<RantPost>("rantPosts").Any(x => x.Id == rantId && x.UserId == userId);
         if (!found) return false;
-        storage.DeleteOne("rantPosts", rantId);
+        storage.DeleteOne<RantPost>("rantPosts", rantId);
         return true;
     }
 
