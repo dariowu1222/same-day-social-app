@@ -3848,13 +3848,52 @@ blockquote {
 
 /* ── 樹洞頁標題 ── */
 .rant-board-title {
-  font-size: 14px;
-  color: #8a9e9c;
+  font-size: 16px;
+  font-weight: 700;
+  color: #2d4a47;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   padding: 0 2px;
-  margin: -8px 0 -4px;
+  margin: -4px 0 -4px;
+}
+
+/* ── 樹洞 FAB ── */
+.rant-fab {
+  position: fixed;
+  bottom: 88px;
+  right: calc(50% - min(100%, 520px) / 2 + 18px);
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #2d6e65;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(36, 72, 69, 0.35);
+  z-index: 50;
+  transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+.rant-fab:hover {
+  background: #244845;
+  box-shadow: 0 6px 20px rgba(36, 72, 69, 0.45);
+}
+
+.rant-fab:active {
+  transform: scale(0.93);
+}
+
+.rant-fab-open {
+  background: #8c4a2a;
+  box-shadow: 0 4px 16px rgba(140, 74, 42, 0.35);
+}
+
+.rant-fab-open:hover {
+  background: #6e3820;
 }
 
 /* ── 樹洞搜尋欄 ── */

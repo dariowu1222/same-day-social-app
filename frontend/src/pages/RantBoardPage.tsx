@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { PenLine, ChevronDown, Search, X } from 'lucide-react'
+import { Plus, X, ChevronDown } from 'lucide-react'
 import type { DemoUser } from '../App'
 import { createRant, deleteRant, getRants, replyRant, reportRant, understandRant, type RantPost } from '../api/client'
 import HashtagInput from '../components/HashtagInput'
 import MediaInput, { EMPTY_MEDIA, type MediaState } from '../components/MediaInput'
 import RantPostCard from '../components/RantPostCard'
+import { Search } from 'lucide-react'
 
 type Props = {
   user: DemoUser
@@ -86,20 +87,7 @@ export default function RantBoardPage({ user }: Props) {
       {/* 標題（一行）*/}
       <p className="rant-board-title">這裡可以說說今天不太想放在心裡的事</p>
 
-      {/* 發文區 toggle */}
-      <div className="rant-compose-toggle">
-        <button
-          className={`rant-compose-trigger${showForm ? ' open' : ''}`}
-          onClick={() => setShowForm((v) => !v)}
-        >
-          {showForm ? (
-            <><ChevronDown size={16} /> 收起</>
-          ) : (
-            <><PenLine size={16} /> 說說看</>
-          )}
-        </button>
-      </div>
-
+      {/* 發文區（收合）*/}
       {showForm && (
         <section className="panel">
           <div className="post-input-block">
@@ -149,6 +137,15 @@ export default function RantBoardPage({ user }: Props) {
           ))
         )}
       </section>
+
+      {/* FAB：右下角發文按鈕 */}
+      <button
+        className={`rant-fab${showForm ? ' rant-fab-open' : ''}`}
+        onClick={() => setShowForm((v) => !v)}
+        aria-label={showForm ? '收起' : '說說看'}
+      >
+        {showForm ? <ChevronDown size={22} /> : <Plus size={24} />}
+      </button>
     </div>
   )
 }
