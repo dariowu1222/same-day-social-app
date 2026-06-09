@@ -7,6 +7,7 @@ import TodayPage from './pages/TodayPage'
 import MatchResultPage from './pages/MatchResultPage'
 import RantBoardPage from './pages/RantBoardPage'
 import RantDetailPage from './pages/RantDetailPage'
+import RantNewPostPage from './pages/RantNewPostPage'
 import TasksPage from './pages/TasksPage'
 import ChatPage from './pages/ChatPage'
 import ProfilePage from './pages/ProfilePage'
@@ -71,7 +72,7 @@ function App() {
     return <LoginPage onAuthenticated={handleAuthenticated} />
   }
 
-  const isDetail = location.pathname.startsWith('/rant/')
+  const isDetail = location.pathname.startsWith('/rant/') || location.pathname === '/rant/new'
 
   return (
     <>
@@ -83,6 +84,7 @@ function App() {
               : <MatchResultPage moodLabel={selectedMoodLabel} onBack={() => setShowMatchResult(false)} onGoToRant={() => { setShowMatchResult(false); navigate('/rant') }} />
           } />
           <Route path="/rant" element={<RantBoardPage user={user} />} />
+          <Route path="/rant/new" element={<RantNewPostPage user={user} />} />
           <Route path="/rant/:rantId" element={<RantDetailPage user={user} />} />
           <Route path="/tasks" element={<TasksPage user={user} />} />
           <Route path="/chat" element={<ChatPage user={user} />} />
