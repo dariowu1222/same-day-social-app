@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Heart, MessageCircle, ChevronLeft, Flag } from 'lucide-react'
 import type { DemoUser } from '../App'
@@ -36,19 +36,17 @@ export default function RantDetailPage({ user }: Props) {
   const [replyMedia, setReplyMedia] = useState<MediaState>(EMPTY_MEDIA)
   const [replyTarget, setReplyTarget] = useState<{ id: string; nickname: string } | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [composeFocused, setComposeFocused] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    loadPost()
-  }, [rantId])
+  useEffect(() => { loadPost() }, [rantId])
 
   async function loadPost() {
     try {
       const res = await getRants()
       const found = res.data.find((p) => p.id === rantId) ?? null
       setPost(found)
-    } catch {
-      // ignore
-    }
+    } catch { /* ignore */ }
   }
 
   async function handleUnderstand() {
@@ -77,6 +75,7 @@ export default function RantDetailPage({ user }: Props) {
       setReplyText('')
       setReplyMedia(EMPTY_MEDIA)
       setReplyTarget(null)
+      setComposeFocused(false)
       await loadPost()
     } finally {
       setSubmitting(false)
@@ -85,7 +84,8 @@ export default function RantDetailPage({ user }: Props) {
 
   function handleReplyToReply(replyId: string, nickname: string) {
     setReplyTarget({ id: replyId, nickname })
-    document.querySelector<HTMLInputElement>('.detail-reply-input-wrap input')?.focus()
+    setComposeFocused(true)
+    setTimeout(() => inputRef.current?.focus(), 50)
   }
 
   const canReply = replyText.trim() || replyMedia.imageDataUrl || replyMedia.audioDataUrl
@@ -94,9 +94,7 @@ export default function RantDetailPage({ user }: Props) {
     return (
       <div className="detail-page">
         <div className="detail-topbar">
-          <button className="detail-back-btn" onClick={() => navigate(-1)}>
-            <ChevronLeft size={22} />
-          </button>
+          <button className="detail-back-btn" onClick={() => navigate(-1)}><ChevronLeft size={22} /></button>
           <span className="detail-topbar-title">貼文</span>
         </div>
         <p style={{ padding: '24px', color: '#8a9e9c' }}>載入中…</p>
@@ -108,95 +106,106 @@ export default function RantDetailPage({ user }: Props) {
     <div className="detail-page">
       {/* 頂部導覽 */}
       <div className="detail-topbar">
-        <button className="detail-back-btn" onClick={() => navigate(-1)}>
-          <ChevronLeft size={22} />
-        </button>
+        <button className="detail-back-btn" onClick={() => navigate(-1)}><ChevronLeft size={22} /></button>
         <span className="detail-topbar-title">貼文</span>
-        {post && (
-          <PostMenu
-            postId={post.id}
-            isOwner={post.userId === user.userId}
-            onDelete={async () => { await deleteRant(post.id, user.userId); navigate(-1) }}
-          />
-        )}
+        <PostMenu
+          postId={post.id}
+          isOwner={post.userId === user.userId}
+          onDelete={async () => { await deleteRant(post.id, user.userId); navigate(-1) }}
+        />
       </div>
 
       <div className="detail-scroll">
-        {/* 主貼文 */}
-        <div className="detail-post">
-          <div className="post-author-row">
-            <div className="avatar-circle">{avatarLetter(post.nickname)}</div>
-            <div className="post-author-info">
-              <span className="post-author-name">{post.nickname}</span>
-              <span className="post-time">{formatTime(post.createdAt)}</span>
+        {/* ── 主貼文（Thread 風格）── */}
+        <div className="detail-thread-post">
+          <div className="thread-row">
+            {/* 左：頭像 + 串文線（有回覆時）*/}
+            <div className="thread-left">
+              <div className="avatar-circle" style={{ flexShrink: 0 }}>{avatarLetter(post.nickname)}</div>
+              {post.replies.length > 0 && <div className="thread-line" />}
             </div>
-            <span className="tag">{MODE_LABELS[post.mode] ?? post.mode}</span>
-          </div>
 
-          <p className="detail-post-content">{post.content}</p>
+            {/* 右：貼文內容 */}
+            <div className="thread-right">
+              <div className="thread-post-header" style={{ cursor: 'default' }}>
+                <div className="thread-post-header-info">
+                  <span className="post-author-name">{post.nickname}</span>
+                  <span className="post-time">{formatTime(post.createdAt)}</span>
+                  <span className="tag">{MODE_LABELS[post.mode] ?? post.mode}</span>
+                </div>
+              </div>
 
-          {post.imageDataUrl && <img src={post.imageDataUrl} className="post-media-img" alt="" />}
-          {post.audioDataUrl && <audio controls src={post.audioDataUrl} className="post-media-audio" />}
+              <p className="detail-post-content">{post.content}</p>
+              {post.imageDataUrl && <img src={post.imageDataUrl} className="post-media-img" alt="" />}
+              {post.audioDataUrl && <audio controls src={post.audioDataUrl} className="post-media-audio" />}
 
-          {post.hashtags?.length > 0 && (
-            <div className="hashtag-row">
-              {post.hashtags.map((tag) => <span key={tag} className="hashtag-tag">#{tag}</span>)}
+              {post.hashtags?.length > 0 && (
+                <div className="hashtag-row">
+                  {post.hashtags.map((tag) => <span key={tag} className="hashtag-tag">#{tag}</span>)}
+                </div>
+              )}
+              {post.emotionTags.length > 0 && (
+                <div className="tag-row">
+                  {post.emotionTags.map((tag) => <span key={tag} className="tag">{tag}</span>)}
+                </div>
+              )}
+
+              {/* 動作列 */}
+              <div className="thread-action-bar">
+                <button className="post-action-btn" onClick={handleUnderstand}>
+                  <Heart size={16} /> {post.likeCount > 0 ? post.likeCount : ''}
+                </button>
+                <button className="post-action-btn" onClick={() => { setComposeFocused(true); setTimeout(() => inputRef.current?.focus(), 50) }}>
+                  <MessageCircle size={16} /> {post.replies.length > 0 ? post.replies.length : ''}
+                </button>
+                <button className="post-action-btn report-btn" onClick={handleReport}>
+                  <Flag size={14} /> 檢舉
+                </button>
+              </div>
             </div>
-          )}
-          {post.emotionTags.length > 0 && (
-            <div className="tag-row">
-              {post.emotionTags.map((tag) => <span key={tag} className="tag">{tag}</span>)}
-            </div>
-          )}
-
-          <div className="detail-action-row">
-            <button className="post-action-btn" onClick={handleUnderstand}>
-              <Heart size={16} /> {post.likeCount}
-            </button>
-            <button className="post-action-btn">
-              <MessageCircle size={16} /> {post.replies.length}
-            </button>
-            <button className="post-action-btn report-btn" onClick={handleReport}>
-              <Flag size={14} /> 檢舉
-            </button>
           </div>
         </div>
 
-        {/* 回覆輸入框 */}
-        <div className="detail-reply-form">
+        {/* ── 回覆輸入區 ── */}
+        <div className="detail-thread-compose">
           <div className="avatar-circle avatar-sm">{avatarLetter(user.nickname)}</div>
-          <div className="detail-reply-input-wrap">
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
             {replyTarget && (
               <div className="reply-target-hint">↩ 回覆 @{replyTarget.nickname}
                 <button className="reply-target-clear" onClick={() => setReplyTarget(null)}>×</button>
               </div>
             )}
             <input
+              ref={inputRef}
+              className="detail-thread-compose-input"
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
+              onFocus={() => setComposeFocused(true)}
               placeholder={replyTarget ? `回覆 @${replyTarget.nickname}…` : '留下回應…'}
             />
-            <MediaInput value={replyMedia} onChange={setReplyMedia} />
+            {composeFocused && (
+              <>
+                <MediaInput value={replyMedia} onChange={setReplyMedia} />
+                <div className="reply-form-actions">
+                  <button className="ghost" onClick={() => { setComposeFocused(false); setReplyTarget(null); setReplyText(''); setReplyMedia(EMPTY_MEDIA) }}>取消</button>
+                  <button className="secondary" onClick={handleReply} disabled={!canReply || submitting}>送出</button>
+                </div>
+              </>
+            )}
           </div>
-          <button
-            className="secondary"
-            onClick={handleReply}
-            disabled={!canReply || submitting}
-          >
-            送出
-          </button>
         </div>
 
-        {/* 第一層回覆（子回覆各自展開） */}
+        {/* ── 回覆列表 ── */}
         {post.replies.length > 0 && (
-          <div className="detail-reply-list">
+          <div className="detail-thread-reply-list">
             {post.replies.map((reply) => (
-              <ReplyItem
-                key={reply.id}
-                reply={reply}
-                onReply={handleReplyToReply}
-                onLike={(replyId) => rantId && likeReply(rantId, replyId).then(loadPost)}
-              />
+              <div key={reply.id} className="detail-thread-reply-item">
+                <ReplyItem
+                  reply={reply}
+                  onReply={handleReplyToReply}
+                  onLike={(replyId) => rantId && likeReply(rantId, replyId).then(loadPost)}
+                />
+              </div>
             ))}
           </div>
         )}

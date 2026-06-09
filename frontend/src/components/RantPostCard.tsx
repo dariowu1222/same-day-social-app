@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Heart, MessageCircle } from 'lucide-react'
+import { Heart, MessageCircle, Flag } from 'lucide-react'
 import { likeReply, type RantPost } from '../api/client'
 import MediaInput, { type MediaState } from './MediaInput'
 import ReplyItem from './ReplyItem'
@@ -63,78 +63,82 @@ export default function RantPostCard({
   }
 
   return (
-    <article className="card">
-      {/* 貼文作者列 + 內容（點擊進詳細頁） */}
-      <div className="card-clickable" onClick={() => navigate(`/rant/${post.id}`)}>
-        <div className="post-author-row">
-          <div className="avatar-circle">{avatarLetter(post.nickname)}</div>
-          <div className="post-author-info">
-            <span className="post-author-name">{post.nickname}</span>
-            <span className="post-time">{new Date(post.createdAt).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+    <article className="card" style={{ gap: 0, padding: '14px 14px 8px' }}>
+      {/* Thread row: 頭像(左) + 內容(右) */}
+      <div className="thread-row">
+        {/* 左：頭像 + 串文線 */}
+        <div className="thread-left">
+          <div className="avatar-circle" style={{ cursor: 'pointer', flexShrink: 0 }} onClick={() => navigate(`/rant/${post.id}`)}>
+            {avatarLetter(post.nickname)}
           </div>
-          <span className="tag">{MODE_LABELS[post.mode] ?? post.mode}</span>
-          <div onClick={(e) => e.stopPropagation()}>
-            <PostMenu postId={post.id} isOwner={post.userId === currentUserId} onDelete={onDelete} />
+          {showReplies && post.replies.length > 0 && <div className="thread-line" />}
+        </div>
+
+        {/* 右：所有內容 */}
+        <div className="thread-right">
+          {/* 標題列（點擊進詳細頁）*/}
+          <div
+            className="thread-post-header"
+            onClick={() => navigate(`/rant/${post.id}`)}
+          >
+            <div className="thread-post-header-info">
+              <span className="post-author-name">{post.nickname}</span>
+              <span className="post-time">
+                {new Date(post.createdAt).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              </span>
+              <span className="tag">{MODE_LABELS[post.mode] ?? post.mode}</span>
+            </div>
+            <div onClick={(e) => e.stopPropagation()}>
+              <PostMenu postId={post.id} isOwner={post.userId === currentUserId} onDelete={onDelete} />
+            </div>
+          </div>
+
+          {/* 內文（點擊進詳細頁）*/}
+          <div onClick={() => navigate(`/rant/${post.id}`)} style={{ cursor: 'pointer' }}>
+            <p className="post-content" style={{ marginBottom: 8 }}>{post.content}</p>
+            {post.imageDataUrl && <img src={post.imageDataUrl} className="post-media-img" alt="貼文圖片" />}
+            {post.audioDataUrl && <audio controls src={post.audioDataUrl} className="post-media-audio" />}
+          </div>
+
+          {/* Tags */}
+          {post.hashtags?.length > 0 && (
+            <div className="hashtag-row">
+              {post.hashtags.map((tag) => <span key={tag} className="hashtag-tag">#{tag}</span>)}
+            </div>
+          )}
+          {post.emotionTags.length > 0 && (
+            <div className="tag-row">
+              {post.emotionTags.map((tag) => <span key={tag} className="tag">{tag}</span>)}
+            </div>
+          )}
+
+          {/* 動作列 */}
+          <div className="thread-action-bar">
+            <button className="post-action-btn" onClick={onUnderstand}>
+              <Heart size={16} /> {post.likeCount > 0 ? post.likeCount : ''}
+            </button>
+            <button className="post-action-btn" onClick={(e) => { e.stopPropagation(); openReplyToPost() }}>
+              <MessageCircle size={16} /> {post.replyCount > 0 ? post.replyCount : ''}
+            </button>
+            <button className="post-action-btn report-btn" onClick={onReport}>
+              <Flag size={14} /> 檢舉
+            </button>
           </div>
         </div>
-        <p className="post-content">{post.content}</p>
-        {post.imageDataUrl && <img src={post.imageDataUrl} className="post-media-img" alt="貼文圖片" />}
-        {post.audioDataUrl && <audio controls src={post.audioDataUrl} className="post-media-audio" />}
       </div>
 
-      {/* Tags */}
-      {post.hashtags?.length > 0 && (
-        <div className="hashtag-row">
-          {post.hashtags.map((tag) => <span key={tag} className="hashtag-tag">#{tag}</span>)}
-        </div>
-      )}
-      {post.emotionTags.length > 0 && (
-        <div className="tag-row">
-          {post.emotionTags.map((tag) => <span key={tag} className="tag">{tag}</span>)}
-        </div>
-      )}
-
-      {/* 動作列 */}
-      <div className="post-action-row">
-        <button className="post-action-btn" onClick={onUnderstand}>
-          <Heart size={16} /> {post.likeCount}
-        </button>
-        <button className="post-action-btn" onClick={(e) => { e.stopPropagation(); openReplyToPost() }}>
-          <MessageCircle size={16} /> {post.replyCount}
-        </button>
-        <button className="post-action-btn report-btn" onClick={onReport}>檢舉</button>
-      </div>
-
-      {/* 第一層回覆（預設收合，子回覆各自展開） */}
-      {post.replies.length > 0 && (
-        <button className="reply-toggle-btn" onClick={() => setShowReplies((v) => !v)}>
-          {showReplies ? '收起回應' : `查看 ${post.replyCount} 則回應`}
-        </button>
-      )}
-
-      {showReplies && (
-        <div className="flat-reply-list">
-          {post.replies.map((reply) => (
-            <ReplyItem
-              key={reply.id}
-              reply={reply}
-              onReply={openReplyToReply}
-              onLike={(replyId) => likeReply(post.id, replyId).then(onLikedReply)}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* 回覆表單 */}
+      {/* 回覆輸入區 */}
       {showReplyForm ? (
-        <div className="reply-form">
+        <div className="reply-form" style={{ marginTop: 6 }}>
           {replyTarget && (
-            <div className="reply-target-hint">↩ 回覆 @{replyTarget.nickname}</div>
+            <div className="reply-target-hint">↩ 回覆 @{replyTarget.nickname}
+              <button className="reply-target-clear" onClick={() => setReplyTarget(null)}>×</button>
+            </div>
           )}
           <input
             value={replyText}
             onChange={(e) => onReplyTextChange(e.target.value)}
-            placeholder="留一句溫和回應"
+            placeholder={replyTarget ? `回覆 @${replyTarget.nickname}…` : '留一句溫和回應'}
             autoFocus
           />
           <MediaInput value={replyMedia} onChange={onReplyMediaChange} />
@@ -144,9 +148,33 @@ export default function RantPostCard({
           </div>
         </div>
       ) : (
-        <button className="reply-open-btn" onClick={openReplyToPost}>
-          留下回應…
+        <button className="thread-compose-btn" onClick={openReplyToPost}>
+          {replyTarget ? `回覆 @${replyTarget.nickname}…` : '留下回應…'}
         </button>
+      )}
+
+      {/* 回覆收合切換 */}
+      {post.replies.length > 0 && !showReplies && (
+        <button className="reply-toggle-btn" style={{ paddingTop: 4 }} onClick={() => setShowReplies(true)}>
+          查看 {post.replyCount} 則回應
+        </button>
+      )}
+
+      {/* 回覆列表 */}
+      {showReplies && (
+        <div className="thread-reply-section">
+          {post.replies.map((reply) => (
+            <ReplyItem
+              key={reply.id}
+              reply={reply}
+              onReply={openReplyToReply}
+              onLike={(replyId) => likeReply(post.id, replyId).then(onLikedReply)}
+            />
+          ))}
+          <button className="thread-collapse-btn" onClick={() => setShowReplies(false)}>
+            收起回應
+          </button>
+        </div>
       )}
     </article>
   )

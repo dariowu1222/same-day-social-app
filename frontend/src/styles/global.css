@@ -3628,3 +3628,220 @@ blockquote {
   line-height: 1.5;
   white-space: pre-wrap;
 }
+
+/* ════════════════════════════════════
+   Thread 風格佈局
+════════════════════════════════════ */
+
+/* 核心 thread row: 左側(頭像+線) + 右側(內容) */
+.thread-row {
+  display: flex;
+  gap: 10px;
+}
+
+.thread-left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  width: 40px;
+}
+
+.thread-left-sm {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  width: 32px;
+}
+
+/* 串文連接線 */
+.thread-line {
+  width: 2px;
+  flex: 1;
+  min-height: 12px;
+  background: #dde8e6;
+  border-radius: 1px;
+  margin: 4px 0 0;
+}
+
+.thread-right {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 貼文標題列（作者+時間+tag+menu） */
+.thread-post-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  margin-bottom: 3px;
+}
+
+.thread-post-header-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* 動作列（無框）*/
+.thread-action-bar {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 4px 0 2px;
+}
+
+/* 無框 action 按鈕（覆蓋舊版有框版本） */
+.thread-action-bar .post-action-btn {
+  padding: 4px 0;
+}
+
+/* 留下回應虛擬輸入框樣式 */
+.thread-compose-btn {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 6px 0 4px;
+  font-size: 14px;
+  color: #b0bfbd;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* 回覆列表 */
+.thread-reply-section {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid #f0ede5;
+  padding-top: 4px;
+}
+
+/* 每一筆 reply item 的右側 wrapper */
+.thread-reply-right {
+  flex: 1;
+  min-width: 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #f5f2ec;
+}
+
+.thread-reply-section > .thread-row:last-of-type .thread-reply-right {
+  border-bottom: none;
+}
+
+/* 收合按鈕 */
+.thread-collapse-btn {
+  background: none;
+  border: none;
+  padding: 8px 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #5b8f8a;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+
+.thread-collapse-btn:hover { color: #244845; }
+
+/* Reply header (作者+時間) */
+.thread-reply-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+/* 子回覆收合態：堆疊小頭像 + 查看N則 */
+.thread-sub-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  margin-top: 6px;
+}
+
+.thread-sub-indicator:hover .thread-sub-count { color: #244845; }
+
+.thread-sub-avatars {
+  display: flex;
+  align-items: center;
+}
+
+.thread-sub-avatar-xs {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #7ab5af;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: -4px;
+  border: 1.5px solid #fffdf8;
+  flex-shrink: 0;
+}
+
+.thread-sub-avatars .thread-sub-avatar-xs:first-child { margin-left: 0; }
+
+.thread-sub-count {
+  font-size: 12px;
+  color: #5b8f8a;
+  font-weight: 600;
+}
+
+/* 子回覆展開後的列表 */
+.thread-sub-list {
+  display: flex;
+  flex-direction: column;
+  margin-top: 4px;
+}
+
+/* Detail page thread 主貼文 */
+.detail-thread-post {
+  padding: 16px 16px 0;
+}
+
+.detail-thread-compose {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px 12px;
+  border-bottom: 1px solid #f0ebe0;
+}
+
+.detail-thread-compose-input {
+  flex: 1;
+  border: none;
+  background: #f7f4ee;
+  border-radius: 20px;
+  padding: 8px 14px;
+  font-size: 14px;
+  color: #263238;
+  outline: none;
+  font-family: inherit;
+}
+
+.detail-thread-compose-input::placeholder { color: #b0bfbd; }
+.detail-thread-compose-input:focus { background: #eef5f3; }
+
+.detail-thread-reply-list {
+  padding: 4px 0;
+}
+
+.detail-thread-reply-item {
+  padding: 10px 16px 0;
+}
+
+.detail-thread-reply-right {
+  flex: 1;
+  min-width: 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #f5f2ec;
+}
