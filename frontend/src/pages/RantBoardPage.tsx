@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, X } from 'lucide-react'
 import type { DemoUser } from '../App'
@@ -52,8 +52,29 @@ export default function RantBoardPage({ user }: Props) {
     await loadPosts()
   }
 
+  const fireflies = useMemo(() =>
+    Array.from({ length: 12 }, (_, i) => ({
+      id: i,
+      top: `${10 + Math.random() * 75}%`,
+      left: `${5 + Math.random() * 90}%`,
+      fx: `${(Math.random() - 0.5) * 80}px`,
+      fy: `${(Math.random() - 0.5) * 60}px`,
+      fd: `${5 + Math.random() * 5}s`,
+      delay: `${Math.random() * 6}s`,
+    }))
+  , [])
+
   return (
-    <div className="page">
+    <div className="page rant-page">
+      {/* 螢火蟲 */}
+      {fireflies.map((f) => (
+        <div
+          key={f.id}
+          className="firefly"
+          style={{ top: f.top, left: f.left, '--fx': f.fx, '--fy': f.fy, '--fd': f.fd, '--delay': f.delay } as React.CSSProperties}
+        />
+      ))}
+
       {/* 搜尋欄（sticky）*/}
       <div className="rant-search-bar">
         <div className="rant-search-inner">
