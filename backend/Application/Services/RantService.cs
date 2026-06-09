@@ -162,13 +162,12 @@ public sealed class RantService
     {
         if (db != null)
         {
-            var post = db.RantPosts.FirstOrDefault(x => x.Id == rantId && x.UserId == userId);
-            if (post == null) return false;
-            db.RantReplies.RemoveRange(db.RantReplies.Where(x => x.RantPostId == rantId));
-            db.RantReactions.RemoveRange(db.RantReactions.Where(x => x.RantPostId == rantId));
-            db.RantReports.RemoveRange(db.RantReports.Where(x => x.RantPostId == rantId));
-            db.RantPosts.Remove(post);
-            db.SaveChanges();
+            var exists = db.RantPosts.Any(x => x.Id == rantId && x.UserId == userId);
+            if (!exists) return false;
+            db.RantReplies.Where(x => x.RantPostId == rantId).ExecuteDelete();
+            db.RantReactions.Where(x => x.RantPostId == rantId).ExecuteDelete();
+            db.RantReports.Where(x => x.RantPostId == rantId).ExecuteDelete();
+            db.RantPosts.Where(x => x.Id == rantId).ExecuteDelete();
             return true;
         }
 
