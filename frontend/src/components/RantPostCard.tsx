@@ -115,12 +115,6 @@ export default function RantPostCard({
               ))}
             </div>
           )}
-          {post.emotionTags.length > 0 && (
-            <div className="tag-row">
-              {post.emotionTags.map((tag) => <span key={tag} className="tag">{tag}</span>)}
-            </div>
-          )}
-
           {/* 動作列 */}
           <div className="thread-action-bar">
             <button className="post-action-btn" onClick={onUnderstand}>

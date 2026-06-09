@@ -144,11 +144,7 @@ export default function RantDetailPage({ user }: Props) {
                   {post.hashtags.map((tag) => <span key={tag} className="hashtag-tag">#{tag}</span>)}
                 </div>
               )}
-              {post.emotionTags.length > 0 && (
-                <div className="tag-row">
-                  {post.emotionTags.map((tag) => <span key={tag} className="tag">{tag}</span>)}
-                </div>
-              )}
+
 
               {/* 動作列 */}
               <div className="thread-action-bar">
