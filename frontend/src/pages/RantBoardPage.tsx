@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { PenLine, ChevronDown } from 'lucide-react'
+import { PenLine, ChevronDown, Search, X } from 'lucide-react'
 import type { DemoUser } from '../App'
 import { createRant, deleteRant, getRants, replyRant, reportRant, understandRant, type RantPost } from '../api/client'
 import HashtagInput from '../components/HashtagInput'
@@ -20,6 +20,15 @@ export default function RantBoardPage({ user }: Props) {
   const [replyMedia, setReplyMedia] = useState<Record<string, MediaState>>({})
   const [message, setMessage] = useState('')
   const [showForm, setShowForm] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const filteredPosts = searchQuery.trim()
+    ? posts.filter((post) =>
+        post.hashtags?.some((tag) =>
+          tag.toLowerCase().includes(searchQuery.trim().toLowerCase())
+        )
+      )
+    : posts
 
   useEffect(() => {
     loadPosts()
@@ -56,6 +65,30 @@ export default function RantBoardPage({ user }: Props) {
         <h1>這裡可以說說今天不太想放在心裡的事。</h1>
         <p>可以抱怨，但不要攻擊、肉搜或公開他人個資。</p>
       </header>
+
+      {/* ── 搜尋欄（sticky）── */}
+      <div className="rant-search-bar">
+        <div className="rant-search-inner">
+          <Search size={15} className="rant-search-icon" />
+          <input
+            className="rant-search-input"
+            placeholder="搜尋 hashtag…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          {searchQuery && (
+            <button className="rant-search-clear" onClick={() => setSearchQuery('')}>
+              <X size={14} />
+            </button>
+          )}
+        </div>
+        {searchQuery.trim() && (
+          <span className="rant-search-count">
+            {filteredPosts.length > 0 ? `${filteredPosts.length} 則` : '無符合貼文'}
+          </span>
+        )}
+      </div>
+
       {/* 發文區 toggle */}
       <div className="rant-compose-toggle">
         <button
@@ -93,25 +126,31 @@ export default function RantBoardPage({ user }: Props) {
           {message && <p className="notice">{message}</p>}
         </section>
       )}
+
       <section className="list">
-        {posts.map((post) => (
-          <RantPostCard
-            key={post.id}
-            post={post}
-            replyText={replies[post.id] ?? ''}
-            onReplyTextChange={(value) => setReplies({ ...replies, [post.id]: value })}
-            onUnderstand={() => updatePost(() => understandRant(post.id))}
-            onReport={() => updatePost(() => reportRant(post.id))}
-            replyMedia={replyMedia[post.id] ?? EMPTY_MEDIA}
-            onReplyMediaChange={(media) => setReplyMedia({ ...replyMedia, [post.id]: media })}
-            onReply={(parentReplyId) =>
-              updatePost(() => replyRant(post.id, { userId: user.userId, nickname: user.nickname, content: replies[post.id] ?? '', ...(replyMedia[post.id] ?? EMPTY_MEDIA), parentReplyId }))
-            }
-            onDelete={() => updatePost(() => deleteRant(post.id, user.userId))}
-            onLikedReply={loadPosts}
-            currentUserId={user.userId}
-          />
-        ))}
+        {filteredPosts.length === 0 && searchQuery.trim() ? (
+          <p className="rant-empty-hint">沒有找到含有「#{searchQuery.trim()}」的貼文</p>
+        ) : (
+          filteredPosts.map((post) => (
+            <RantPostCard
+              key={post.id}
+              post={post}
+              replyText={replies[post.id] ?? ''}
+              onReplyTextChange={(value) => setReplies({ ...replies, [post.id]: value })}
+              onUnderstand={() => updatePost(() => understandRant(post.id))}
+              onReport={() => updatePost(() => reportRant(post.id))}
+              replyMedia={replyMedia[post.id] ?? EMPTY_MEDIA}
+              onReplyMediaChange={(media) => setReplyMedia({ ...replyMedia, [post.id]: media })}
+              onReply={(parentReplyId) =>
+                updatePost(() => replyRant(post.id, { userId: user.userId, nickname: user.nickname, content: replies[post.id] ?? '', ...(replyMedia[post.id] ?? EMPTY_MEDIA), parentReplyId }))
+              }
+              onDelete={() => updatePost(() => deleteRant(post.id, user.userId))}
+              onLikedReply={loadPosts}
+              onHashtagClick={(tag) => setSearchQuery(tag)}
+              currentUserId={user.userId}
+            />
+          ))
+        )}
       </section>
     </div>
   )

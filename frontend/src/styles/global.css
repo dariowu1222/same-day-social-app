@@ -3846,6 +3846,92 @@ blockquote {
   border-bottom: 1px solid #f5f2ec;
 }
 
+/* ── 樹洞搜尋欄 ── */
+.rant-search-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: #f5f0e8;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid #e8e2d8;
+  margin: 0 -16px;
+}
+
+.rant-search-inner {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  border: 1.5px solid #d9cfc0;
+  border-radius: 20px;
+  padding: 7px 12px;
+  transition: border-color 0.15s;
+}
+
+.rant-search-inner:focus-within {
+  border-color: #7ab5af;
+}
+
+.rant-search-icon {
+  color: #8a9e9c;
+  flex-shrink: 0;
+}
+
+.rant-search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  color: #1a2e2b;
+  font-family: inherit;
+}
+
+.rant-search-input::placeholder { color: #b0bfbd; }
+
+.rant-search-clear {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: #8a9e9c;
+  display: flex;
+  align-items: center;
+}
+
+.rant-search-clear:hover { color: #3d7a72; }
+
+.rant-search-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: #5b8f8a;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* hashtag 可點擊樣式 */
+.hashtag-tag-clickable {
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.hashtag-tag-clickable:hover {
+  background: #c5ddd6;
+  color: #1a4a45;
+}
+
+/* 無搜尋結果 */
+.rant-empty-hint {
+  text-align: center;
+  color: #8a9e9c;
+  font-size: 14px;
+  padding: 40px 16px;
+}
+
 /* ── 引用框 ── */
 .quote-box {
   display: flex;

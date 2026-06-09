@@ -30,13 +30,14 @@ type Props = {
   onReport: () => void
   onDelete: () => void
   onLikedReply: () => void
+  onHashtagClick?: (tag: string) => void
   currentUserId: string
 }
 
 export default function RantPostCard({
   post, replyText, replyMedia,
   onReplyTextChange, onReplyMediaChange,
-  onUnderstand, onReply, onReport, onDelete, onLikedReply, currentUserId,
+  onUnderstand, onReply, onReport, onDelete, onLikedReply, onHashtagClick, currentUserId,
 }: Props) {
   const navigate = useNavigate()
   const [showReplies, setShowReplies] = useState(false)
@@ -102,8 +103,16 @@ export default function RantPostCard({
 
           {/* Tags */}
           {post.hashtags?.length > 0 && (
-            <div className="hashtag-row">
-              {post.hashtags.map((tag) => <span key={tag} className="hashtag-tag">#{tag}</span>)}
+            <div className="hashtag-row" onClick={(e) => e.stopPropagation()}>
+              {post.hashtags.map((tag) => (
+                <span
+                  key={tag}
+                  className={`hashtag-tag${onHashtagClick ? ' hashtag-tag-clickable' : ''}`}
+                  onClick={onHashtagClick ? () => onHashtagClick(tag) : undefined}
+                >
+                  #{tag}
+                </span>
+              ))}
             </div>
           )}
           {post.emotionTags.length > 0 && (
