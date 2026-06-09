@@ -3,6 +3,9 @@ import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import BottomNav, { type PageKey } from './components/BottomNav'
 import LoginPage from './components/LoginPage'
 import OnboardingOverlay from './components/OnboardingOverlay'
+import ThemeToggle from './components/ThemeToggle'
+import ThemeTransitionOverlay, { GlobalNightEffects } from './components/ThemeTransitionOverlay'
+import { useTheme } from './context/ThemeContext'
 import TodayPage from './pages/TodayPage'
 import MatchResultPage from './pages/MatchResultPage'
 import RantBoardPage from './pages/RantBoardPage'
@@ -29,6 +32,11 @@ function App() {
   const [selectedMoodLabel, setSelectedMoodLabel] = useState<string>('')
   const [user, setUser] = useState<DemoUser | null>(null)
   const [onboardingDone, setOnboardingDone] = useState(true)
+  const { mode } = useTheme()
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', mode === 'night' ? 'dark' : '')
+  }, [mode])
 
   const pathToPage: Record<string, PageKey> = {
     '/': 'today', '/rant': 'rant', '/tasks': 'tasks', '/chat': 'chat', '/profile': 'profile',
@@ -77,6 +85,7 @@ function App() {
   return (
     <>
       <main className="app-shell">
+        <ThemeToggle />
         <Routes>
           <Route path="/" element={
             !showMatchResult
@@ -92,6 +101,8 @@ function App() {
         </Routes>
         {!isDetail && <BottomNav activePage={activePage} onChange={setActivePage} />}
       </main>
+      {mode === 'night' && <GlobalNightEffects />}
+      <ThemeTransitionOverlay />
       {!onboardingDone && (
         <OnboardingOverlay user={user} onComplete={handleOnboardingComplete} />
       )}
