@@ -23,7 +23,7 @@ export default function RantNewPostPage({ user }: Props) {
     setSubmitting(true)
     setError('')
     try {
-      await createRant({ userId: user.userId, nickname: user.nickname, content, mode, hashtags, ...postMedia })
+      await createRant({ nickname: user.nickname, content, mode, hashtags, ...postMedia })
       navigate('/rant')
     } catch (err) {
       setError(err instanceof Error ? err.message : '發文失敗')

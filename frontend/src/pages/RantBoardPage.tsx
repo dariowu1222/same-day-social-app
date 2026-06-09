@@ -116,9 +116,9 @@ export default function RantBoardPage({ user }: Props) {
               replyMedia={replyMedia[post.id] ?? EMPTY_MEDIA}
               onReplyMediaChange={(media) => setReplyMedia({ ...replyMedia, [post.id]: media })}
               onReply={(parentReplyId) =>
-                updatePost(() => replyRant(post.id, { userId: user.userId, nickname: user.nickname, content: replies[post.id] ?? '', ...(replyMedia[post.id] ?? EMPTY_MEDIA), parentReplyId }))
+                updatePost(() => replyRant(post.id, { nickname: user.nickname, content: replies[post.id] ?? '', ...(replyMedia[post.id] ?? EMPTY_MEDIA), parentReplyId }))
               }
-              onDelete={() => updatePost(() => deleteRant(post.id, user.userId))}
+              onDelete={() => updatePost(() => deleteRant(post.id))}
               onLikedReply={loadPosts}
               onHashtagClick={(tag) => { setSearchQuery(tag); setActiveQuery(tag) }}
               currentUserId={user.userId}

@@ -91,7 +91,7 @@ export default function LoginPage({ onAuthenticated }: Props) {
 
   async function submitLogin() {
     await runAuthAction(async () => {
-      const user = await loginAccount({ email, password })
+      const user = await loginAccount({ email, password }, rememberMe)
       onAuthenticated(user, rememberMe)
     })
   }
@@ -118,7 +118,7 @@ export default function LoginPage({ onAuthenticated }: Props) {
 
   async function submitRegistrationCode() {
     await runAuthAction(async () => {
-      const user = await confirmRegistration({ email: registerEmail, code: registerCode })
+      const user = await confirmRegistration({ email: registerEmail, code: registerCode }, true)
       onAuthenticated(user, true)
     })
   }

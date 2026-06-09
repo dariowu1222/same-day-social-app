@@ -444,7 +444,7 @@ public sealed record ConfirmPasswordResetCommand(
     string NewPassword,
     string ConfirmPassword);
 
-public sealed record AuthUserResponse(string UserId, string Nickname, string Email);
+public sealed record AuthUserResponse(string UserId, string Nickname, string Email, string? Token = null);
 
 public sealed record RegistrationStartResponse(string Email, int ExpiresInMinutes);
 

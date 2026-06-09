@@ -6,13 +6,14 @@ namespace SameDaySocialApp.Controllers;
 
 [ApiController]
 [Route("api/auth")]
-public sealed class AuthController(AuthService authService) : ControllerBase
+public sealed class AuthController(AuthService authService, JwtService jwtService) : ControllerBase
 {
     [HttpPost("demo-login")]
     public ActionResult<ApiResponse<object>> DemoLogin([FromBody] DemoLoginRequest request)
     {
         var user = authService.DemoLogin(request.Nickname);
-        return ApiResponse<object>.Ok(new { userId = user.Id, user.Nickname });
+        var token = jwtService.IssueToken(user.Id, user.Nickname, TimeSpan.FromDays(1));
+        return ApiResponse<object>.Ok(new { userId = user.Id, user.Nickname, token });
     }
 
     [HttpPost("register")]
@@ -30,14 +31,18 @@ public sealed class AuthController(AuthService authService) : ControllerBase
         CancellationToken cancellationToken)
     {
         var result = await authService.ConfirmRegistrationAsync(new ConfirmRegistrationCommand(request.Email, request.Code), cancellationToken);
-        return ToActionResult(result);
+        if (!result.Success) return ToActionResult(result);
+        var token = jwtService.IssueToken(result.Data!.UserId, result.Data.Nickname);
+        return ApiResponse<AuthUserResponse>.Ok(result.Data with { Token = token });
     }
 
     [HttpPost("login")]
     public async Task<ActionResult<ApiResponse<AuthUserResponse>>> Login([FromBody] LoginRequest request, CancellationToken cancellationToken)
     {
         var result = await authService.LoginAsync(new LoginCommand(request.Email, request.Password), cancellationToken);
-        return ToActionResult(result);
+        if (!result.Success) return ToActionResult(result);
+        var token = jwtService.IssueToken(result.Data!.UserId, result.Data.Nickname);
+        return ApiResponse<AuthUserResponse>.Ok(result.Data with { Token = token });
     }
 
     [HttpPost("password-reset/request")]
@@ -66,16 +71,14 @@ public sealed class AuthController(AuthService authService) : ControllerBase
         var result = await authService.ConfirmPasswordResetAsync(
             new ConfirmPasswordResetCommand(request.Email, request.Code, request.NewPassword, request.ConfirmPassword),
             cancellationToken);
-        return ToActionResult(result);
+        if (!result.Success) return ToActionResult(result);
+        var token = jwtService.IssueToken(result.Data!.UserId, result.Data.Nickname);
+        return ApiResponse<AuthUserResponse>.Ok(result.Data with { Token = token });
     }
 
     private ActionResult<ApiResponse<T>> ToActionResult<T>(AuthServiceResult<T> result)
     {
-        if (result.Success)
-        {
-            return ApiResponse<T>.Ok(result.Data!);
-        }
-
+        if (result.Success) return ApiResponse<T>.Ok(result.Data!);
         return BadRequest(ApiResponse<T>.Fail(result.Code!, result.Message!));
     }
 }

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SameDaySocialApp.Application.Dto;
 using SameDaySocialApp.Application.Services;
@@ -10,22 +11,31 @@ namespace SameDaySocialApp.Controllers;
 [Route("api/rants")]
 public sealed class RantsController(RantService rantService) : ControllerBase
 {
-    [HttpPost]
-    public ActionResult<ApiResponse<RantPost>> Create([FromBody] CreateRantRequest request)
-    {
-        var result = rantService.Create(request.UserId, request.Nickname, request.Content, request.Mode, request.HashTags, request.ImageDataUrl, request.AudioDataUrl);
-        if (result.Moderation.IsBlocked)
-        {
-            return BadRequest(ApiResponse<RantPost>.Fail(result.Moderation.Code!, result.Moderation.Message!));
-        }
-
-        return ApiResponse<RantPost>.Ok(result.Post!, result.Moderation.Warning);
-    }
-
     [HttpGet]
     public ActionResult<ApiResponse<List<RantPost>>> Get()
     {
         return ApiResponse<List<RantPost>>.Ok(rantService.GetPublicPosts());
+    }
+
+    [HttpGet("{rantId}")]
+    public ActionResult<ApiResponse<RantPost>> GetOne(string rantId)
+    {
+        var post = rantService.GetPost(rantId);
+        return post == null
+            ? NotFound(ApiResponse<RantPost>.Fail("RANT_NOT_FOUND", "找不到這篇樹洞文章。"))
+            : ApiResponse<RantPost>.Ok(post);
+    }
+
+    [Authorize]
+    [HttpPost]
+    public ActionResult<ApiResponse<RantPost>> Create([FromBody] CreateRantRequest request)
+    {
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                     ?? User.FindFirst("sub")?.Value!;
+        var result = rantService.Create(userId, request.Nickname, request.Content, request.Mode, request.HashTags, request.ImageDataUrl, request.AudioDataUrl);
+        if (result.Moderation.IsBlocked)
+            return BadRequest(ApiResponse<RantPost>.Fail(result.Moderation.Code!, result.Moderation.Message!));
+        return ApiResponse<RantPost>.Ok(result.Post!, result.Moderation.Warning);
     }
 
     [HttpPost("{rantId}/understand")]
@@ -37,18 +47,24 @@ public sealed class RantsController(RantService rantService) : ControllerBase
             : ApiResponse<RantPost>.Ok(post);
     }
 
+    [Authorize]
     [HttpPost("{rantId}/replies")]
     public ActionResult<ApiResponse<RantPost>> Reply(string rantId, [FromBody] CreateReplyRequest request)
     {
-        var post = rantService.Reply(rantId, request.UserId, request.Nickname, request.Content, request.ImageDataUrl, request.AudioDataUrl, request.ParentReplyId);
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                     ?? User.FindFirst("sub")?.Value!;
+        var post = rantService.Reply(rantId, userId, request.Nickname, request.Content, request.ImageDataUrl, request.AudioDataUrl, request.ParentReplyId);
         return post == null
             ? NotFound(ApiResponse<RantPost>.Fail("RANT_NOT_FOUND", "找不到這篇樹洞文章。"))
             : ApiResponse<RantPost>.Ok(post);
     }
 
+    [Authorize]
     [HttpDelete("{rantId}")]
-    public ActionResult<ApiResponse<bool>> Delete(string rantId, [FromQuery] string userId)
+    public ActionResult<ApiResponse<bool>> Delete(string rantId)
     {
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                     ?? User.FindFirst("sub")?.Value!;
         var deleted = rantService.Delete(rantId, userId);
         return deleted
             ? ApiResponse<bool>.Ok(true)
@@ -74,5 +90,5 @@ public sealed class RantsController(RantService rantService) : ControllerBase
     }
 }
 
-public sealed record CreateRantRequest(string UserId, string Nickname, string Content, RantMode Mode, List<string>? HashTags = null, string? ImageDataUrl = null, string? AudioDataUrl = null);
-public sealed record CreateReplyRequest(string UserId, string Nickname, string Content, string? ImageDataUrl = null, string? AudioDataUrl = null, string? ParentReplyId = null);
+public sealed record CreateRantRequest(string Nickname, string Content, RantMode Mode, List<string>? HashTags = null, string? ImageDataUrl = null, string? AudioDataUrl = null);
+public sealed record CreateReplyRequest(string Nickname, string Content, string? ImageDataUrl = null, string? AudioDataUrl = null, string? ParentReplyId = null);

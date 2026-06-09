@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SameDaySocialApp.Application.Dto;
@@ -27,9 +28,15 @@ public sealed class ProfileController(JsonStorageService storage, IServiceProvid
             : ApiResponse<User>.Ok(user);
     }
 
+    [Authorize]
     [HttpPut("{userId}")]
     public async Task<ActionResult<ApiResponse<User>>> Update(string userId, [FromBody] UpdateProfileRequest request, CancellationToken cancellationToken)
     {
+        var callerId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                       ?? User.FindFirst("sub")?.Value;
+        if (callerId != userId)
+            return Forbid();
+
         if (db != null)
         {
             var record = await db.Users.FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);

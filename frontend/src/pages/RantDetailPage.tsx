@@ -66,7 +66,6 @@ export default function RantDetailPage({ user }: Props) {
     setSubmitting(true)
     try {
       await replyRant(rantId, {
-        userId: user.userId,
         nickname: user.nickname,
         content: replyText,
         ...replyMedia,
@@ -111,7 +110,7 @@ export default function RantDetailPage({ user }: Props) {
         <PostMenu
           postId={post.id}
           isOwner={post.userId === user.userId}
-          onDelete={async () => { await deleteRant(post.id, user.userId); navigate(-1) }}
+          onDelete={async () => { await deleteRant(post.id); navigate(-1) }}
         />
       </div>
 

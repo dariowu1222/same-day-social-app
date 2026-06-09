@@ -36,7 +36,7 @@ export default function ChatPage({ user }: Props) {
 
   async function submitMessage() {
     if (!activeRoomId) return
-    await sendMessage(activeRoomId, { senderId: user.userId, content: draft })
+    await sendMessage(activeRoomId, draft)
     setDraft('')
     await loadMessages(activeRoomId)
   }

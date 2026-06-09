@@ -1,5 +1,26 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
+const TOKEN_KEY = 'same-day-auth-token'
+
+export function getAuthToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY) ?? sessionStorage.getItem(TOKEN_KEY)
+}
+
+export function setAuthToken(token: string, remember: boolean) {
+  if (remember) {
+    localStorage.setItem(TOKEN_KEY, token)
+    sessionStorage.removeItem(TOKEN_KEY)
+  } else {
+    sessionStorage.setItem(TOKEN_KEY, token)
+    localStorage.removeItem(TOKEN_KEY)
+  }
+}
+
+export function clearAuthToken() {
+  localStorage.removeItem(TOKEN_KEY)
+  sessionStorage.removeItem(TOKEN_KEY)
+}
+
 type ApiResponse<T> = {
   success: boolean
   code?: string
@@ -10,12 +31,14 @@ type ApiResponse<T> = {
 
 async function request<T>(path: string, options?: RequestInit): Promise<ApiResponse<T>> {
   let response: Response
+  const token = getAuthToken()
+  const authHeader: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
   try {
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), 30000)
     try {
       response = await fetch(`${API_BASE_URL}${path}`, {
-        headers: { 'Content-Type': 'application/json', ...(options?.headers ?? {}) },
+        headers: { 'Content-Type': 'application/json', ...authHeader, ...(options?.headers ?? {}) },
         signal: controller.signal,
         ...options,
       })
@@ -84,19 +107,30 @@ export async function registerAccount(payload: {
   })
 }
 
-export async function confirmRegistration(payload: { email: string; code: string }) {
-  const response = await request<{ userId: string; nickname: string; email: string }>('/api/auth/register/confirm', {
+export async function confirmRegistration(payload: { email: string; code: string }, remember: boolean) {
+  const response = await request<{ userId: string; nickname: string; email: string; token?: string }>('/api/auth/register/confirm', {
     method: 'POST',
     body: JSON.stringify(payload),
   })
+  if (response.data.token) setAuthToken(response.data.token, remember)
   return response.data
 }
 
-export async function loginAccount(payload: { email: string; password: string }) {
-  const response = await request<{ userId: string; nickname: string; email: string }>('/api/auth/login', {
+export async function loginAccount(payload: { email: string; password: string }, remember: boolean) {
+  const response = await request<{ userId: string; nickname: string; email: string; token?: string }>('/api/auth/login', {
     method: 'POST',
     body: JSON.stringify(payload),
   })
+  if (response.data.token) setAuthToken(response.data.token, remember)
+  return response.data
+}
+
+export async function demoLogin(nickname: string) {
+  const response = await request<{ userId: string; nickname: string; token?: string }>('/api/auth/demo-login', {
+    method: 'POST',
+    body: JSON.stringify({ nickname }),
+  })
+  if (response.data.token) setAuthToken(response.data.token, false)
   return response.data
 }
 
@@ -159,7 +193,7 @@ export async function getRants() {
   return request<RantPost[]>('/api/rants')
 }
 
-export async function createRant(payload: { userId: string; nickname: string; content: string; mode: string; hashtags?: string[]; imageDataUrl?: string | null; audioDataUrl?: string | null }) {
+export async function createRant(payload: { nickname: string; content: string; mode: string; hashtags?: string[]; imageDataUrl?: string | null; audioDataUrl?: string | null }) {
   return request<RantPost>('/api/rants', { method: 'POST', body: JSON.stringify(payload) })
 }
 
@@ -167,7 +201,7 @@ export async function understandRant(rantId: string) {
   return request<RantPost>(`/api/rants/${rantId}/understand`, { method: 'POST' })
 }
 
-export async function replyRant(rantId: string, payload: { userId: string; nickname: string; content: string; imageDataUrl?: string | null; audioDataUrl?: string | null; parentReplyId?: string | null }) {
+export async function replyRant(rantId: string, payload: { nickname: string; content: string; imageDataUrl?: string | null; audioDataUrl?: string | null; parentReplyId?: string | null }) {
   return request<RantPost>(`/api/rants/${rantId}/replies`, { method: 'POST', body: JSON.stringify(payload) })
 }
 
@@ -179,8 +213,8 @@ export async function reportRant(rantId: string) {
   return request<RantPost>(`/api/rants/${rantId}/report`, { method: 'POST' })
 }
 
-export async function deleteRant(rantId: string, userId: string) {
-  return request<boolean>(`/api/rants/${rantId}?userId=${encodeURIComponent(userId)}`, { method: 'DELETE' })
+export async function deleteRant(rantId: string) {
+  return request<boolean>(`/api/rants/${rantId}`, { method: 'DELETE' })
 }
 
 export async function getTasks() {
@@ -203,8 +237,8 @@ export async function getMessages(chatRoomId: string) {
   return request<ChatMessage[]>(`/api/chats/${chatRoomId}/messages`)
 }
 
-export async function sendMessage(chatRoomId: string, payload: { senderId: string; content: string }) {
-  return request<ChatMessage>(`/api/chats/${chatRoomId}/messages`, { method: 'POST', body: JSON.stringify(payload) })
+export async function sendMessage(chatRoomId: string, content: string) {
+  return request<ChatMessage>(`/api/chats/${chatRoomId}/messages`, { method: 'POST', body: JSON.stringify({ content }) })
 }
 
 export type TodayAnalysis = {

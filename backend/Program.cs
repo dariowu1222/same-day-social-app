@@ -1,5 +1,7 @@
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using SameDaySocialApp.Application.Services;
 using SameDaySocialApp.Infrastructure.Email;
 using SameDaySocialApp.Infrastructure.Persistence;
 
@@ -43,6 +45,16 @@ if (!string.IsNullOrWhiteSpace(databaseConnectionString))
     });
 }
 
+builder.Services.AddSingleton<JwtService>();
+
+var jwtService = new JwtService(builder.Configuration);
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = jwtService.ValidationParameters;
+    });
+builder.Services.AddAuthorization();
+
 builder.Services.AddSingleton<JsonStorageService>();
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.AuthService>();
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.TodayAnalyzerService>();
@@ -61,6 +73,7 @@ var app = builder.Build();
 // }
 
 app.UseCors("Frontend");
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
