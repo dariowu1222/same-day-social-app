@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Heart, MessageCircle } from 'lucide-react'
-import { flattenReplies, type RantPost } from '../api/client'
+import { type RantPost } from '../api/client'
 import MediaInput, { type MediaState } from './MediaInput'
 import ReplyItem from './ReplyItem'
 import PostMenu from './PostMenu'

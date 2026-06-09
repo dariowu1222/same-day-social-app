@@ -468,7 +468,7 @@ function SwipeTutorial({ onStart }: { onStart: () => void }) {
 export default function MatchResultPage({ onBack, onGoToRant, moodLabel }: Props) {
   const [phase, setPhase] = useState<'loading' | 'tutorial' | 'done'>('loading')
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [swipedCount, setSwipedCount] = useState(0)
+  const [_swipedCount, setSwipedCount] = useState(0)
   const [lastDir, setLastDir] = useState<SwipeDir>(null)
   const matches = FAKE_MATCHES
 
@@ -486,7 +486,6 @@ export default function MatchResultPage({ onBack, onGoToRant, moodLabel }: Props
     setCurrentIndex((i) => i + 1)
   }
 
-  const remaining = matches.length - currentIndex
   const visibleCards = matches.slice(currentIndex, currentIndex + 3)
   const allDone = currentIndex >= matches.length
 
