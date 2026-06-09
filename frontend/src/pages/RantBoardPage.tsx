@@ -24,11 +24,13 @@ export default function RantBoardPage({ user }: Props) {
   const [searchQuery, setSearchQuery] = useState('')
 
   const filteredPosts = searchQuery.trim()
-    ? posts.filter((post) =>
-        post.hashtags?.some((tag) =>
-          tag.toLowerCase().includes(searchQuery.trim().toLowerCase())
+    ? posts.filter((post) => {
+        const q = searchQuery.trim().toLowerCase()
+        return (
+          post.content.toLowerCase().includes(q) ||
+          post.hashtags?.some((tag) => tag.toLowerCase().includes(q))
         )
-      )
+      })
     : posts
 
   useEffect(() => {
@@ -67,7 +69,7 @@ export default function RantBoardPage({ user }: Props) {
           <Search size={15} className="rant-search-icon" />
           <input
             className="rant-search-input"
-            placeholder="搜尋 hashtag…"
+            placeholder="搜尋…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -114,7 +116,7 @@ export default function RantBoardPage({ user }: Props) {
 
       <section className="list">
         {filteredPosts.length === 0 && searchQuery.trim() ? (
-          <p className="rant-empty-hint">沒有找到含有「#{searchQuery.trim()}」的貼文</p>
+          <p className="rant-empty-hint">沒有找到含有「{searchQuery.trim()}」的貼文</p>
         ) : (
           filteredPosts.map((post) => (
             <RantPostCard
