@@ -12,7 +12,7 @@ type SoulNoteGroup = SoulNote & {
   tone: string
 }
 
-const INTRO_KEY = 'today-intro-seen'
+const INTRO_KEY = 'today-intro-seen-session'
 
 function playKeyClick() {
   try {
@@ -88,7 +88,9 @@ const soulNotesByEntry: Record<string, SoulNoteGroup[]> = {
 
 export default function TodayPage({ user, onGoToMatches }: Props) {
   const FULL_TEXT = '今天的你，想被怎麼理解？'
-  const [introPhase, setIntroPhase] = useState<'center' | 'rising' | 'done'>('center')
+  const [introPhase, setIntroPhase] = useState<'center' | 'rising' | 'done'>(
+    sessionStorage.getItem(INTRO_KEY) ? 'done' : 'center'
+  )
   const [typedCount, setTypedCount] = useState(0)
   const [showCursor, setShowCursor] = useState(true)
   const [content, setContent] = useState('')
@@ -131,7 +133,7 @@ export default function TodayPage({ user, onGoToMatches }: Props) {
   useEffect(() => {
     if (introPhase === 'rising') {
       const t = setTimeout(() => {
-        localStorage.setItem(INTRO_KEY, '1')
+        sessionStorage.setItem(INTRO_KEY, '1')
         setIntroPhase('done')
       }, 950)
       return () => clearTimeout(t)
@@ -163,7 +165,7 @@ export default function TodayPage({ user, onGoToMatches }: Props) {
         <div
           className={`today-intro-overlay today-intro-${introPhase}`}
           onClick={() => {
-            localStorage.setItem(INTRO_KEY, '1')
+            sessionStorage.setItem(INTRO_KEY, '1')
             setIntroPhase('done')
           }}
         >

@@ -10,7 +10,7 @@ builder.Services.AddControllers()
     {
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
-builder.Services.AddOpenApi();
+// builder.Services.AddOpenApi(); // requires .NET 9+
 builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection("Smtp"));
 builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
 builder.Services.AddCors(options =>
@@ -55,10 +55,10 @@ builder.Services.AddScoped<SameDaySocialApp.Application.Services.ChatService>();
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
+// if (app.Environment.IsDevelopment())
+// {
+//     app.MapOpenApi(); // requires .NET 9+
+// }
 
 app.UseCors("Frontend");
 app.UseAuthorization();

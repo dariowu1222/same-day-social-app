@@ -37,7 +37,7 @@ export default function ProfilePage({ user, setUser }: Props) {
           <input value={values} onChange={(event) => setValues(event.target.value)} />
         </label>
         <button className="ghost" onClick={logout}>
-          切換 Demo user
+          登出
         </button>
       </section>
     </div>
