@@ -242,6 +242,7 @@ export type RantReply = {
   imageDataUrl?: string | null
   audioDataUrl?: string | null
   likeCount: number
+  parentReplyId?: string | null
   replies?: RantReply[]
 }
 
