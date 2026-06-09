@@ -3846,6 +3846,17 @@ blockquote {
   border-bottom: 1px solid #f5f2ec;
 }
 
+/* ── 樹洞頁標題 ── */
+.rant-board-title {
+  font-size: 14px;
+  color: #8a9e9c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 2px;
+  margin: -8px 0 -4px;
+}
+
 /* ── 樹洞搜尋欄 ── */
 .rant-search-bar {
   position: sticky;

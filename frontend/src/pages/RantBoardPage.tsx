@@ -60,13 +60,7 @@ export default function RantBoardPage({ user }: Props) {
 
   return (
     <div className="page">
-      <header className="page-header">
-        <p className="eyebrow">樹洞</p>
-        <h1>這裡可以說說今天不太想放在心裡的事。</h1>
-        <p>可以抱怨，但不要攻擊、肉搜或公開他人個資。</p>
-      </header>
-
-      {/* ── 搜尋欄（sticky）── */}
+      {/* ── 搜尋欄（sticky，在最上方）── */}
       <div className="rant-search-bar">
         <div className="rant-search-inner">
           <Search size={15} className="rant-search-icon" />
@@ -88,6 +82,9 @@ export default function RantBoardPage({ user }: Props) {
           </span>
         )}
       </div>
+
+      {/* 標題（一行）*/}
+      <p className="rant-board-title">這裡可以說說今天不太想放在心裡的事</p>
 
       {/* 發文區 toggle */}
       <div className="rant-compose-toggle">
