@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mock — Thread 風格 UI</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f5f7f6;
+    color: #1a2e2b;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 12px 0 80px;
+  }
+
+  /* ── 頁首 ── */
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: #f5f7f6;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    border-bottom: 1px solid #e0eae8;
+  }
+  .topbar-back {
+    background: none; border: none; cursor: pointer;
+    color: #1a2e2b; font-size: 20px; line-height: 1;
+  }
+  .topbar-title { font-weight: 700; font-size: 16px; }
+
+  /* ── 貼文卡片（Thread 風格） ── */
+  .post-card {
+    background: #fff;
+    padding: 16px 16px 0;
+    border-bottom: 1px solid #e0eae8;
+  }
+
+  .post-row {
+    display: flex;
+    gap: 12px;
+  }
+
+  /* 左側：頭像 + 連接線 */
+  .post-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .avatar {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: #2d6e65;
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .avatar.sm {
+    width: 32px; height: 32px;
+    font-size: 13px;
+  }
+  /* 串文連接線 */
+  .thread-line {
+    width: 2px;
+    flex: 1;
+    background: #d0dedd;
+    margin: 6px 0;
+    border-radius: 1px;
+  }
+
+  /* 右側：內容 */
+  .post-right { flex: 1; min-width: 0; }
+
+  .post-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2px;
+  }
+  .post-meta { display: flex; align-items: center; gap: 8px; }
+  .author-name { font-weight: 700; font-size: 14px; }
+  .post-time { font-size: 12px; color: #8a9e9c; }
+  .mode-tag {
+    background: #e8f4f2; color: #2d6e65;
+    font-size: 11px; font-weight: 600;
+    padding: 2px 8px; border-radius: 20px;
+  }
+  .menu-btn {
+    background: none; border: none; cursor: pointer;
+    color: #8a9e9c; font-size: 18px; line-height: 1;
+    padding: 0 4px;
+  }
+
+  .post-content {
+    font-size: 15px; line-height: 1.55;
+    margin-bottom: 12px;
+  }
+
+  /* ── Thread 風格 Action Bar ── */
+  .action-bar {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 10px 0 12px;
+  }
+  .action-btn {
+    display: flex; align-items: center; gap: 5px;
+    background: none; border: none; cursor: pointer;
+    color: #8a9e9c; font-size: 13px;
+    padding: 0;
+    transition: color 0.15s;
+  }
+  .action-btn svg { display: block; }
+  .action-btn:hover { color: #2d6e65; }
+  .action-btn.like:hover { color: #e05a7a; }
+  .action-btn.report:hover { color: #d47a30; }
+
+  /* ── 回覆輸入區（緊接貼文下方）── */
+  .reply-compose {
+    background: #fff;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid #e0eae8;
+  }
+  .reply-compose-input {
+    flex: 1;
+    border: none;
+    background: #f5f7f6;
+    border-radius: 20px;
+    padding: 8px 14px;
+    font-size: 14px;
+    color: #8a9e9c;
+    outline: none;
+  }
+
+  /* ── 排序列 ── */
+  .sort-bar {
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #8a9e9c;
+    border-bottom: 1px solid #e0eae8;
+    background: #fff;
+  }
+  .sort-bar select {
+    border: none; background: none;
+    font-size: 13px; color: #2d6e65; font-weight: 600;
+    cursor: pointer; outline: none;
+  }
+
+  /* ── 回覆列表（Thread 風格） ── */
+  .reply-list {
+    background: #fff;
+  }
+
+  /* 每一筆回覆 */
+  .reply-item {
+    padding: 12px 16px 0;
+  }
+  .reply-row { display: flex; gap: 10px; }
+
+  /* 左側連接線 */
+  .reply-left {
+    display: flex; flex-direction: column; align-items: center; flex-shrink: 0;
+  }
+  .reply-right { flex: 1; min-width: 0; padding-bottom: 12px; border-bottom: 1px solid #f0f5f4; }
+  .reply-item:last-child .reply-right { border-bottom: none; }
+
+  .reply-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }
+  .reply-meta { display: flex; align-items: center; gap: 8px; }
+  .reply-author { font-weight: 700; font-size: 13px; }
+  .reply-time { font-size: 11px; color: #b0bfbd; }
+  .reply-content { font-size: 14px; line-height: 1.5; margin-bottom: 8px; color: #2a3e3c; }
+
+  /* 子回覆縮排（在收起展開按鈕下面） */
+  .sub-reply-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+    margin-bottom: 2px;
+    cursor: pointer;
+  }
+  .sub-avatars {
+    display: flex;
+    margin-left: 4px;
+  }
+  .sub-avatars .avatar-xs {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: #7ab5af;
+    color: #fff;
+    font-size: 9px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    margin-left: -4px;
+    border: 1.5px solid #fff;
+  }
+  .sub-avatars .avatar-xs:first-child { margin-left: 0; }
+  .sub-count-text {
+    font-size: 12px; color: #5b8f8a; font-weight: 600;
+  }
+
+  /* 子回覆展開後 */
+  .sub-reply-list { margin-top: 2px; }
+  .sub-reply-item {
+    display: flex; gap: 8px;
+    padding: 8px 0 0 0;
+    border-top: none;
+  }
+  .sub-reply-content-wrap { flex: 1; }
+  .sub-reply-author { font-weight: 700; font-size: 12px; }
+  .sub-reply-mention { font-size: 12px; color: #5b8f8a; }
+  .sub-reply-text { font-size: 13px; line-height: 1.45; color: #2a3e3c; margin-top: 1px; }
+  .sub-action-bar {
+    display: flex; gap: 14px; margin-top: 6px;
+  }
+
+  /* ── 對比：舊版區塊 ── */
+  .section-label {
+    padding: 14px 16px 6px;
+    font-size: 12px; font-weight: 700;
+    color: #8a9e9c; letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .old-card {
+    background: #fff;
+    border-radius: 12px;
+    margin: 0 12px 12px;
+    padding: 14px;
+    border: 1px solid #e0eae8;
+  }
+  .old-action-row {
+    display: flex; gap: 8px; margin-top: 10px;
+  }
+  .old-btn {
+    display: flex; align-items: center; gap: 5px;
+    background: #f5f7f6; border: 1px solid #e0eae8;
+    border-radius: 20px; padding: 5px 12px;
+    font-size: 12px; color: #5b8f8a; cursor: pointer;
+  }
+
+  /* icon SVG inline */
+  .icon { display: inline-block; vertical-align: middle; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════
+     新版（Thread 風格）
+════════════════════════════════════ -->
+<div class="section-label">✦ 新版 — Thread 風格</div>
+
+<!-- 頂部導覽 -->
+<div class="topbar">
+  <button class="topbar-back">‹</button>
+  <span class="topbar-title">貼文</span>
+</div>
+
+<!-- 主貼文 -->
+<div class="post-card">
+  <div class="post-row">
+    <!-- 左側：頭像 + 串文線 -->
+    <div class="post-left">
+      <div class="avatar">匿</div>
+      <div class="thread-line"></div>
+    </div>
+    <!-- 右側：內容 -->
+    <div class="post-right">
+      <div class="post-header">
+        <div class="post-meta">
+          <span class="author-name">匿名</span>
+          <span class="post-time">6/8 下午 4:40</span>
+          <span class="mode-tag">想被安慰</span>
+        </div>
+        <button class="menu-btn">···</button>
+      </div>
+      <p class="post-content">今天工作上被主管當眾說，明明不是我的錯，但整個會議室的人都看著我，好想消失。</p>
+      <!-- Action Bar：無框 icon + 數字 -->
+      <div class="action-bar">
+        <button class="action-btn like">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          12
+        </button>
+        <button class="action-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          4
+        </button>
+        <button class="action-btn report">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+          檢舉
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 回覆輸入框（緊接在貼文下方）-->
+<div class="reply-compose">
+  <div class="avatar sm">我</div>
+  <input class="reply-compose-input" placeholder="回覆匿名…" readonly />
+</div>
+
+<!-- 排序列 -->
+<div class="sort-bar">
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+  <select><option>熱門</option><option>最新</option></select>
+</div>
+
+<!-- 回覆列表 -->
+<div class="reply-list">
+
+  <!-- 回覆 1（有子回覆，展開狀態）-->
+  <div class="reply-item">
+    <div class="reply-row">
+      <div class="reply-left">
+        <div class="avatar sm">A</div>
+        <!-- 有子回覆才有線 -->
+        <div class="thread-line" style="background:#e0eae8;"></div>
+      </div>
+      <div class="reply-right">
+        <div class="reply-header">
+          <div class="reply-meta">
+            <span class="reply-author">匿名</span>
+            <span class="reply-time">6 小時前</span>
+          </div>
+          <button class="menu-btn" style="font-size:14px;">···</button>
+        </div>
+        <p class="reply-content">主管這樣做真的很不對，你沒有錯的。</p>
+        <div class="action-bar" style="gap:16px; padding-bottom:6px;">
+          <button class="action-btn like">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            3
+          </button>
+          <button class="action-btn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            回應
+          </button>
+        </div>
+
+        <!-- 子回覆展開 -->
+        <div class="sub-reply-list">
+          <div class="sub-reply-item">
+            <div class="reply-left" style="align-items:flex-start; padding-top:2px;">
+              <div class="avatar sm" style="background:#5b8f8a;">B</div>
+            </div>
+            <div class="sub-reply-content-wrap">
+              <div style="display:flex; align-items:center; gap:6px; margin-bottom:2px;">
+                <span class="sub-reply-author">匿名</span>
+                <span class="reply-time">2 小時前</span>
+              </div>
+              <span class="sub-reply-mention">@匿名 </span>
+              <span class="sub-reply-text">對！完全不是你的問題。</span>
+              <div class="sub-action-bar">
+                <button class="action-btn like" style="font-size:12px;">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                  1
+                </button>
+                <button class="action-btn" style="font-size:12px;">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  回應
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 回覆 2（無子回覆）-->
+  <div class="reply-item">
+    <div class="reply-row">
+      <div class="reply-left">
+        <div class="avatar sm" style="background:#7ab5af;">C</div>
+      </div>
+      <div class="reply-right">
+        <div class="reply-header">
+          <div class="reply-meta">
+            <span class="reply-author">匿名</span>
+            <span class="reply-time">5 小時前</span>
+          </div>
+          <button class="menu-btn" style="font-size:14px;">···</button>
+        </div>
+        <p class="reply-content">先好好呼吸，今天辛苦了。</p>
+        <div class="action-bar" style="gap:16px; padding-bottom:6px;">
+          <button class="action-btn like">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          </button>
+          <button class="action-btn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            回應
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 回覆 3（有 2 則子回覆，收合狀態）-->
+  <div class="reply-item">
+    <div class="reply-row">
+      <div class="reply-left">
+        <div class="avatar sm" style="background:#4a8a80;">D</div>
+        <div class="thread-line" style="background:#e0eae8; min-height: 28px;"></div>
+      </div>
+      <div class="reply-right">
+        <div class="reply-header">
+          <div class="reply-meta">
+            <span class="reply-author">匿名</span>
+            <span class="reply-time">3 小時前</span>
+          </div>
+          <button class="menu-btn" style="font-size:14px;">···</button>
+        </div>
+        <p class="reply-content">要不要試試下班後出去走走？</p>
+        <div class="action-bar" style="gap:16px; padding-bottom:6px;">
+          <button class="action-btn like">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            2
+          </button>
+          <button class="action-btn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            回應
+          </button>
+        </div>
+        <!-- 子回覆收合態 -->
+        <div class="sub-reply-indicator">
+          <div class="sub-avatars">
+            <div class="avatar-xs">E</div>
+            <div class="avatar-xs" style="background:#5b8f8a;">F</div>
+          </div>
+          <span class="sub-count-text">查看 2 則回應</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end reply-list -->
+
+
+<!-- ══════════════════════════════════
+     對比：現在的樣式
+════════════════════════════════════ -->
+<div class="section-label" style="margin-top:28px;">現在的樣式（對比）</div>
+
+<div class="old-card">
+  <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+    <div class="avatar">匿</div>
+    <div>
+      <div style="font-weight:700; font-size:14px;">匿名</div>
+      <div style="font-size:11px; color:#8a9e9c;">6/8 下午 4:40</div>
+    </div>
+    <div style="margin-left:auto; background:#e8f4f2; color:#2d6e65; font-size:11px; font-weight:600; padding:2px 8px; border-radius:20px;">想被安慰</div>
+  </div>
+  <p style="font-size:14px; line-height:1.5;">今天工作上被主管當眾說，明明不是我的錯…</p>
+  <div class="old-action-row">
+    <button class="old-btn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+      12
+    </button>
+    <button class="old-btn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      4
+    </button>
+    <button class="old-btn" style="color:#d47a30; border-color:#f0c8a0;">檢舉</button>
+  </div>
+</div>
+
+<div class="old-card">
+  <div style="display:flex; gap:8px; align-items:flex-start;">
+    <div class="avatar sm">A</div>
+    <div style="flex:1;">
+      <span style="font-weight:700; font-size:13px;">匿名</span>
+      <p style="font-size:13px; margin-top:3px; line-height:1.5;">主管這樣做真的很不對，你沒有錯的。</p>
+      <div style="display:flex; gap:6px; margin-top:6px;">
+        <button style="background:none;border:none;font-size:12px;color:#5b8f8a;cursor:pointer;">收起</button>
+        <button style="background:none;border:none;font-size:12px;color:#8a9e9c;cursor:pointer;">回應</button>
+      </div>
+      <div style="margin-top:6px; padding:8px; background:#f5f7f6; border-radius:8px;">
+        <div style="display:flex; gap:8px; align-items:flex-start;">
+          <div class="avatar sm" style="background:#5b8f8a;">B</div>
+          <div>
+            <span style="font-weight:700; font-size:12px;">匿名</span>
+            <p style="font-size:12px; color:#5b8f8a;">@匿名</p>
+            <p style="font-size:12px;">對！完全不是你的問題。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
