@@ -22,16 +22,26 @@ export default function RantBoardPage({ user }: Props) {
   const [message, setMessage] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [activeQuery, setActiveQuery] = useState('')
 
-  const filteredPosts = searchQuery.trim()
+  const filteredPosts = activeQuery.trim()
     ? posts.filter((post) => {
-        const q = searchQuery.trim().toLowerCase()
+        const q = activeQuery.trim().toLowerCase()
         return (
           post.content.toLowerCase().includes(q) ||
           post.hashtags?.some((tag) => tag.toLowerCase().includes(q))
         )
       })
     : posts
+
+  function commitSearch() {
+    setActiveQuery(searchQuery)
+  }
+
+  function clearSearch() {
+    setSearchQuery('')
+    setActiveQuery('')
+  }
 
   useEffect(() => {
     loadPosts()
@@ -72,14 +82,15 @@ export default function RantBoardPage({ user }: Props) {
             placeholder="搜尋…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && commitSearch()}
           />
           {searchQuery && (
-            <button className="rant-search-clear" onClick={() => setSearchQuery('')}>
+            <button className="rant-search-clear" onClick={clearSearch}>
               <X size={14} />
             </button>
           )}
         </div>
-        {searchQuery.trim() && (
+        {activeQuery.trim() && (
           <span className="rant-search-count">
             {filteredPosts.length > 0 ? `${filteredPosts.length} 則` : '無符合貼文'}
           </span>
@@ -116,7 +127,7 @@ export default function RantBoardPage({ user }: Props) {
 
       <section className="list">
         {filteredPosts.length === 0 && searchQuery.trim() ? (
-          <p className="rant-empty-hint">沒有找到含有「{searchQuery.trim()}」的貼文</p>
+          <p className="rant-empty-hint">沒有找到含有「{activeQuery.trim()}」的貼文</p>
         ) : (
           filteredPosts.map((post) => (
             <RantPostCard
@@ -133,7 +144,7 @@ export default function RantBoardPage({ user }: Props) {
               }
               onDelete={() => updatePost(() => deleteRant(post.id, user.userId))}
               onLikedReply={loadPosts}
-              onHashtagClick={(tag) => setSearchQuery(tag)}
+              onHashtagClick={(tag) => { setSearchQuery(tag); setActiveQuery(tag) }}
               currentUserId={user.userId}
             />
           ))
