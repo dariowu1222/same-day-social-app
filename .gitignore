@@ -13,3 +13,9 @@ node_modules/
 
 # .NET MAUI 專案（不使用，改用 Capacitor）
 mobile/
+
+# 自動生成的報告與 Claude 暫存檔
+*-report.md
+*-report.txt
+.claude/*.lock
+.claude/scheduled_tasks.lock
