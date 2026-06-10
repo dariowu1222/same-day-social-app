@@ -2715,6 +2715,67 @@ blockquote {
   font-weight: 400;
 }
 
+.demo-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 10px;
+  color: #b0a090;
+  font-size: 13px;
+}
+.demo-divider::before,
+.demo-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e8e0d4;
+}
+
+.demo-login-block {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.demo-nickname-input {
+  flex: 1;
+  height: 44px;
+  padding: 0 14px;
+  border: 1.5px solid #e8c8b0;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.7);
+  font-size: 15px;
+  color: #4a3f35;
+  outline: none;
+}
+.demo-nickname-input:focus {
+  border-color: #d86c4e;
+}
+.demo-nickname-input::placeholder {
+  color: #c0b0a0;
+}
+
+.demo-login-button {
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 12px;
+  border: none;
+  background: #f0e4d8;
+  color: #7a5a45;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.demo-login-button:hover:not(:disabled) {
+  background: #e8d4c4;
+}
+.demo-login-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .login-decoration {
   position: absolute;
   z-index: -1;

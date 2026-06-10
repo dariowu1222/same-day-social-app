@@ -4,6 +4,7 @@ import { CalendarDays, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, UserRound } 
 import {
   confirmRegistration,
   confirmPasswordReset,
+  demoLogin,
   loginAccount,
   registerAccount,
   requestPasswordReset,
@@ -42,6 +43,7 @@ export default function LoginPage({ onAuthenticated }: Props) {
   const [authMessage, setAuthMessage] = useState('')
   const [authError, setAuthError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [demoNickname, setDemoNickname] = useState('')
   const [rememberMe, setRememberMe] = useState(true)
   const [loginEmailError, setLoginEmailError] = useState('')
   const [registerEmailError, setRegisterEmailError] = useState('')
@@ -93,6 +95,13 @@ export default function LoginPage({ onAuthenticated }: Props) {
     await runAuthAction(async () => {
       const user = await loginAccount({ email, password }, rememberMe)
       onAuthenticated(user, rememberMe)
+    })
+  }
+
+  async function submitDemoLogin() {
+    await runAuthAction(async () => {
+      const user = await demoLogin(demoNickname.trim() || '同頻使用者')
+      onAuthenticated(user, false)
     })
   }
 
@@ -433,6 +442,21 @@ export default function LoginPage({ onAuthenticated }: Props) {
       <button className="outline-login-button" type="button" onClick={() => { resetStatus(); setMode('register') }}>
         建立帳號
       </button>
+
+      <div className="demo-divider"><span>或快速體驗</span></div>
+      <div className="demo-login-block">
+        <input
+          className="demo-nickname-input"
+          value={demoNickname}
+          onChange={(e) => setDemoNickname(e.target.value)}
+          placeholder="輸入暱稱（可留空）"
+          maxLength={20}
+          onKeyDown={(e) => { if (e.key === 'Enter') submitDemoLogin() }}
+        />
+        <button className="demo-login-button" type="button" disabled={submitting} onClick={submitDemoLogin}>
+          {submitting ? '…' : '試試看'}
+        </button>
+      </div>
     </AuthFrame>
   )
 }
