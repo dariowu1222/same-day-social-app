@@ -18,7 +18,7 @@ export default function ProfilePage({ user, setUser }: Props) {
   const [bio, setBio] = useState('慢慢認識就好。')
   const [interests, setInterests] = useState('咖啡,散步,電影')
   const [values, setValues] = useState('尊重,公平,低壓陪伴')
-  const { preference, setPreference } = useTheme()
+  const { preference, isAnimating, setPreference } = useTheme()
 
   function logout() {
     localStorage.removeItem('same-day-demo-user')
@@ -36,7 +36,7 @@ export default function ProfilePage({ user, setUser }: Props) {
       {/* 外觀設定 */}
       <section className="panel">
         <p className="setting-section-title">外觀</p>
-        <div className="theme-segmented" role="radiogroup" aria-label="外觀主題">
+        <div className="theme-segmented" role="radiogroup" aria-label="外觀主題" aria-disabled={isAnimating}>
           {PREFS.map(({ value, icon, label }) => (
             <button
               key={value}
@@ -44,6 +44,7 @@ export default function ProfilePage({ user, setUser }: Props) {
               aria-checked={preference === value}
               className={`theme-seg-option${preference === value ? ' selected' : ''}`}
               onClick={() => setPreference(value)}
+              disabled={isAnimating}
             >
               {icon === 'sun'  && <Sun  size={18} strokeWidth={1.8} />}
               {icon === 'moon' && <Moon size={18} strokeWidth={1.8} />}

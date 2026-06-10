@@ -35,7 +35,11 @@ function App() {
   const { mode } = useTheme()
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', mode === 'night' ? 'dark' : '')
+    const isDark = mode === 'night'
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : '')
+    // Status bar 圖示顏色同步（Android WebView / PWA）
+    const meta = document.querySelector('meta[name="theme-color"]')
+    if (meta) meta.setAttribute('content', isDark ? '#050208' : '#faf7f2')
   }, [mode])
 
   const pathToPage: Record<string, PageKey> = {
@@ -103,6 +107,7 @@ function App() {
         {!isDetail && <BottomNav activePage={activePage} onChange={setActivePage} />}
       </main>
       {mode === 'night' && <GlobalNightEffects />}
+      <ThemeTransitionOverlay />
       {!onboardingDone && (
         <OnboardingOverlay user={user} onComplete={handleOnboardingComplete} />
       )}
