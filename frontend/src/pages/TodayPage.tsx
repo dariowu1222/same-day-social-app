@@ -183,6 +183,7 @@ export default function TodayPage({ user, onGoToMatches }: Props) {
         content={content}
         isSubmitting={isSubmitting}
         hasSelectedEntry={selectedQuickEntryKey !== null}
+        selectedEntryKey={selectedQuickEntryKey}
         soulNote={soulNote}
         isSoulNoteOpen={isSoulNoteOpen}
         onQuickEntrySelect={selectQuickEntry}

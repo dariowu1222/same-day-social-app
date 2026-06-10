@@ -3878,104 +3878,235 @@ blockquote {
 }
 
 
-/* ── 樹洞頁夜間主題 ── */
+/* ── 樹洞頁 日間主題 ── */
 .rant-page {
-  background: linear-gradient(170deg, #0f1e1b 0%, #162824 40%, #1a2f2a 100%);
+  background: #faf7f2;
   min-height: 100%;
   position: relative;
   overflow: hidden;
 }
 
 .rant-page .rant-board-title {
-  color: #a8d4cc;
+  color: #7a6e62;
 }
 
 .rant-page .rant-search-bar {
-  background: transparent;
+  background: #f0ebe3;
+  border-color: #ddd5c8;
 }
 
 .rant-page .rant-search-inner {
-  background: rgba(255,255,255,0.07);
-  border-color: rgba(255,255,255,0.12);
+  background: #ffffff;
+  border-color: #ddd5c8;
 }
 
 .rant-page .rant-search-input {
-  color: #d4ede8;
+  color: #4a3f35;
 }
 
 .rant-page .rant-search-input::placeholder {
-  color: rgba(168,212,204,0.5);
+  color: #b0a090;
 }
 
 .rant-page .rant-search-icon {
-  color: rgba(168,212,204,0.6);
+  color: #b0a090;
 }
 
 .rant-page .rant-search-clear {
-  color: rgba(168,212,204,0.7);
+  color: #b0a090;
 }
 
 .rant-page .card {
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.08);
-  backdrop-filter: blur(6px);
+  background: #ffffff;
+  border: 0.5px solid #e8e0d4;
+  border-radius: 14px;
+  backdrop-filter: none;
+}
+
+.rant-page .list {
+  gap: 10px;
 }
 
 .rant-page .post-author-name {
-  color: #c8e8e0;
+  color: #4a3f35;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .rant-page .post-content {
-  color: #d4ede8;
+  color: #4a3f35;
+  font-size: 14px;
+  line-height: 1.6;
 }
 
 .rant-page .post-time {
-  color: rgba(168,212,204,0.55);
+  color: #b0a090;
+  font-size: 11px;
 }
 
 .rant-page .tag {
-  background: rgba(45,110,101,0.4);
-  color: #a8d4cc;
-  border-color: rgba(168,212,204,0.2);
+  background: #f0ebe3;
+  color: #8a7a6a;
+  border: 0.5px solid #ddd5c8;
+  border-radius: 20px;
+  font-size: 11px;
+}
+
+/* 想聽建議 → 綠色標籤 */
+.rant-page .tag[data-mode="GIVE_ADVICE"] {
+  background: #eaf4ee;
+  color: #4a8a62;
+  border-color: #c0dfc8;
 }
 
 .rant-page .post-action-btn,
 .rant-page .reply-like-btn,
 .rant-page .reply-sub-btn {
-  color: rgba(168,212,204,0.7);
+  color: #b0a090;
+  font-size: 12px;
 }
 
 .rant-page .post-action-btn:hover,
 .rant-page .reply-like-btn:hover,
 .rant-page .reply-sub-btn:hover {
-  color: #a8d4cc;
-  background: rgba(255,255,255,0.06);
+  color: #8a7a6a;
+  background: #f0ebe3;
 }
 
 .rant-page .report-btn {
-  color: rgba(220,140,130,0.6);
+  color: #d4785a;
 }
 
 .rant-page .thread-compose-btn,
 .rant-page .reply-toggle-btn,
 .rant-page .thread-collapse-btn {
-  color: rgba(168,212,204,0.5);
+  color: #b0a090;
+  font-size: 12px;
+  border-top: 0.5px solid #f0ebe3;
 }
 
 .rant-page .thread-line {
-  background: rgba(168,212,204,0.18);
+  background: #e8e0d4;
 }
 
 .rant-page .avatar-circle {
+  width: 32px;
+  height: 32px;
+  font-size: 13px;
+  background: #e8d5c0;
+  color: #8a6a4a;
+}
+
+.rant-page .hashtag-tag {
+  color: #8a7a6a;
+  background: #f0ebe3;
+  border-color: #ddd5c8;
+}
+
+/* ── 樹洞頁 夜間主題 ── */
+[data-theme="dark"] .rant-page {
+  background: linear-gradient(170deg, #0f1e1b 0%, #162824 40%, #1a2f2a 100%);
+}
+
+[data-theme="dark"] .rant-page .rant-board-title {
+  color: #a8d4cc;
+}
+
+[data-theme="dark"] .rant-page .rant-search-bar {
+  background: transparent;
+  border-color: transparent;
+}
+
+[data-theme="dark"] .rant-page .rant-search-inner {
+  background: rgba(255,255,255,0.07);
+  border-color: rgba(255,255,255,0.12);
+}
+
+[data-theme="dark"] .rant-page .rant-search-input {
+  color: #d4ede8;
+}
+
+[data-theme="dark"] .rant-page .rant-search-input::placeholder {
+  color: rgba(168,212,204,0.5);
+}
+
+[data-theme="dark"] .rant-page .rant-search-icon {
+  color: rgba(168,212,204,0.6);
+}
+
+[data-theme="dark"] .rant-page .rant-search-clear {
+  color: rgba(168,212,204,0.7);
+}
+
+[data-theme="dark"] .rant-page .card {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  backdrop-filter: blur(6px);
+}
+
+[data-theme="dark"] .rant-page .post-author-name {
+  color: #c8e8e0;
+}
+
+[data-theme="dark"] .rant-page .post-content {
+  color: #d4ede8;
+}
+
+[data-theme="dark"] .rant-page .post-time {
+  color: rgba(168,212,204,0.55);
+}
+
+[data-theme="dark"] .rant-page .tag {
+  background: rgba(45,110,101,0.4);
+  color: #a8d4cc;
+  border-color: rgba(168,212,204,0.2);
+}
+
+[data-theme="dark"] .rant-page .tag[data-mode="GIVE_ADVICE"] {
+  background: rgba(45,110,101,0.4);
+  color: #a8d4cc;
+  border-color: rgba(168,212,204,0.2);
+}
+
+[data-theme="dark"] .rant-page .post-action-btn,
+[data-theme="dark"] .rant-page .reply-like-btn,
+[data-theme="dark"] .rant-page .reply-sub-btn {
+  color: rgba(168,212,204,0.7);
+}
+
+[data-theme="dark"] .rant-page .post-action-btn:hover,
+[data-theme="dark"] .rant-page .reply-like-btn:hover,
+[data-theme="dark"] .rant-page .reply-sub-btn:hover {
+  color: #a8d4cc;
+  background: rgba(255,255,255,0.06);
+}
+
+[data-theme="dark"] .rant-page .report-btn {
+  color: rgba(220,140,130,0.6);
+}
+
+[data-theme="dark"] .rant-page .thread-compose-btn,
+[data-theme="dark"] .rant-page .reply-toggle-btn,
+[data-theme="dark"] .rant-page .thread-collapse-btn {
+  color: rgba(168,212,204,0.5);
+  border-top-color: rgba(168,212,204,0.1);
+}
+
+[data-theme="dark"] .rant-page .thread-line {
+  background: rgba(168,212,204,0.18);
+}
+
+[data-theme="dark"] .rant-page .avatar-circle {
   background: #2d5e58;
   color: #a8d4cc;
 }
 
-.rant-page .hashtag-tag {
+[data-theme="dark"] .rant-page .hashtag-tag {
   background: rgba(45,110,101,0.3);
   color: #7ec8bc;
   border-color: rgba(126,200,188,0.25);
 }
+
 
 /* ── 螢火蟲 ── */
 @keyframes fireflyFloat {
@@ -4410,3 +4541,163 @@ blockquote {
 [data-theme="dark"] body {
   background: #050208;
 }
+
+/* ── 底部導覽列 page-specific active 樣式 ────────────────── */
+
+.bottom-nav .nav-rant.active {
+  color: #c8785a;
+  background: #fce8e0;
+  border-radius: 10px;
+}
+
+[data-theme="dark"] .bottom-nav button {
+  color: #4a6e55;
+}
+
+[data-theme="dark"] .bottom-nav button.active {
+  color: #4caf7d;
+  background: transparent;
+}
+
+[data-theme="dark"] .bottom-nav .nav-today.active {
+  color: #4caf7d;
+  position: relative;
+}
+
+[data-theme="dark"] .bottom-nav .nav-today.active::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 2px;
+  background: #4caf7d;
+  border-radius: 1px;
+}
+
+/* ── 樹洞 FAB 日夜 ──────────────────────────────────────── */
+.rant-fab {
+  background: #5a9e78;
+  width: 44px;
+  height: 44px;
+}
+
+.rant-fab:hover {
+  background: #4a8a66;
+}
+
+[data-theme="dark"] .rant-fab {
+  background: #2d6e65;
+  box-shadow: 0 4px 16px rgba(36, 72, 69, 0.35);
+}
+
+[data-theme="dark"] .rant-fab:hover {
+  background: #244845;
+}
+
+/* ── 今日頁 夜間主題 ─────────────────────────────────────── */
+[data-theme="dark"] .today-header h1 {
+  color: #e8d5a3;
+  font-size: 20px;
+  font-weight: 500;
+}
+
+[data-theme="dark"] .today-entry-card {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+[data-theme="dark"] .quick-entry-button {
+  background: #162820;
+  border: 0.5px solid #2a4035;
+  color: #d4eedd;
+}
+
+[data-theme="dark"] .quick-entry-button:active {
+  background: #1e3830;
+  border-color: #3d6050;
+}
+
+[data-theme="dark"] .quick-entry-button.selected {
+  background: #1a3a2a;
+  border: 1.5px solid #4caf7d;
+}
+
+[data-theme="dark"] .quick-entry-button strong {
+  color: #d4eedd;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+[data-theme="dark"] .quick-entry-button span:not(.quick-entry-emoji) {
+  color: #6b9e80;
+  font-size: 11px;
+}
+
+[data-theme="dark"] .today-note-field > span {
+  color: #6b9e80;
+}
+
+[data-theme="dark"] .today-note-field textarea {
+  background: #162820;
+  border: 0.5px solid #2a4035;
+  color: #c8e6d0;
+  border-radius: 14px;
+}
+
+[data-theme="dark"] .today-note-field textarea::placeholder {
+  color: #5a7a65;
+}
+
+[data-theme="dark"] .today-note-field textarea:focus {
+  background: #1e3830;
+  border-color: #3d6050;
+}
+
+[data-theme="dark"] .today-submit-btn {
+  background: #1a3028;
+  color: #4a7a5a;
+  box-shadow: none;
+}
+
+[data-theme="dark"] .today-submit-btn:not(:disabled) {
+  background: #3d8f5e;
+  color: #e0f5eb;
+  box-shadow: 0 4px 16px rgba(60, 140, 80, 0.3);
+}
+
+[data-theme="dark"] .today-submit-btn:disabled {
+  background: #1a3028;
+  color: #4a7a5a;
+  box-shadow: none;
+}
+
+[data-theme="dark"] .soul-note {
+  background: #162820;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .soul-note-toggle {
+  color: #8aada8;
+}
+
+[data-theme="dark"] .soul-note-toggle span:first-child {
+  color: #6b9e80;
+}
+
+[data-theme="dark"] .soul-note blockquote {
+  color: #c8e6d0;
+  border-left-color: #4caf7d;
+}
+
+[data-theme="dark"] .soul-note-author {
+  color: #6b9e80;
+}
+
+[data-theme="dark"] .soul-note-text {
+  background: rgba(20, 50, 30, 0.6);
+  color: #8ab89a;
+}
+

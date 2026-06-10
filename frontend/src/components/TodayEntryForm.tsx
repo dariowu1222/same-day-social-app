@@ -1,3 +1,5 @@
+import { useTheme } from '../context/ThemeContext'
+
 export type TodayQuickEntry = {
   key: string
   label: string
@@ -19,12 +21,34 @@ type Props = {
   placeholder: string
   isSubmitting: boolean
   hasSelectedEntry: boolean
+  selectedEntryKey?: string | null
   soulNote: SoulNote | null
   isSoulNoteOpen: boolean
   onQuickEntrySelect: (entry: TodayQuickEntry) => void
   onSoulNoteToggle: () => void
   onContentChange: (value: string) => void
   onSubmit: () => void
+}
+
+function spawnCardParticles(cx: number, cy: number) {
+  const count = 6 + Math.floor(Math.random() * 3)
+  const colors = ['#b8f5a0', '#f5e8a0']
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement('div')
+    const size = 2 + Math.random() * 3
+    const color = colors[Math.floor(Math.random() * colors.length)]
+    el.style.cssText = `position:fixed;left:${cx}px;top:${cy}px;width:${size}px;height:${size}px;border-radius:50%;background:${color};box-shadow:0 0 ${size * 2}px ${size}px ${color};pointer-events:none;z-index:200;transform:translate(-50%,-50%);`
+    document.body.appendChild(el)
+    const angle = (Math.PI * 2 * i) / count + Math.random() * 0.5
+    const dist = 35 + Math.random() * 55
+    el.animate(
+      [
+        { transform: 'translate(-50%,-50%)', opacity: 1 },
+        { transform: `translate(calc(-50% + ${(Math.cos(angle) * dist).toFixed(0)}px),calc(-50% + ${(Math.sin(angle) * dist).toFixed(0)}px))`, opacity: 0 },
+      ],
+      { duration: 500 + Math.random() * 400, easing: 'ease-out', fill: 'forwards' }
+    ).onfinish = () => el.remove()
+  }
 }
 
 const quickEntries: TodayQuickEntry[] = [
@@ -67,6 +91,7 @@ export default function TodayEntryForm({
   placeholder,
   isSubmitting,
   hasSelectedEntry,
+  selectedEntryKey,
   soulNote,
   isSoulNoteOpen,
   onQuickEntrySelect,
@@ -74,6 +99,9 @@ export default function TodayEntryForm({
   onContentChange,
   onSubmit,
 }: Props) {
+  const { mode } = useTheme()
+  const canSubmit = hasSelectedEntry && content.trim().length > 0
+
   return (
     <section className="today-entry-card">
       <div className="quick-entry-grid" aria-label="快速選擇今天的感覺">
@@ -81,8 +109,14 @@ export default function TodayEntryForm({
           <button
             key={entry.key}
             type="button"
-            className={`quick-entry-button quick-entry-${entry.key}`}
-            onClick={() => onQuickEntrySelect(entry)}
+            className={`quick-entry-button quick-entry-${entry.key}${selectedEntryKey === entry.key ? ' selected' : ''}`}
+            onClick={(e) => {
+              if (mode === 'night') {
+                const rect = e.currentTarget.getBoundingClientRect()
+                spawnCardParticles(rect.left + rect.width / 2, rect.top + rect.height / 2)
+              }
+              onQuickEntrySelect(entry)
+            }}
           >
             <span className="quick-entry-emoji">{entry.emoji}</span>
             <strong>{entry.label}</strong>
@@ -134,7 +168,7 @@ export default function TodayEntryForm({
       <button
         className="today-submit-btn"
         onClick={onSubmit}
-        disabled={isSubmitting || !hasSelectedEntry}
+        disabled={isSubmitting || !canSubmit}
       >
         {isSubmitting ? '正在找同頻的人…' : '找找今天懂我的人'}
       </button>

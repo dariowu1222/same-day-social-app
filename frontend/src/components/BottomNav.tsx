@@ -17,7 +17,11 @@ export default function BottomNav({ activePage, onChange }: Props) {
   return (
     <nav className="bottom-nav" aria-label="主要導覽">
       {items.map((item) => (
-        <button key={item.key} className={activePage === item.key ? 'active' : ''} onClick={() => onChange(item.key)}>
+        <button
+          key={item.key}
+          className={`nav-${item.key}${activePage === item.key ? ' active' : ''}`}
+          onClick={() => onChange(item.key)}
+        >
           {item.label}
         </button>
       ))}

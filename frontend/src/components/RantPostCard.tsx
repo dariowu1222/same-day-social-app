@@ -87,7 +87,7 @@ export default function RantPostCard({
               <span className="post-time">
                 {new Date(post.createdAt).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
               </span>
-              <span className="tag">{MODE_LABELS[post.mode] ?? post.mode}</span>
+              <span className="tag" data-mode={post.mode}>{MODE_LABELS[post.mode] ?? post.mode}</span>
             </div>
             <div onClick={(e) => e.stopPropagation()}>
               <PostMenu postId={post.id} isOwner={post.userId === currentUserId} onDelete={onDelete} />
