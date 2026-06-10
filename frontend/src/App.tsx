@@ -33,7 +33,6 @@ function App() {
   const [user, setUser] = useState<DemoUser | null>(null)
   const [onboardingDone, setOnboardingDone] = useState(true)
   const { mode } = useTheme()
-  const isRantPath = location.pathname.startsWith('/rant')
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', mode === 'night' ? 'dark' : '')
@@ -103,7 +102,7 @@ function App() {
         </Routes>
         {!isDetail && <BottomNav activePage={activePage} onChange={setActivePage} />}
       </main>
-      {(mode === 'night' || isRantPath) && <GlobalNightEffects />}
+      {mode === 'night' && <GlobalNightEffects />}
       {!onboardingDone && (
         <OnboardingOverlay user={user} onComplete={handleOnboardingComplete} />
       )}
