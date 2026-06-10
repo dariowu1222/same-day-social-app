@@ -1,17 +1,17 @@
 /* ── 主題 Token ─────────────────────────────────────────────── */
 :root {
-  --theme-bg: linear-gradient(160deg, #fdf6ec 0%, #e8f5e1 50%, #d4ead4 100%);
+  --theme-bg: #faf7f2;
   --theme-title: #4a7c59;
   --theme-secondary: #7aaa88;
-  --theme-card-bg: rgba(255, 255, 255, 0.55);
-  --theme-card-border: rgba(120, 180, 120, 0.25);
-  --theme-nav-bg: rgba(255, 255, 255, 0.7);
-  --theme-nav-border: rgba(120, 180, 120, 0.2);
-  --theme-tag-bg: rgba(180, 230, 180, 0.4);
+  --theme-card-bg: #ffffff;
+  --theme-card-border: #e8e0d4;
+  --theme-nav-bg: rgba(255, 255, 255, 0.9);
+  --theme-nav-border: #e8e0d4;
+  --theme-tag-bg: #f0ebe3;
   --theme-btn: #5a9e6a;
-  --theme-divider: rgba(120, 180, 120, 0.2);
-  --theme-text: #263238;
-  --theme-muted: #637271;
+  --theme-divider: #e8e0d4;
+  --theme-text: #4a3f35;
+  --theme-muted: #b0a090;
 }
 
 [data-theme="dark"] {
