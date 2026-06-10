@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
+import { Capacitor } from '@capacitor/core'
+import { StatusBar, Style } from '@capacitor/status-bar'
 import BottomNav, { type PageKey } from './components/BottomNav'
 import LoginPage from './components/LoginPage'
 import OnboardingOverlay from './components/OnboardingOverlay'
@@ -37,9 +39,13 @@ function App() {
   useEffect(() => {
     const isDark = mode === 'night'
     document.documentElement.setAttribute('data-theme', isDark ? 'dark' : '')
-    // Status bar 圖示顏色同步（Android WebView / PWA）
+    // PWA / Chrome on Android
     const meta = document.querySelector('meta[name="theme-color"]')
     if (meta) meta.setAttribute('content', isDark ? '#050208' : '#faf7f2')
+    // 原生 iOS / Android Capacitor status bar 圖示顏色
+    if (Capacitor.isNativePlatform()) {
+      StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light }).catch(() => {})
+    }
   }, [mode])
 
   const pathToPage: Record<string, PageKey> = {

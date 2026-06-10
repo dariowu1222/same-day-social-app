@@ -128,7 +128,11 @@ h3 {
   width: min(100%, 520px);
   min-height: 100vh;
   margin: 0 auto;
-  padding: 20px 16px 92px;
+  /* Safe area：iOS 劉海/Dynamic Island（頂部）+ Android/iOS 手勢列（底部）*/
+  padding-top: max(20px, env(safe-area-inset-top));
+  padding-right: max(16px, env(safe-area-inset-right));
+  padding-bottom: calc(92px + env(safe-area-inset-bottom));
+  padding-left: max(16px, env(safe-area-inset-left));
   position: relative;
   z-index: 1;
 }
@@ -2144,6 +2148,8 @@ blockquote {
   border-top: 1px solid var(--theme-nav-border, #dfe5e1);
   background: var(--theme-nav-bg, rgba(255, 253, 248, 0.96));
   backdrop-filter: blur(10px);
+  /* 底部安全區（iPhone home indicator / Android 手勢列）*/
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .bottom-nav button,
