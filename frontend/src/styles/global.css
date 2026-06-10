@@ -3880,7 +3880,7 @@ blockquote {
 
 /* ── 樹洞頁 日間主題 ── */
 .rant-page {
-  background: #faf7f2;
+  background: var(--theme-bg, linear-gradient(160deg, #fdf6ec 0%, #e8f5e1 55%, #d4ead4 100%));
   min-height: 100%;
   position: relative;
   overflow: hidden;
