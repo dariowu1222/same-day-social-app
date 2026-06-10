@@ -129,6 +129,8 @@ h3 {
   min-height: 100vh;
   margin: 0 auto;
   padding: 20px 16px 92px;
+  position: relative;
+  z-index: 1;
 }
 
 .auth-shell {
@@ -3925,19 +3927,31 @@ blockquote {
 
 /* ── 樹洞頁 夜間主題 ── */
 [data-theme="dark"] .rant-page {
-  background: linear-gradient(170deg, #0f1e1b 0%, #162824 40%, #1a2f2a 100%);
+  background: transparent;
 }
 [data-theme="dark"] .rant-page .rant-board-title { color: #a8d4cc; }
 [data-theme="dark"] .rant-page .rant-search-bar { background: transparent; border-color: transparent; }
-[data-theme="dark"] .rant-page .rant-search-inner { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.12); }
+[data-theme="dark"] .rant-page .rant-search-inner {
+  background: rgba(22, 40, 32, 0.6);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border: 0.5px solid #2a4035;
+}
+/* 聚焦打字時改近全不透明，避免光點干擾 */
+[data-theme="dark"] .rant-page .rant-search-inner:focus-within {
+  background: rgba(22, 40, 32, 0.97);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
 [data-theme="dark"] .rant-page .rant-search-input { color: #d4ede8; }
 [data-theme="dark"] .rant-page .rant-search-input::placeholder { color: rgba(168,212,204,0.5); }
 [data-theme="dark"] .rant-page .rant-search-icon { color: rgba(168,212,204,0.6); }
 [data-theme="dark"] .rant-page .rant-search-clear { color: rgba(168,212,204,0.7); }
 [data-theme="dark"] .rant-page .card {
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.08);
-  backdrop-filter: blur(6px);
+  background: rgba(22, 40, 32, 0.6);
+  border: 0.5px solid #2a4035;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
 }
 [data-theme="dark"] .rant-page .post-author-name { color: #c8e8e0; }
 [data-theme="dark"] .rant-page .post-content { color: #d4ede8; }
@@ -3960,24 +3974,44 @@ blockquote {
 
 /* 貼文詳細頁（夜間）*/
 [data-theme="dark"] .detail-page {
-  background: #050e0c;
+  background: transparent;
 }
 [data-theme="dark"] .detail-topbar {
-  background: #050e0c;
+  background: transparent;
   border-bottom-color: rgba(168,212,204,0.1);
 }
 [data-theme="dark"] .detail-card {
-  background: rgba(255,255,255,0.05);
-  border-color: rgba(255,255,255,0.08);
+  background: rgba(22, 40, 32, 0.6);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border: 0.5px solid #2a4035;
 }
 [data-theme="dark"] .detail-thread-compose { border-bottom-color: rgba(168,212,204,0.1); }
 [data-theme="dark"] .detail-thread-compose-input {
-  background: rgba(255,255,255,0.07);
-  border-color: rgba(255,255,255,0.12);
+  background: rgba(22, 40, 32, 0.97);
+  border-color: #2a4035;
   color: #d4ede8;
 }
 [data-theme="dark"] .detail-thread-compose-input::placeholder { color: rgba(168,212,204,0.45); }
 [data-theme="dark"] .detail-thread-reply-right { border-bottom-color: rgba(168,212,204,0.1); }
+
+/* 樹洞列表卡片內回覆輸入框：近全不透明，打字不受光點干擾 */
+[data-theme="dark"] .rant-page .reply-form input {
+  background: rgba(22, 40, 32, 0.97);
+  border: 0.5px solid #2a4035;
+  color: #d4ede8;
+}
+[data-theme="dark"] .rant-page .reply-form input::placeholder { color: rgba(168,212,204,0.45); }
+
+/* ── 低階機型 fallback：不支援 backdrop blur 時改純色，可讀性優先 ── */
+@supports not ((backdrop-filter: blur(8px)) or (-webkit-backdrop-filter: blur(8px))) {
+  [data-theme="dark"] .quick-entry-button,
+  [data-theme="dark"] .rant-page .card,
+  [data-theme="dark"] .rant-page .rant-search-inner,
+  [data-theme="dark"] .detail-card {
+    background: #16281f;
+  }
+}
 
 /* ── 螢火蟲 ── */
 @keyframes fireflyFloat {
@@ -4382,7 +4416,7 @@ blockquote {
 .global-night-effects {
   position: fixed;
   inset: 0;
-  z-index: 5;
+  z-index: 0;
   pointer-events: none;
   animation: night-effects-enter 1.2s ease forwards;
 }
@@ -4481,18 +4515,20 @@ blockquote {
 }
 
 [data-theme="dark"] .quick-entry-button {
-  background: #162820;
+  background: rgba(22, 40, 32, 0.6);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
   border: 0.5px solid #2a4035;
   color: #d4eedd;
 }
 
 [data-theme="dark"] .quick-entry-button:active {
-  background: #1e3830;
+  background: rgba(30, 56, 48, 0.7);
   border-color: #3d6050;
 }
 
 [data-theme="dark"] .quick-entry-button.selected {
-  background: #1a3a2a;
+  background: rgba(26, 58, 42, 0.72);
   border: 1.5px solid #4caf7d;
 }
 
@@ -4512,7 +4548,7 @@ blockquote {
 }
 
 [data-theme="dark"] .today-note-field textarea {
-  background: #162820;
+  background: rgba(22, 40, 32, 0.97);
   border: 0.5px solid #2a4035;
   color: #c8e6d0;
   border-radius: 14px;
@@ -4523,7 +4559,7 @@ blockquote {
 }
 
 [data-theme="dark"] .today-note-field textarea:focus {
-  background: #1e3830;
+  background: rgba(22, 40, 32, 0.97);
   border-color: #3d6050;
 }
 
