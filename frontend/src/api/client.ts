@@ -52,6 +52,14 @@ async function request<T>(path: string, options?: RequestInit): Promise<ApiRespo
     throw new Error('目前無法連線到伺服器，請確認後端是否已啟動。')
   }
 
+  if (response.status === 401) {
+    clearAuthToken()
+    localStorage.removeItem('same-day-demo-user')
+    sessionStorage.removeItem('same-day-demo-user')
+    window.location.reload()
+    throw new Error('登入已過期，請重新登入。')
+  }
+
   let body: ApiResponse<T>
   try {
     body = (await response.json()) as ApiResponse<T>
