@@ -33,6 +33,7 @@ function App() {
   const [user, setUser] = useState<DemoUser | null>(null)
   const [onboardingDone, setOnboardingDone] = useState(true)
   const { mode } = useTheme()
+  const isRantPath = location.pathname.startsWith('/rant')
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', mode === 'night' ? 'dark' : '')
@@ -87,7 +88,6 @@ function App() {
   return (
     <>
       <main className="app-shell">
-        <ThemeToggle />
         <Routes>
           <Route path="/" element={
             !showMatchResult
@@ -103,8 +103,7 @@ function App() {
         </Routes>
         {!isDetail && <BottomNav activePage={activePage} onChange={setActivePage} />}
       </main>
-      {mode === 'night' && <GlobalNightEffects />}
-      <ThemeTransitionOverlay />
+      {(mode === 'night' || isRantPath) && <GlobalNightEffects />}
       {!onboardingDone && (
         <OnboardingOverlay user={user} onComplete={handleOnboardingComplete} />
       )}

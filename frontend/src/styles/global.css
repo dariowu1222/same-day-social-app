@@ -46,6 +46,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background: var(--theme-bg, #fffcf7);
+  transition: background 0.3s ease;
 }
 
 button,
@@ -3887,235 +3888,101 @@ blockquote {
 }
 
 
-/* ── 樹洞頁 日間主題 ── */
+/* ── 樹洞頁（永遠深色，不受主題設定影響）── */
 .rant-page {
-  background: var(--theme-bg, linear-gradient(160deg, #fdf6ec 0%, #e8f5e1 55%, #d4ead4 100%));
+  background: linear-gradient(170deg, #0f1e1b 0%, #162824 40%, #1a2f2a 100%);
   min-height: 100%;
   position: relative;
   overflow: hidden;
 }
-
-.rant-page .rant-board-title {
-  color: #7a6e62;
-}
-
-.rant-page .rant-search-bar {
-  background: #f0ebe3;
-  border-color: #ddd5c8;
-}
-
-.rant-page .rant-search-inner {
-  background: #ffffff;
-  border-color: #ddd5c8;
-}
-
-.rant-page .rant-search-input {
-  color: #4a3f35;
-}
-
-.rant-page .rant-search-input::placeholder {
-  color: #b0a090;
-}
-
-.rant-page .rant-search-icon {
-  color: #b0a090;
-}
-
-.rant-page .rant-search-clear {
-  color: #b0a090;
-}
-
+.rant-page .rant-board-title { color: #a8d4cc; }
+.rant-page .rant-search-bar { background: transparent; border-color: transparent; }
+.rant-page .rant-search-inner { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.12); }
+.rant-page .rant-search-input { color: #d4ede8; }
+.rant-page .rant-search-input::placeholder { color: rgba(168,212,204,0.5); }
+.rant-page .rant-search-icon { color: rgba(168,212,204,0.6); }
+.rant-page .rant-search-clear { color: rgba(168,212,204,0.7); }
 .rant-page .card {
-  background: #ffffff;
-  border: 0.5px solid #e8e0d4;
-  border-radius: 14px;
-  backdrop-filter: none;
-}
-
-.rant-page .list {
-  gap: 10px;
-}
-
-.rant-page .post-author-name {
-  color: #4a3f35;
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.rant-page .post-content {
-  color: #4a3f35;
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.rant-page .post-time {
-  color: #b0a090;
-  font-size: 11px;
-}
-
-.rant-page .tag {
-  background: #f0ebe3;
-  color: #8a7a6a;
-  border: 0.5px solid #ddd5c8;
-  border-radius: 20px;
-  font-size: 11px;
-}
-
-/* 想聽建議 → 綠色標籤 */
-.rant-page .tag[data-mode="GIVE_ADVICE"] {
-  background: #eaf4ee;
-  color: #4a8a62;
-  border-color: #c0dfc8;
-}
-
-.rant-page .post-action-btn,
-.rant-page .reply-like-btn,
-.rant-page .reply-sub-btn {
-  color: #b0a090;
-  font-size: 12px;
-}
-
-.rant-page .post-action-btn:hover,
-.rant-page .reply-like-btn:hover,
-.rant-page .reply-sub-btn:hover {
-  color: #8a7a6a;
-  background: #f0ebe3;
-}
-
-.rant-page .report-btn {
-  color: #d4785a;
-}
-
-.rant-page .thread-compose-btn,
-.rant-page .reply-toggle-btn,
-.rant-page .thread-collapse-btn {
-  color: #b0a090;
-  font-size: 12px;
-  border-top: 0.5px solid #f0ebe3;
-}
-
-.rant-page .thread-line {
-  background: #e8e0d4;
-}
-
-.rant-page .avatar-circle {
-  width: 32px;
-  height: 32px;
-  font-size: 13px;
-  background: #e8d5c0;
-  color: #8a6a4a;
-}
-
-.rant-page .hashtag-tag {
-  color: #8a7a6a;
-  background: #f0ebe3;
-  border-color: #ddd5c8;
-}
-
-/* ── 樹洞頁 夜間主題 ── */
-[data-theme="dark"] .rant-page {
-  background: linear-gradient(170deg, #0f1e1b 0%, #162824 40%, #1a2f2a 100%);
-}
-
-[data-theme="dark"] .rant-page .rant-board-title {
-  color: #a8d4cc;
-}
-
-[data-theme="dark"] .rant-page .rant-search-bar {
-  background: transparent;
-  border-color: transparent;
-}
-
-[data-theme="dark"] .rant-page .rant-search-inner {
-  background: rgba(255,255,255,0.07);
-  border-color: rgba(255,255,255,0.12);
-}
-
-[data-theme="dark"] .rant-page .rant-search-input {
-  color: #d4ede8;
-}
-
-[data-theme="dark"] .rant-page .rant-search-input::placeholder {
-  color: rgba(168,212,204,0.5);
-}
-
-[data-theme="dark"] .rant-page .rant-search-icon {
-  color: rgba(168,212,204,0.6);
-}
-
-[data-theme="dark"] .rant-page .rant-search-clear {
-  color: rgba(168,212,204,0.7);
-}
-
-[data-theme="dark"] .rant-page .card {
   background: rgba(255,255,255,0.05);
   border: 1px solid rgba(255,255,255,0.08);
   backdrop-filter: blur(6px);
 }
-
-[data-theme="dark"] .rant-page .post-author-name {
-  color: #c8e8e0;
+.rant-page .list { gap: 10px; }
+.rant-page .post-author-name { color: #c8e8e0; font-size: 13px; font-weight: 500; }
+.rant-page .post-content { color: #d4ede8; font-size: 14px; line-height: 1.6; }
+.rant-page .post-time { color: rgba(168,212,204,0.55); font-size: 11px; }
+.rant-page .tag {
+  background: rgba(45,110,101,0.4);
+  color: #a8d4cc;
+  border: 0.5px solid rgba(168,212,204,0.2);
+  border-radius: 20px;
+  font-size: 11px;
 }
+.rant-page .tag[data-mode="GIVE_ADVICE"] { background: rgba(45,110,101,0.4); color: #a8d4cc; border-color: rgba(168,212,204,0.2); }
+.rant-page .post-action-btn,
+.rant-page .reply-like-btn,
+.rant-page .reply-sub-btn { color: rgba(168,212,204,0.7); font-size: 12px; }
+.rant-page .post-action-btn:hover,
+.rant-page .reply-like-btn:hover,
+.rant-page .reply-sub-btn:hover { color: #a8d4cc; background: rgba(255,255,255,0.06); }
+.rant-page .report-btn { color: rgba(220,140,130,0.6); }
+.rant-page .thread-compose-btn,
+.rant-page .reply-toggle-btn,
+.rant-page .thread-collapse-btn {
+  color: rgba(168,212,204,0.5);
+  font-size: 12px;
+  border-top: 0.5px solid rgba(168,212,204,0.1);
+}
+.rant-page .thread-line { background: rgba(168,212,204,0.18); }
+.rant-page .avatar-circle { width: 32px; height: 32px; font-size: 13px; background: #2d5e58; color: #a8d4cc; }
+.rant-page .hashtag-tag { background: rgba(45,110,101,0.3); color: #7ec8bc; border-color: rgba(126,200,188,0.25); }
 
-[data-theme="dark"] .rant-page .post-content {
+/* 貼文詳細頁（樹洞）深色 */
+.detail-page.rant-detail {
+  background: linear-gradient(170deg, #0f1e1b 0%, #162824 40%, #1a2f2a 100%);
+}
+.detail-page.rant-detail .detail-topbar {
+  background: #0f1e1b;
+  border-bottom-color: rgba(168,212,204,0.12);
+}
+.detail-page.rant-detail .detail-topbar-title { color: #c8e8e0; }
+.detail-page.rant-detail .detail-back-btn { color: #a8d4cc; }
+.detail-page.rant-detail .detail-card {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.detail-page.rant-detail .post-author-name { color: #c8e8e0; font-size: 13px; font-weight: 500; }
+.detail-page.rant-detail .detail-post-content { color: #d4ede8; }
+.detail-page.rant-detail .post-time { color: rgba(168,212,204,0.55); }
+.detail-page.rant-detail .tag {
+  background: rgba(45,110,101,0.4);
+  color: #a8d4cc;
+  border: 0.5px solid rgba(168,212,204,0.2);
+  border-radius: 20px;
+  font-size: 11px;
+}
+.detail-page.rant-detail .post-action-btn { color: rgba(168,212,204,0.7); }
+.detail-page.rant-detail .post-action-btn:hover { color: #a8d4cc; background: rgba(255,255,255,0.06); }
+.detail-page.rant-detail .report-btn { color: rgba(220,140,130,0.6); }
+.detail-page.rant-detail .avatar-circle { background: #2d5e58; color: #a8d4cc; }
+.detail-page.rant-detail .detail-thread-compose { border-bottom-color: rgba(168,212,204,0.1); }
+.detail-page.rant-detail .detail-thread-compose-input {
+  background: rgba(255,255,255,0.07);
+  border-color: rgba(255,255,255,0.12);
   color: #d4ede8;
 }
+.detail-page.rant-detail .detail-thread-compose-input::placeholder { color: rgba(168,212,204,0.45); }
+.detail-page.rant-detail .detail-thread-reply-right { border-bottom-color: rgba(168,212,204,0.1); }
+.detail-page.rant-detail .thread-line { background: rgba(168,212,204,0.18); }
+.detail-page.rant-detail .hashtag-tag { background: rgba(45,110,101,0.3); color: #7ec8bc; border-color: rgba(126,200,188,0.25); }
 
-[data-theme="dark"] .rant-page .post-time {
-  color: rgba(168,212,204,0.55);
+/* 樹洞 active 時底部導覽列跟隨深色 */
+.bottom-nav:has(.nav-rant.active) {
+  background: rgba(12, 26, 24, 0.96);
+  border-top-color: rgba(168,212,204,0.12);
 }
-
-[data-theme="dark"] .rant-page .tag {
-  background: rgba(45,110,101,0.4);
-  color: #a8d4cc;
-  border-color: rgba(168,212,204,0.2);
-}
-
-[data-theme="dark"] .rant-page .tag[data-mode="GIVE_ADVICE"] {
-  background: rgba(45,110,101,0.4);
-  color: #a8d4cc;
-  border-color: rgba(168,212,204,0.2);
-}
-
-[data-theme="dark"] .rant-page .post-action-btn,
-[data-theme="dark"] .rant-page .reply-like-btn,
-[data-theme="dark"] .rant-page .reply-sub-btn {
-  color: rgba(168,212,204,0.7);
-}
-
-[data-theme="dark"] .rant-page .post-action-btn:hover,
-[data-theme="dark"] .rant-page .reply-like-btn:hover,
-[data-theme="dark"] .rant-page .reply-sub-btn:hover {
-  color: #a8d4cc;
-  background: rgba(255,255,255,0.06);
-}
-
-[data-theme="dark"] .rant-page .report-btn {
-  color: rgba(220,140,130,0.6);
-}
-
-[data-theme="dark"] .rant-page .thread-compose-btn,
-[data-theme="dark"] .rant-page .reply-toggle-btn,
-[data-theme="dark"] .rant-page .thread-collapse-btn {
-  color: rgba(168,212,204,0.5);
-  border-top-color: rgba(168,212,204,0.1);
-}
-
-[data-theme="dark"] .rant-page .thread-line {
-  background: rgba(168,212,204,0.18);
-}
-
-[data-theme="dark"] .rant-page .avatar-circle {
-  background: #2d5e58;
-  color: #a8d4cc;
-}
-
-[data-theme="dark"] .rant-page .hashtag-tag {
-  background: rgba(45,110,101,0.3);
-  color: #7ec8bc;
-  border-color: rgba(126,200,188,0.25);
-}
-
+.bottom-nav:has(.nav-rant.active) button { color: rgba(168,212,204,0.5); }
+.bottom-nav:has(.nav-rant.active) .nav-rant.active { color: #a8d4cc; }
 
 /* ── 螢火蟲 ── */
 @keyframes fireflyFloat {
@@ -4710,3 +4577,58 @@ blockquote {
   color: #8ab89a;
 }
 
+
+
+/* ── 外觀設定 分段控制器 ── */
+.setting-section-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--theme-muted, #b0a090);
+  margin: 0 0 10px;
+}
+
+.theme-segmented {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  background: #f0ebe3;
+  border-radius: 12px;
+  padding: 4px;
+}
+
+[data-theme="dark"] .theme-segmented {
+  background: #162820;
+}
+
+.theme-seg-option {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  color: #b0a090;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+[data-theme="dark"] .theme-seg-option {
+  color: #4a6e55;
+}
+
+.theme-seg-option.selected {
+  background: #ffffff;
+  border: 0.5px solid #ddd5c8;
+  color: #4a3f35;
+}
+
+[data-theme="dark"] .theme-seg-option.selected {
+  background: #1e3830;
+  border: 0.5px solid #3d6050;
+  color: #d4eedd;
+}
+
+.theme-seg-label {
+  font-size: 13px;
+  font-weight: 500;
+}

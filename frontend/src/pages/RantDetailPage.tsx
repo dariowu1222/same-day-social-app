@@ -91,7 +91,7 @@ export default function RantDetailPage({ user }: Props) {
 
   if (!post) {
     return (
-      <div className="detail-page">
+      <div className="detail-page rant-detail">
         <div className="detail-topbar">
           <button className="detail-back-btn" onClick={() => navigate(-1)}><ChevronLeft size={22} /></button>
           <span className="detail-topbar-title">貼文</span>
@@ -102,7 +102,7 @@ export default function RantDetailPage({ user }: Props) {
   }
 
   return (
-    <div className="detail-page">
+    <div className="detail-page rant-detail">
       {/* 頂部導覽 */}
       <div className="detail-topbar">
         <button className="detail-back-btn" onClick={() => navigate(-1)}><ChevronLeft size={22} /></button>
