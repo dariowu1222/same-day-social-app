@@ -100,7 +100,8 @@ export default function TodayEntryForm({
   onSubmit,
 }: Props) {
   const { mode } = useTheme()
-  const canSubmit = hasSelectedEntry && content.trim().length > 0
+  // 文字欄為選填（未來付費配對功能），只要選卡即可送出
+  const canSubmit = hasSelectedEntry
 
   return (
     <section className="today-entry-card">
