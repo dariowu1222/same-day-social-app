@@ -44,13 +44,103 @@ async function fileToResizedBase64(file: File): Promise<string> {
   })
 }
 
+function ProfileCardPreview({
+  user,
+  bio,
+  interestTags,
+  photos,
+  onClose,
+}: {
+  user: DemoUser
+  bio: string
+  interestTags: string[]
+  photos: string[]
+  onClose: () => void
+}) {
+  const [photoIndex, setPhotoIndex] = useState(0)
+
+  function handlePhotoTap(e: React.MouseEvent<HTMLDivElement>) {
+    if (photos.length <= 1) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    if (e.clientX - rect.left < rect.width / 2) {
+      setPhotoIndex(i => Math.max(0, i - 1))
+    } else {
+      setPhotoIndex(i => Math.min(photos.length - 1, i + 1))
+    }
+  }
+
+  return (
+    <div className="profile-preview-overlay" onClick={onClose}>
+      <div className="profile-preview-modal" onClick={e => e.stopPropagation()}>
+        <div className="profile-preview-topbar">
+          <span className="profile-preview-hint">別人看到你的卡會長這樣</span>
+          <button className="profile-preview-close" onClick={onClose} aria-label="關閉">
+            <X size={18} strokeWidth={2} />
+          </button>
+        </div>
+
+        <div className="profile-preview-card">
+          {/* Photo area */}
+          <div className="profile-preview-photo-wrap" onClick={handlePhotoTap}>
+            {photos.length > 0 ? (
+              <img src={photos[photoIndex]} alt={user.nickname} className="profile-preview-photo" />
+            ) : (
+              <div className="profile-preview-no-photo">
+                <span className="profile-preview-initial">{user.nickname[0]}</span>
+                <p className="profile-preview-no-photo-hint">還沒有照片，<br />在上方新增自拍吧</p>
+              </div>
+            )}
+            {photos.length > 1 && (
+              <div className="swipe-photo-dots">
+                {photos.map((_, i) => (
+                  <span key={i} className={`swipe-photo-dot${i === photoIndex ? ' active' : ''}`} />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Info area */}
+          <div className="profile-preview-info">
+            <div className="swipe-name-row">
+              <h2 className="swipe-name">{user.nickname}</h2>
+            </div>
+
+            {bio ? (
+              <p className="swipe-bio">{bio}</p>
+            ) : (
+              <p className="swipe-bio" style={{ opacity: 0.4 }}>還沒填自我介紹</p>
+            )}
+
+            {interestTags.length > 0 && (
+              <div className="swipe-tags" style={{ marginTop: 10 }}>
+                {interestTags.map(tag => (
+                  <span key={tag} className="swipe-tag">{tag}</span>
+                ))}
+              </div>
+            )}
+
+            <div className="profile-preview-today-placeholder">
+              <span className="swipe-today-label">今天想說的話</span>
+              <p className="profile-preview-today-text">
+                「你今天送出的心情故事，會顯示在這裡…」
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function ProfilePage({ user, setUser }: Props) {
   const [bio, setBio] = useState('')
   const [interestTags, setInterestTags] = useState<string[]>([])
   const [photos, setPhotos] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [saveMsg, setSaveMsg] = useState('')
+  const [showPreview, setShowPreview] = useState(false)
+  const [toast, setToast] = useState('')
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { preference, isAnimating, setPreference } = useTheme()
 
@@ -64,6 +154,12 @@ export default function ProfilePage({ user, setUser }: Props) {
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [user.userId])
+
+  function showToast(msg: string) {
+    setToast(msg)
+    if (toastTimer.current) clearTimeout(toastTimer.current)
+    toastTimer.current = setTimeout(() => setToast(''), 2000)
+  }
 
   function toggleTag(tag: string) {
     setInterestTags(prev =>
@@ -85,13 +181,11 @@ export default function ProfilePage({ user, setUser }: Props) {
 
   async function save() {
     setSaving(true)
-    setSaveMsg('')
     try {
       await updateProfile(user.userId, { bio, interestTags, photoDataUrls: photos })
-      setSaveMsg('已儲存')
-      setTimeout(() => setSaveMsg(''), 2000)
+      showToast('已儲存 ✓')
     } catch (err) {
-      setSaveMsg(err instanceof Error ? err.message : '儲存失敗')
+      showToast(err instanceof Error ? err.message : '儲存失敗')
     }
     setSaving(false)
   }
@@ -146,6 +240,13 @@ export default function ProfilePage({ user, setUser }: Props) {
           style={{ display: 'none' }}
           onChange={e => { if (e.target.files) handleAddPhotos(e.target.files) }}
         />
+        <button
+          className="profile-preview-btn"
+          type="button"
+          onClick={() => setShowPreview(true)}
+        >
+          預覽我的卡
+        </button>
       </section>
 
       {/* Bio */}
@@ -206,11 +307,6 @@ export default function ProfilePage({ user, setUser }: Props) {
 
       {/* Save + Logout */}
       <section className="panel profile-actions-panel">
-        {saveMsg && (
-          <p className={`profile-save-msg${saveMsg === '已儲存' ? ' ok' : ' err'}`}>
-            {saveMsg}
-          </p>
-        )}
         <button
           className="profile-save-btn"
           type="button"
@@ -223,6 +319,20 @@ export default function ProfilePage({ user, setUser }: Props) {
           登出
         </button>
       </section>
+
+      {/* Center toast */}
+      {toast && <div className="center-toast">{toast}</div>}
+
+      {/* Card preview modal */}
+      {showPreview && (
+        <ProfileCardPreview
+          user={user}
+          bio={bio}
+          interestTags={interestTags}
+          photos={photos}
+          onClose={() => setShowPreview(false)}
+        />
+      )}
     </div>
   )
 }
