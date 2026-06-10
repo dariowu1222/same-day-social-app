@@ -721,6 +721,11 @@ namespace backend.Migrations
                         .HasColumnType("text[]")
                         .HasColumnName("value_tags");
 
+                    b.Property<string[]>("PhotoDataUrls")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("photo_data_urls");
+
                     b.HasKey("Id");
 
                     b.ToTable("users", (string)null);

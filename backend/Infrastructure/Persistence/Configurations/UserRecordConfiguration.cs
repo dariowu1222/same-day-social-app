@@ -21,5 +21,6 @@ public sealed class UserRecordConfiguration : IEntityTypeConfiguration<UserRecor
         builder.Property(x => x.ResponsePreference).HasColumnName("response_preference").HasMaxLength(40);
         builder.Property(x => x.CreatedAt).HasColumnName("created_at");
         builder.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+        builder.Property(x => x.PhotoDataUrls).HasColumnName("photo_data_urls").HasColumnType("text[]");
     }
 }

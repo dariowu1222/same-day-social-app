@@ -85,6 +85,7 @@ function App() {
   function handleOnboardingComplete() {
     if (user) localStorage.setItem(onboardingKey(user.userId), '1')
     setOnboardingDone(true)
+    navigate('/profile')
   }
 
   if (!user) {

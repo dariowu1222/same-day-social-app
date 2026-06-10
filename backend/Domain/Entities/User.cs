@@ -12,6 +12,7 @@ public sealed class User
     public string Bio { get; set; } = "";
     public List<string> InterestTags { get; set; } = [];
     public List<string> ValueTags { get; set; } = [];
+    public List<string> PhotoDataUrls { get; set; } = [];
     public ResponseMode ResponsePreference { get; set; } = ResponseMode.JUST_LISTEN;
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

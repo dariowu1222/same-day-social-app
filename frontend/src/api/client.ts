@@ -169,16 +169,31 @@ export async function confirmPasswordReset(payload: {
   return response.data
 }
 
+export async function getProfile(userId: string) {
+  return request<UserProfile>(`/api/profile/${userId}`)
+}
+
 export async function updateProfile(userId: string, payload: {
   nickname?: string
   bio?: string
   interestTags?: string[]
   valueTags?: string[]
+  photoDataUrls?: string[]
 }) {
-  return request<unknown>(`/api/profile/${userId}`, {
+  return request<UserProfile>(`/api/profile/${userId}`, {
     method: 'PUT',
     body: JSON.stringify(payload),
   })
+}
+
+export type UserProfile = {
+  id: string
+  nickname: string
+  bio: string
+  interestTags: string[]
+  valueTags: string[]
+  photoDataUrls: string[]
+  responsePreference?: string
 }
 
 export async function createTodayEntry(payload: {

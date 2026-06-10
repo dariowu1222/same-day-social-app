@@ -19,6 +19,7 @@ public static class RecordMapper
             Bio = record.Bio,
             InterestTags = record.InterestTags.ToList(),
             ValueTags = record.ValueTags.ToList(),
+            PhotoDataUrls = record.PhotoDataUrls.ToList(),
             ResponsePreference = ParseEnum(record.ResponsePreference, ResponseMode.JUST_LISTEN),
             CreatedAt = record.CreatedAt
         };
@@ -36,6 +37,7 @@ public static class RecordMapper
             Bio = user.Bio,
             InterestTags = user.InterestTags.ToArray(),
             ValueTags = user.ValueTags.ToArray(),
+            PhotoDataUrls = user.PhotoDataUrls.ToArray(),
             ResponsePreference = user.ResponsePreference.ToString(),
             CreatedAt = user.CreatedAt,
             UpdatedAt = DateTimeOffset.UtcNow
