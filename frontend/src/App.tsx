@@ -41,7 +41,8 @@ function App() {
   const pathToPage: Record<string, PageKey> = {
     '/': 'today', '/rant': 'rant', '/tasks': 'tasks', '/chat': 'chat', '/profile': 'profile',
   }
-  const activePage: PageKey = pathToPage[location.pathname] ?? 'today'
+  const activePage: PageKey = pathToPage[location.pathname]
+    ?? (location.pathname.startsWith('/rant') ? 'rant' : 'today')
 
   function setActivePage(page: PageKey) {
     const pageToPath: Record<PageKey, string> = {
@@ -80,7 +81,8 @@ function App() {
     return <LoginPage onAuthenticated={handleAuthenticated} />
   }
 
-  const isDetail = location.pathname.startsWith('/rant/') || location.pathname === '/rant/new'
+  // 只有發文頁隱藏底部導覽列，貼文詳細頁照常顯示
+  const isDetail = location.pathname === '/rant/new'
 
   return (
     <>

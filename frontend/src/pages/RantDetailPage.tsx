@@ -115,6 +115,7 @@ export default function RantDetailPage({ user }: Props) {
       </div>
 
       <div className="detail-scroll">
+        <div className="detail-card">
         {/* ── 主貼文（Thread 風格）── */}
         <div className="detail-thread-post">
           <div className="thread-row">
@@ -204,6 +205,7 @@ export default function RantDetailPage({ user }: Props) {
             ))}
           </div>
         )}
+        </div>
       </div>
     </div>
   )
