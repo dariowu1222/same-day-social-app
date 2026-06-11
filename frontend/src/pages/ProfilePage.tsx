@@ -62,6 +62,58 @@ function getAge(birthday: string): number {
   return age
 }
 
+function daysInMonth(year: number, month: number): number {
+  return new Date(year, month, 0).getDate()
+}
+
+function BirthdayPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const parts = value ? value.split('-') : []
+  const selYear  = parts[0] ?? ''
+  const selMonth = parts[1] ? String(+parts[1]) : ''
+  const selDay   = parts[2] ? String(+parts[2]) : ''
+
+  const currentYear = new Date().getFullYear()
+  const years  = Array.from({ length: currentYear - 1950 + 1 }, (_, i) => currentYear - i)
+  const months = Array.from({ length: 12 }, (_, i) => i + 1)
+  const maxDay = selYear && selMonth ? daysInMonth(+selYear, +selMonth) : 31
+  const days   = Array.from({ length: maxDay }, (_, i) => i + 1)
+
+  function emit(y: string, m: string, d: string) {
+    if (!y || !m || !d) { onChange(''); return }
+    const safeDay = Math.min(+d, daysInMonth(+y, +m))
+    onChange(`${y}-${m.padStart(2, '0')}-${String(safeDay).padStart(2, '0')}`)
+  }
+
+  return (
+    <div className="birthday-picker">
+      <select
+        className="birthday-select"
+        value={selYear}
+        onChange={e => emit(e.target.value, selMonth, selDay)}
+      >
+        <option value="">年</option>
+        {years.map(y => <option key={y} value={y}>{y} 年</option>)}
+      </select>
+      <select
+        className="birthday-select"
+        value={selMonth}
+        onChange={e => emit(selYear, e.target.value, selDay)}
+      >
+        <option value="">月</option>
+        {months.map(m => <option key={m} value={m}>{m} 月</option>)}
+      </select>
+      <select
+        className="birthday-select"
+        value={selDay}
+        onChange={e => emit(selYear, selMonth, e.target.value)}
+      >
+        <option value="">日</option>
+        {days.map(d => <option key={d} value={d}>{d} 日</option>)}
+      </select>
+    </div>
+  )
+}
+
 async function fileToResizedBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image()
@@ -127,7 +179,6 @@ function ProfileCardFullscreen({
 
   return (
     <div className={`profile-fs-overlay${visible ? ' visible' : ''}`}>
-      {/* 頂部提示列 */}
       <div className="profile-fs-topbar">
         <div className="profile-fs-topbar-left">
           <Eye size={15} strokeWidth={2} />
@@ -138,17 +189,12 @@ function ProfileCardFullscreen({
         </button>
       </div>
 
-      {/* 可捲動的卡片區 */}
       <div className="profile-fs-body">
         <div className="profile-fs-card">
           {/* 照片區 */}
           <div className="profile-fs-photo-area" onClick={handlePhotoTap}>
             {photos.length > 0 ? (
-              <img
-                src={photos[photoIndex]}
-                alt={user.nickname}
-                className="profile-fs-photo"
-              />
+              <img src={photos[photoIndex]} alt={user.nickname} className="profile-fs-photo" />
             ) : (
               <div className="profile-fs-no-photo">
                 <Camera size={34} color="#c89a72" strokeWidth={1.5} />
@@ -197,9 +243,6 @@ function ProfileCardFullscreen({
               <span className="swipe-resonance-dot" />
               <span>你今天的共鳴語句，會顯示在這裡</span>
             </div>
-
-            <p className="swipe-today-label">今天想說的話</p>
-            <p className="swipe-today-text">「你今天送出的心情故事，會顯示在這裡…」</p>
 
             {interestTags.length > 0 && (
               <div className="swipe-tags" style={{ marginTop: 10 }}>
@@ -338,20 +381,12 @@ export default function ProfilePage({ user, setUser }: Props) {
       {/* Birthday */}
       <section className="panel">
         <p className="setting-section-title">生日</p>
-        <div className="profile-birthday-row">
-          <input
-            type="date"
-            className="profile-birthday-input"
-            value={birthday}
-            max={new Date().toISOString().slice(0, 10)}
-            onChange={e => setBirthday(e.target.value)}
-          />
-          {birthday && (
-            <span className="profile-zodiac-badge">
-              {ZODIAC_ICON[getZodiac(birthday)]} {getZodiac(birthday)}・{getAge(birthday)} 歲
-            </span>
-          )}
-        </div>
+        <BirthdayPicker value={birthday} onChange={setBirthday} />
+        {birthday && (
+          <span className="profile-zodiac-badge">
+            {ZODIAC_ICON[getZodiac(birthday)]} {getZodiac(birthday)}・{getAge(birthday)} 歲
+          </span>
+        )}
       </section>
 
       {/* Bio */}

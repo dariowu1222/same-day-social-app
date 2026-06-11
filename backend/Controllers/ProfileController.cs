@@ -18,8 +18,12 @@ public sealed class ProfileController(JsonStorageService storage, IServiceProvid
     {
         if (db != null)
         {
-            var record = await db.Users.FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
-            if (record != null) return ApiResponse<User>.Ok(record.ToDomain());
+            try
+            {
+                var record = await db.Users.FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
+                if (record != null) return ApiResponse<User>.Ok(record.ToDomain());
+            }
+            catch { /* DB 欄位尚未 migrate，fallback 到 JSON */ }
         }
 
         var user = storage.FindById<User>("users", userId);
@@ -39,19 +43,23 @@ public sealed class ProfileController(JsonStorageService storage, IServiceProvid
 
         if (db != null)
         {
-            var record = await db.Users.FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
-            if (record != null)
+            try
             {
-                if (!string.IsNullOrWhiteSpace(request.Nickname)) record.Nickname = request.Nickname.Trim();
-                if (request.Bio != null) record.Bio = request.Bio.Trim();
-                if (request.InterestTags != null) record.InterestTags = [.. request.InterestTags];
-                if (request.ValueTags != null) record.ValueTags = [.. request.ValueTags];
-                if (request.PhotoDataUrls != null) record.PhotoDataUrls = [.. request.PhotoDataUrls];
-                if (request.Birthday.HasValue) record.Birthday = request.Birthday;
-                record.UpdatedAt = DateTimeOffset.UtcNow;
-                await db.SaveChangesAsync(cancellationToken);
-                return ApiResponse<User>.Ok(record.ToDomain());
+                var record = await db.Users.FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
+                if (record != null)
+                {
+                    if (!string.IsNullOrWhiteSpace(request.Nickname)) record.Nickname = request.Nickname.Trim();
+                    if (request.Bio != null) record.Bio = request.Bio.Trim();
+                    if (request.InterestTags != null) record.InterestTags = [.. request.InterestTags];
+                    if (request.ValueTags != null) record.ValueTags = [.. request.ValueTags];
+                    if (request.PhotoDataUrls != null) record.PhotoDataUrls = [.. request.PhotoDataUrls];
+                    if (request.Birthday.HasValue) record.Birthday = request.Birthday;
+                    record.UpdatedAt = DateTimeOffset.UtcNow;
+                    await db.SaveChangesAsync(cancellationToken);
+                    return ApiResponse<User>.Ok(record.ToDomain());
+                }
             }
+            catch { /* DB 欄位尚未 migrate，fallback 到 JSON */ }
         }
 
         var user = storage.UpdateOne<User>("users", userId, target =>
