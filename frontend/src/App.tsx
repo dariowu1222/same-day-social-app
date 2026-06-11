@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { Capacitor } from '@capacitor/core'
-import { StatusBar, Style } from '@capacitor/status-bar'
 import BottomNav, { type PageKey } from './components/BottomNav'
 import LoginPage from './components/LoginPage'
 import OnboardingOverlay from './components/OnboardingOverlay'
@@ -42,9 +41,11 @@ function App() {
     // PWA / Chrome on Android
     const meta = document.querySelector('meta[name="theme-color"]')
     if (meta) meta.setAttribute('content', isDark ? '#050208' : '#faf7f2')
-    // 原生 iOS / Android Capacitor status bar 圖示顏色
+    // 原生 iOS / Android Capacitor status bar 圖示顏色（動態 import，網頁版不需要）
     if (Capacitor.isNativePlatform()) {
-      StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light }).catch(() => {})
+      import('@capacitor/status-bar').then(({ StatusBar, Style }) => {
+        StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light }).catch(() => {})
+      }).catch(() => {})
     }
   }, [mode])
 
