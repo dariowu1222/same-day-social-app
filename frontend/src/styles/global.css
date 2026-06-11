@@ -4787,64 +4787,153 @@ blockquote {
   color: var(--theme-text);
 }
 
-.profile-birthday-row {
+.profile-section-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
+  justify-content: space-between;
 }
-.profile-birthday-input {
-  height: 40px;
-  padding: 0 12px;
+.profile-eye-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: var(--theme-card-border);
+  color: var(--theme-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+.profile-eye-btn:hover { background: rgba(200,120,90,0.18); }
+.profile-eye-btn.active { color: #c8785a; }
+
+/* ─── Calendar Date Picker ──────────────────────────────────────────────────── */
+.cal-picker { position: relative; }
+.cal-input {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 42px;
+  padding: 0 14px;
   border-radius: 10px;
   border: 1.5px solid var(--theme-card-border);
   background: var(--theme-bg);
   color: var(--theme-text);
   font-size: 15px;
-  font-family: inherit;
-  outline: none;
   cursor: pointer;
+  user-select: none;
+  transition: border-color 0.15s;
 }
-.profile-birthday-input:focus {
-  border-color: #c89a72;
-}
-[data-theme="dark"] .profile-birthday-input {
+.cal-input:hover { border-color: #c89a72; }
+.cal-placeholder { color: var(--theme-muted); font-size: 14px; }
+.cal-chevron { color: var(--theme-muted); flex-shrink: 0; }
+[data-theme="dark"] .cal-input {
   background: rgba(255,255,255,0.06);
   border-color: rgba(255,255,255,0.15);
 }
+.cal-popup {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 300;
+  background: var(--theme-card-bg);
+  border: 1px solid var(--theme-card-border);
+  border-radius: 16px;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.14);
+  padding: 14px;
+  width: min(300px, calc(100vw - 48px));
+}
+.cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.cal-nav {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  font-size: 22px;
+  font-weight: 300;
+  color: var(--theme-text);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.12s;
+  line-height: 1;
+}
+.cal-nav:hover { background: var(--theme-card-border); }
+.cal-month-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--theme-text);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 8px;
+  transition: background 0.12s;
+}
+.cal-month-label:hover { background: var(--theme-card-border); }
+.cal-dow {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 4px;
+}
+.cal-dow span {
+  text-align: center;
+  font-size: 12px;
+  color: var(--theme-muted);
+  padding: 4px 0;
+}
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+}
+.cal-day {
+  aspect-ratio: 1;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  font-size: 13px;
+  color: var(--theme-text);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.1s;
+}
+.cal-day:hover:not(:disabled):not(.selected) { background: var(--theme-card-border); }
+.cal-day.selected { background: #c8785a; color: #fff; font-weight: 600; }
+.cal-day.empty, .cal-day:disabled { cursor: default; pointer-events: none; color: transparent; }
+.cal-year-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.cal-year-cell {
+  padding: 7px 2px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--theme-text);
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.1s;
+}
+.cal-year-cell:hover { background: var(--theme-card-border); }
+.cal-year-cell.selected { background: #c8785a; color: #fff; font-weight: 600; }
+
 .profile-zodiac-badge {
   display: inline-block;
   margin-top: 10px;
   font-size: 14px;
   color: var(--theme-muted);
   font-weight: 500;
-}
-.birthday-picker {
-  display: flex;
-  gap: 8px;
-}
-.birthday-select {
-  flex: 1;
-  height: 42px;
-  padding: 0 6px;
-  border-radius: 10px;
-  border: 1.5px solid var(--theme-card-border);
-  background: var(--theme-bg);
-  color: var(--theme-text);
-  font-size: 15px;
-  font-family: inherit;
-  outline: none;
-  cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-  text-align: center;
-}
-.birthday-select:focus {
-  border-color: #c89a72;
-}
-[data-theme="dark"] .birthday-select {
-  background: rgba(255,255,255,0.06);
-  border-color: rgba(255,255,255,0.15);
 }
 
 .profile-bio-input {
@@ -4975,24 +5064,6 @@ blockquote {
 }
 
 /* ─── Profile Card Preview ─────────────────────────────────────────────────── */
-.profile-preview-btn {
-  display: block;
-  width: 100%;
-  margin-top: 12px;
-  height: 38px;
-  border-radius: 10px;
-  border: 1.5px solid var(--theme-card-border);
-  background: transparent;
-  color: var(--theme-text);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  letter-spacing: 0.03em;
-  transition: background 0.15s;
-}
-.profile-preview-btn:hover {
-  background: var(--theme-card-border);
-}
 
 /* ─── Profile Card Fullscreen Preview ──────────────────────────────────────── */
 .profile-fs-overlay {

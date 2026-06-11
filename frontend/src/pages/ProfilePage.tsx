@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Sun, Moon, Plus, X, Eye, Camera } from 'lucide-react'
+import { Sun, Moon, Plus, X, Eye, EyeOff, Camera } from 'lucide-react'
 import type { DemoUser } from '../App'
 import { useTheme, type ThemePreference } from '../context/ThemeContext'
 import { getProfile, updateProfile, clearAuthToken } from '../api/client'
@@ -36,6 +36,9 @@ const ZODIAC_ICON: Record<string, string> = {
   '射手座': '♐', '摩羯座': '♑', '水瓶座': '♒', '雙魚座': '♓',
 }
 
+const MONTH_NAMES = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月']
+const DOW_LABELS  = ['日','一','二','三','四','五','六']
+
 function getZodiac(birthday: string): string {
   const d = new Date(birthday)
   const md = (d.getMonth() + 1) * 100 + d.getDate()
@@ -62,54 +65,137 @@ function getAge(birthday: string): number {
   return age
 }
 
-function daysInMonth(year: number, month: number): number {
-  return new Date(year, month, 0).getDate()
-}
-
-function BirthdayPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const parts = value ? value.split('-') : []
-  const selYear  = parts[0] ?? ''
-  const selMonth = parts[1] ? String(+parts[1]) : ''
-  const selDay   = parts[2] ? String(+parts[2]) : ''
-
+// ── 日曆日期選擇器 ───────────────────────────────────────────────────────────
+function CalendarPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const currentYear = new Date().getFullYear()
-  const years  = Array.from({ length: currentYear - 1950 + 1 }, (_, i) => currentYear - i)
-  const months = Array.from({ length: 12 }, (_, i) => i + 1)
-  const maxDay = selYear && selMonth ? daysInMonth(+selYear, +selMonth) : 31
-  const days   = Array.from({ length: maxDay }, (_, i) => i + 1)
+  const [open, setOpen] = useState(false)
+  const [showYearGrid, setShowYearGrid] = useState(false)
+  const [viewYear,  setViewYear]  = useState(() => value ? +value.split('-')[0] : currentYear - 25)
+  const [viewMonth, setViewMonth] = useState(() => value ? +value.split('-')[1] - 1 : 0)
+  const containerRef = useRef<HTMLDivElement>(null)
 
-  function emit(y: string, m: string, d: string) {
-    if (!y || !m || !d) { onChange(''); return }
-    const safeDay = Math.min(+d, daysInMonth(+y, +m))
-    onChange(`${y}-${m.padStart(2, '0')}-${String(safeDay).padStart(2, '0')}`)
+  const selParts = value ? value.split('-') : null
+  const selYear  = selParts ? +selParts[0] : null
+  const selMonth = selParts ? +selParts[1] - 1 : null
+  const selDay   = selParts ? +selParts[2] : null
+
+  // 點外部關閉
+  useEffect(() => {
+    if (!open) return
+    function onDown(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false); setShowYearGrid(false)
+      }
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [open])
+
+  // value 改變時同步 view
+  useEffect(() => {
+    if (value) {
+      const [y, m] = value.split('-')
+      setViewYear(+y); setViewMonth(+m - 1)
+    }
+  }, [value])
+
+  function prevMonth() {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1) }
+    else setViewMonth(m => m - 1)
+  }
+  function nextMonth() {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1) }
+    else setViewMonth(m => m + 1)
   }
 
+  // 建立日曆 grid
+  const firstDow = new Date(viewYear, viewMonth, 1).getDay()
+  const totalDays = new Date(viewYear, viewMonth + 1, 0).getDate()
+  const cells: (number | null)[] = [
+    ...Array(firstDow).fill(null),
+    ...Array.from({ length: totalDays }, (_, i) => i + 1),
+  ]
+  while (cells.length % 7 !== 0) cells.push(null)
+
+  const yearRange = Array.from({ length: currentYear - 1950 + 1 }, (_, i) => currentYear - i)
+  const displayText = selYear && selMonth !== null && selDay
+    ? `${selYear}年${MONTH_NAMES[selMonth]}${selDay}日`
+    : ''
+
   return (
-    <div className="birthday-picker">
-      <select
-        className="birthday-select"
-        value={selYear}
-        onChange={e => emit(e.target.value, selMonth, selDay)}
+    <div className="cal-picker" ref={containerRef}>
+      <div
+        className="cal-input"
+        onClick={() => { setOpen(o => !o); setShowYearGrid(false) }}
+        role="button"
+        tabIndex={0}
       >
-        <option value="">年</option>
-        {years.map(y => <option key={y} value={y}>{y} 年</option>)}
-      </select>
-      <select
-        className="birthday-select"
-        value={selMonth}
-        onChange={e => emit(selYear, e.target.value, selDay)}
-      >
-        <option value="">月</option>
-        {months.map(m => <option key={m} value={m}>{m} 月</option>)}
-      </select>
-      <select
-        className="birthday-select"
-        value={selDay}
-        onChange={e => emit(selYear, selMonth, e.target.value)}
-      >
-        <option value="">日</option>
-        {days.map(d => <option key={d} value={d}>{d} 日</option>)}
-      </select>
+        {displayText
+          ? <span>{displayText}</span>
+          : <span className="cal-placeholder">選擇生日</span>
+        }
+        <svg className="cal-chevron" width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <path d="M3 5L7 9L11 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </div>
+
+      {open && (
+        <div className="cal-popup">
+          {showYearGrid ? (
+            <>
+              <div className="cal-header">
+                <button className="cal-month-label" onClick={() => setShowYearGrid(false)}>
+                  ← 選擇年份
+                </button>
+              </div>
+              <div className="cal-year-grid">
+                {yearRange.map(y => (
+                  <button
+                    key={y}
+                    className={`cal-year-cell${y === viewYear ? ' selected' : ''}`}
+                    onClick={() => { setViewYear(y); setShowYearGrid(false) }}
+                  >
+                    {y}
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="cal-header">
+                <button className="cal-nav" onClick={prevMonth}>‹</button>
+                <button className="cal-month-label" onClick={() => setShowYearGrid(true)}>
+                  {viewYear}年{MONTH_NAMES[viewMonth]}
+                </button>
+                <button className="cal-nav" onClick={nextMonth}>›</button>
+              </div>
+              <div className="cal-dow">
+                {DOW_LABELS.map(d => <span key={d}>{d}</span>)}
+              </div>
+              <div className="cal-grid">
+                {cells.map((day, i) => {
+                  const isSelected = day !== null
+                    && day === selDay && viewMonth === selMonth && viewYear === selYear
+                  return (
+                    <button
+                      key={i}
+                      className={`cal-day${isSelected ? ' selected' : ''}${day === null ? ' empty' : ''}`}
+                      disabled={day === null}
+                      onClick={() => {
+                        if (!day) return
+                        onChange(`${viewYear}-${String(viewMonth + 1).padStart(2,'0')}-${String(day).padStart(2,'0')}`)
+                        setOpen(false)
+                      }}
+                    >
+                      {day ?? ''}
+                    </button>
+                  )
+                })}
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -136,21 +222,11 @@ async function fileToResizedBase64(file: File): Promise<string> {
 }
 
 function ProfileCardFullscreen({
-  user,
-  bio,
-  birthday,
-  interestTags,
-  photos,
-  onClose,
-  onGoAddPhoto,
+  user, bio, birthday, interestTags, photos, onClose, onGoAddPhoto,
 }: {
-  user: DemoUser
-  bio: string
-  birthday: string
-  interestTags: string[]
-  photos: string[]
-  onClose: () => void
-  onGoAddPhoto: () => void
+  user: DemoUser; bio: string; birthday: string
+  interestTags: string[]; photos: string[]
+  onClose: () => void; onGoAddPhoto: () => void
 }) {
   const [photoIndex, setPhotoIndex] = useState(0)
   const [visible, setVisible] = useState(false)
@@ -162,19 +238,13 @@ function ProfileCardFullscreen({
     return () => window.removeEventListener('popstate', onPopState)
   }, [])
 
-  function handleClose() {
-    setVisible(false)
-    setTimeout(onClose, 250)
-  }
+  function handleClose() { setVisible(false); setTimeout(onClose, 250) }
 
   function handlePhotoTap(e: React.MouseEvent<HTMLDivElement>) {
     if (photos.length <= 1) return
     const rect = e.currentTarget.getBoundingClientRect()
-    if (e.clientX - rect.left < rect.width / 2) {
-      setPhotoIndex(i => Math.max(0, i - 1))
-    } else {
-      setPhotoIndex(i => Math.min(photos.length - 1, i + 1))
-    }
+    if (e.clientX - rect.left < rect.width / 2) setPhotoIndex(i => Math.max(0, i - 1))
+    else setPhotoIndex(i => Math.min(photos.length - 1, i + 1))
   }
 
   return (
@@ -191,7 +261,6 @@ function ProfileCardFullscreen({
 
       <div className="profile-fs-body">
         <div className="profile-fs-card">
-          {/* 照片區 */}
           <div className="profile-fs-photo-area" onClick={handlePhotoTap}>
             {photos.length > 0 ? (
               <img src={photos[photoIndex]} alt={user.nickname} className="profile-fs-photo" />
@@ -202,9 +271,7 @@ function ProfileCardFullscreen({
                 <button
                   className="profile-fs-add-photo-btn"
                   onClick={e => { e.stopPropagation(); handleClose(); onGoAddPhoto() }}
-                >
-                  去新增
-                </button>
+                >去新增</button>
               </div>
             )}
             {photos.length > 1 && (
@@ -216,7 +283,6 @@ function ProfileCardFullscreen({
             )}
           </div>
 
-          {/* 文字資訊 */}
           <div className="profile-fs-info">
             <div className="swipe-name-row">
               <h2 className="swipe-name">{user.nickname}</h2>
@@ -230,25 +296,18 @@ function ProfileCardFullscreen({
                 </>
               )}
             </div>
-
-            {bio ? (
-              <p className="swipe-bio">{bio}</p>
-            ) : (
-              <p className="swipe-bio profile-fs-muted">還沒填自我介紹</p>
-            )}
-
+            {bio
+              ? <p className="swipe-bio">{bio}</p>
+              : <p className="swipe-bio profile-fs-muted">還沒填自我介紹</p>
+            }
             <div className="swipe-divider" />
-
             <div className="swipe-resonance-strip">
               <span className="swipe-resonance-dot" />
               <span>你今天的共鳴語句，會顯示在這裡</span>
             </div>
-
             {interestTags.length > 0 && (
               <div className="swipe-tags" style={{ marginTop: 10 }}>
-                {interestTags.map(tag => (
-                  <span key={tag} className="swipe-tag">{tag}</span>
-                ))}
+                {interestTags.map(tag => <span key={tag} className="swipe-tag">{tag}</span>)}
               </div>
             )}
           </div>
@@ -291,9 +350,7 @@ export default function ProfilePage({ user, setUser }: Props) {
   }
 
   function toggleTag(tag: string) {
-    setInterestTags(prev =>
-      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
-    )
+    setInterestTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])
   }
 
   async function handleAddPhotos(files: FileList) {
@@ -335,8 +392,18 @@ export default function ProfilePage({ user, setUser }: Props) {
 
       {/* Photos */}
       <section className="panel profile-photos-panel">
-        <p className="setting-section-title">自拍照片</p>
-        <div className="profile-photo-grid">
+        <div className="profile-section-header">
+          <p className="setting-section-title" style={{ marginBottom: 0 }}>自拍照片</p>
+          <button
+            className={`profile-eye-btn${showPreview ? ' active' : ''}`}
+            type="button"
+            onClick={() => setShowPreview(true)}
+            aria-label="預覽我的卡"
+          >
+            {showPreview ? <Eye size={18} strokeWidth={1.8} /> : <EyeOff size={18} strokeWidth={1.8} />}
+          </button>
+        </div>
+        <div className="profile-photo-grid" style={{ marginTop: 12 }}>
           {photos.map((src, i) => (
             <div key={i} className="profile-photo-cell">
               <img src={src} alt={`照片 ${i + 1}`} />
@@ -369,19 +436,12 @@ export default function ProfilePage({ user, setUser }: Props) {
           style={{ display: 'none' }}
           onChange={e => { if (e.target.files) handleAddPhotos(e.target.files) }}
         />
-        <button
-          className="profile-preview-btn"
-          type="button"
-          onClick={() => setShowPreview(true)}
-        >
-          預覽我的卡
-        </button>
       </section>
 
       {/* Birthday */}
       <section className="panel">
         <p className="setting-section-title">生日</p>
-        <BirthdayPicker value={birthday} onChange={setBirthday} />
+        <CalendarPicker value={birthday} onChange={setBirthday} />
         {birthday && (
           <span className="profile-zodiac-badge">
             {ZODIAC_ICON[getZodiac(birthday)]} {getZodiac(birthday)}・{getAge(birthday)} 歲
@@ -460,10 +520,8 @@ export default function ProfilePage({ user, setUser }: Props) {
         </button>
       </section>
 
-      {/* Center toast */}
       {toast && <div className="center-toast">{toast}</div>}
 
-      {/* 全螢幕卡片預覽 */}
       {showPreview && (
         <ProfileCardFullscreen
           user={user}
