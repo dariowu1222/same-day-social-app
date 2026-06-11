@@ -47,6 +47,7 @@ public sealed class ProfileController(JsonStorageService storage, IServiceProvid
                 if (request.InterestTags != null) record.InterestTags = [.. request.InterestTags];
                 if (request.ValueTags != null) record.ValueTags = [.. request.ValueTags];
                 if (request.PhotoDataUrls != null) record.PhotoDataUrls = [.. request.PhotoDataUrls];
+                if (request.Birthday.HasValue) record.Birthday = request.Birthday;
                 record.UpdatedAt = DateTimeOffset.UtcNow;
                 await db.SaveChangesAsync(cancellationToken);
                 return ApiResponse<User>.Ok(record.ToDomain());
@@ -60,6 +61,7 @@ public sealed class ProfileController(JsonStorageService storage, IServiceProvid
             target.InterestTags = request.InterestTags ?? target.InterestTags;
             target.ValueTags = request.ValueTags ?? target.ValueTags;
             target.PhotoDataUrls = request.PhotoDataUrls ?? target.PhotoDataUrls;
+            target.Birthday = request.Birthday ?? target.Birthday;
         });
 
         return user == null
@@ -68,4 +70,4 @@ public sealed class ProfileController(JsonStorageService storage, IServiceProvid
     }
 }
 
-public sealed record UpdateProfileRequest(string? Nickname, string? Bio, List<string>? InterestTags, List<string>? ValueTags, List<string>? PhotoDataUrls = null);
+public sealed record UpdateProfileRequest(string? Nickname, string? Bio, List<string>? InterestTags, List<string>? ValueTags, List<string>? PhotoDataUrls = null, DateOnly? Birthday = null);

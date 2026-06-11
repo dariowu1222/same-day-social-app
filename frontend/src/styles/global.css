@@ -4787,6 +4787,38 @@ blockquote {
   color: var(--theme-text);
 }
 
+.profile-birthday-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.profile-birthday-input {
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1.5px solid var(--theme-card-border);
+  background: var(--theme-bg);
+  color: var(--theme-text);
+  font-size: 15px;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+}
+.profile-birthday-input:focus {
+  border-color: #c89a72;
+}
+[data-theme="dark"] .profile-birthday-input {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.15);
+}
+.profile-zodiac-badge {
+  font-size: 14px;
+  color: var(--theme-muted);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 .profile-bio-input {
   width: 100%;
   box-sizing: border-box;

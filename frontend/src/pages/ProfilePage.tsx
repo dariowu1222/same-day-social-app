@@ -30,6 +30,38 @@ const TEST_PHOTOS = [
   'https://picsum.photos/seed/profile_c/400/500',
 ]
 
+const ZODIAC_ICON: Record<string, string> = {
+  '牡羊座': '♈', '金牛座': '♉', '雙子座': '♊', '巨蟹座': '♋',
+  '獅子座': '♌', '處女座': '♍', '天秤座': '♎', '天蠍座': '♏',
+  '射手座': '♐', '摩羯座': '♑', '水瓶座': '♒', '雙魚座': '♓',
+}
+
+function getZodiac(birthday: string): string {
+  const d = new Date(birthday)
+  const md = (d.getMonth() + 1) * 100 + d.getDate()
+  if (md >= 120 && md <= 218) return '水瓶座'
+  if (md >= 219 && md <= 320) return '雙魚座'
+  if (md >= 321 && md <= 419) return '牡羊座'
+  if (md >= 420 && md <= 520) return '金牛座'
+  if (md >= 521 && md <= 620) return '雙子座'
+  if (md >= 621 && md <= 722) return '巨蟹座'
+  if (md >= 723 && md <= 822) return '獅子座'
+  if (md >= 823 && md <= 922) return '處女座'
+  if (md >= 923 && md <= 1022) return '天秤座'
+  if (md >= 1023 && md <= 1121) return '天蠍座'
+  if (md >= 1122 && md <= 1221) return '射手座'
+  return '摩羯座'
+}
+
+function getAge(birthday: string): number {
+  const today = new Date()
+  const birth = new Date(birthday)
+  let age = today.getFullYear() - birth.getFullYear()
+  const m = today.getMonth() - birth.getMonth()
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--
+  return age
+}
+
 async function fileToResizedBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image()
@@ -54,6 +86,7 @@ async function fileToResizedBase64(file: File): Promise<string> {
 function ProfileCardFullscreen({
   user,
   bio,
+  birthday,
   interestTags,
   photos,
   onClose,
@@ -61,6 +94,7 @@ function ProfileCardFullscreen({
 }: {
   user: DemoUser
   bio: string
+  birthday: string
   interestTags: string[]
   photos: string[]
   onClose: () => void
@@ -140,6 +174,15 @@ function ProfileCardFullscreen({
           <div className="profile-fs-info">
             <div className="swipe-name-row">
               <h2 className="swipe-name">{user.nickname}</h2>
+              {birthday && (
+                <>
+                  <span className="swipe-age">{getAge(birthday)}</span>
+                  <span className="swipe-zodiac">
+                    <span className="swipe-zodiac-icon">{ZODIAC_ICON[getZodiac(birthday)] ?? '✦'}</span>
+                    {getZodiac(birthday)}
+                  </span>
+                </>
+              )}
             </div>
 
             {bio ? (
@@ -174,6 +217,7 @@ function ProfileCardFullscreen({
 
 export default function ProfilePage({ user, setUser }: Props) {
   const [bio, setBio] = useState('')
+  const [birthday, setBirthday] = useState('')
   const [interestTags, setInterestTags] = useState<string[]>([])
   const [photos, setPhotos] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
@@ -188,6 +232,7 @@ export default function ProfilePage({ user, setUser }: Props) {
     getProfile(user.userId)
       .then(res => {
         setBio(res.data.bio ?? '')
+        setBirthday(res.data.birthday ?? '')
         setInterestTags(res.data.interestTags ?? [])
         const loaded = res.data.photoDataUrls ?? []
         setPhotos(loaded.length > 0 ? loaded : TEST_PHOTOS)
@@ -223,7 +268,7 @@ export default function ProfilePage({ user, setUser }: Props) {
   async function save() {
     setSaving(true)
     try {
-      await updateProfile(user.userId, { bio, interestTags, photoDataUrls: photos })
+      await updateProfile(user.userId, { bio, birthday: birthday || undefined, interestTags, photoDataUrls: photos })
       showToast('已儲存 ✓')
     } catch (err) {
       showToast(err instanceof Error ? err.message : '儲存失敗')
@@ -288,6 +333,25 @@ export default function ProfilePage({ user, setUser }: Props) {
         >
           預覽我的卡
         </button>
+      </section>
+
+      {/* Birthday */}
+      <section className="panel">
+        <p className="setting-section-title">生日</p>
+        <div className="profile-birthday-row">
+          <input
+            type="date"
+            className="profile-birthday-input"
+            value={birthday}
+            max={new Date().toISOString().slice(0, 10)}
+            onChange={e => setBirthday(e.target.value)}
+          />
+          {birthday && (
+            <span className="profile-zodiac-badge">
+              {ZODIAC_ICON[getZodiac(birthday)]} {getZodiac(birthday)}・{getAge(birthday)} 歲
+            </span>
+          )}
+        </div>
       </section>
 
       {/* Bio */}
@@ -369,6 +433,7 @@ export default function ProfilePage({ user, setUser }: Props) {
         <ProfileCardFullscreen
           user={user}
           bio={bio}
+          birthday={birthday}
           interestTags={interestTags}
           photos={photos}
           onClose={() => setShowPreview(false)}

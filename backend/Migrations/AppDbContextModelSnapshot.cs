@@ -726,6 +726,10 @@ namespace backend.Migrations
                         .HasColumnType("text[]")
                         .HasColumnName("photo_data_urls");
 
+                    b.Property<DateOnly?>("Birthday")
+                        .HasColumnType("date")
+                        .HasColumnName("birthday");
+
                     b.HasKey("Id");
 
                     b.ToTable("users", (string)null);

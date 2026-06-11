@@ -11,6 +11,7 @@ public sealed class UserRecord
     public string[] InterestTags { get; set; } = [];
     public string[] ValueTags { get; set; } = [];
     public string[] PhotoDataUrls { get; set; } = [];
+    public DateOnly? Birthday { get; set; }
     public string ResponsePreference { get; set; } = "JUST_LISTEN";
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;

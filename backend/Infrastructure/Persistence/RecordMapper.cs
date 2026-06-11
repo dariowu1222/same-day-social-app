@@ -20,6 +20,7 @@ public static class RecordMapper
             InterestTags = record.InterestTags.ToList(),
             ValueTags = record.ValueTags.ToList(),
             PhotoDataUrls = record.PhotoDataUrls.ToList(),
+            Birthday = record.Birthday,
             ResponsePreference = ParseEnum(record.ResponsePreference, ResponseMode.JUST_LISTEN),
             CreatedAt = record.CreatedAt
         };
@@ -38,6 +39,7 @@ public static class RecordMapper
             InterestTags = user.InterestTags.ToArray(),
             ValueTags = user.ValueTags.ToArray(),
             PhotoDataUrls = user.PhotoDataUrls.ToArray(),
+            Birthday = user.Birthday,
             ResponsePreference = user.ResponsePreference.ToString(),
             CreatedAt = user.CreatedAt,
             UpdatedAt = DateTimeOffset.UtcNow

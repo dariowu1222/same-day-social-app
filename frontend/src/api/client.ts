@@ -179,6 +179,7 @@ export async function updateProfile(userId: string, payload: {
   interestTags?: string[]
   valueTags?: string[]
   photoDataUrls?: string[]
+  birthday?: string
 }) {
   return request<UserProfile>(`/api/profile/${userId}`, {
     method: 'PUT',
@@ -193,6 +194,7 @@ export type UserProfile = {
   interestTags: string[]
   valueTags: string[]
   photoDataUrls: string[]
+  birthday?: string
   responsePreference?: string
 }
 
