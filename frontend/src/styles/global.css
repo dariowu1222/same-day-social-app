@@ -4810,7 +4810,10 @@ blockquote {
 .profile-eye-btn.active { color: #c8785a; }
 
 /* ─── Calendar Date Picker ──────────────────────────────────────────────────── */
-.cal-picker { position: relative; }
+.cal-picker {
+  position: relative;
+  width: 100%;
+}
 .cal-input {
   display: flex;
   align-items: center;
@@ -4836,14 +4839,17 @@ blockquote {
 .cal-popup {
   position: absolute;
   top: calc(100% + 8px);
-  left: 0;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 300;
   background: var(--theme-card-bg);
   border: 1px solid var(--theme-card-border);
   border-radius: 16px;
   box-shadow: 0 8px 28px rgba(0,0,0,0.14);
-  padding: 14px;
-  width: min(300px, calc(100vw - 48px));
+  padding: 16px;
+  width: min(320px, calc(100vw - 48px));
+  max-width: calc(100vw - 48px);
+  box-sizing: border-box;
 }
 .cal-header {
   display: flex;
@@ -4879,7 +4885,8 @@ blockquote {
 .cal-month-label:hover { background: var(--theme-card-border); }
 .cal-dow {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, 34px);
+  justify-content: space-between;
   margin-bottom: 4px;
 }
 .cal-dow span {
@@ -4890,11 +4897,15 @@ blockquote {
 }
 .cal-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 1px;
+  grid-template-columns: repeat(7, 34px);
+  justify-content: space-between;
+  row-gap: 7px;
 }
 .cal-day {
-  aspect-ratio: 1;
+  width: 34px;
+  min-width: 0;
+  height: 34px;
+  padding: 0;
   border: none;
   background: transparent;
   border-radius: 50%;
@@ -5099,18 +5110,22 @@ blockquote {
   color: #7a6e62;
 }
 .profile-fs-close {
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  background: #f0ebe3;
-  border: none;
+  background: #f3eee7;
+  border: 1px solid #e7ddd0;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: #7a6e62;
+  color: #8a7465;
   padding: 0;
   flex-shrink: 0;
+}
+.profile-fs-close:hover {
+  background: #efe5da;
+  color: #c8785a;
 }
 
 .profile-fs-body {

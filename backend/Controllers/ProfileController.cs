@@ -41,6 +41,11 @@ public sealed class ProfileController(JsonStorageService storage, IServiceProvid
         if (callerId != userId)
             return Forbid();
 
+        if (request.Birthday.HasValue && !IsAdult(request.Birthday.Value))
+        {
+            return BadRequest(ApiResponse<User>.Fail("UNDERAGE", "未滿 18 歲暫時不能使用同頻 Today。"));
+        }
+
         if (db != null)
         {
             try
@@ -75,6 +80,12 @@ public sealed class ProfileController(JsonStorageService storage, IServiceProvid
         return user == null
             ? NotFound(ApiResponse<User>.Fail("USER_NOT_FOUND", "找不到使用者。"))
             : ApiResponse<User>.Ok(user);
+    }
+
+    private static bool IsAdult(DateOnly birthday)
+    {
+        var today = DateOnly.FromDateTime(DateTimeOffset.Now.DateTime);
+        return birthday.AddYears(18) <= today;
     }
 }
 

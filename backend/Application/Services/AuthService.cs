@@ -361,6 +361,11 @@ public sealed class AuthService
             return ("INVALID_EMAIL", "請輸入可以收信的 Email。");
         }
 
+        if (!IsAdultBirthYear(command.BirthYear))
+        {
+            return ("UNDERAGE", "未滿 18 歲暫時不能使用同頻 Today。");
+        }
+
         return ValidatePassword(command.Password, command.ConfirmPassword);
     }
 
@@ -403,7 +408,19 @@ public sealed class AuthService
         }
 
         var currentYear = DateTimeOffset.Now.Year;
-        return year >= 1940 && year <= currentYear - 13 ? year.ToString() : null;
+        return year >= 1940 && year <= currentYear - 18 ? year.ToString() : null;
+    }
+
+    private static bool IsAdultBirthYear(string birthYear)
+    {
+        var normalized = new string(birthYear.Where(char.IsDigit).ToArray());
+        if (normalized.Length < 4 || !int.TryParse(normalized[..4], out var year))
+        {
+            return false;
+        }
+
+        var currentYear = DateTimeOffset.Now.Year;
+        return year >= 1940 && year <= currentYear - 18;
     }
 
     private static string? NormalizeGender(string gender)

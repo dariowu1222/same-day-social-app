@@ -21,6 +21,15 @@ type Props = {
   onAuthenticated: (user: DemoUser, remember: boolean) => void
 }
 
+function isAdultBirthYear(birthYear: string) {
+  const normalized = birthYear.replace(/\D/g, '').slice(0, 4)
+  if (normalized.length < 4) return false
+
+  const year = Number(normalized)
+  const currentYear = new Date().getFullYear()
+  return year >= 1940 && year <= currentYear - 18
+}
+
 export default function LoginPage({ onAuthenticated }: Props) {
   const [mode, setMode] = useState<AuthMode>('login')
   const [forgotStep, setForgotStep] = useState<ForgotStep>('account')
@@ -109,6 +118,10 @@ export default function LoginPage({ onAuthenticated }: Props) {
     await runAuthAction(async () => {
       if (!agreed) {
         throw new Error('請先閱讀並同意服務條款與隱私權政策。')
+      }
+
+      if (!isAdultBirthYear(birthYear)) {
+        throw new Error('未滿 18 歲暫時不能使用同頻 Today。')
       }
 
       const result = await registerAccount({
@@ -778,7 +791,7 @@ const privacyDocument = {
     {
       heading: '八、未成年人保護',
       items: [
-        '本服務不得由未滿十三歲之兒童使用。十三歲至十八歲之未成年人使用本服務，應事先取得法定代理人之同意。如本公司發現已蒐集未滿十三歲兒童之個人資料，將立即予以刪除，並通知其法定代理人。'
+        '本服務僅提供年滿十八歲之使用者註冊與使用。若本公司發現使用者未滿十八歲，得限制或終止其帳號使用，並依適用法令刪除或停止處理相關個人資料。'
       ]
     },
     {

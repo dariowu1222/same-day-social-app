@@ -38,6 +38,8 @@ const ZODIAC_ICON: Record<string, string> = {
 
 const MONTH_NAMES = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月']
 const DOW_LABELS  = ['日','一','二','三','四','五','六']
+const DEFAULT_BIRTHDAY_YEAR = 2000
+const MINIMUM_AGE = 18
 
 function getZodiac(birthday: string): string {
   const d = new Date(birthday)
@@ -58,11 +60,15 @@ function getZodiac(birthday: string): string {
 
 function getAge(birthday: string): number {
   const today = new Date()
-  const birth = new Date(birthday)
-  let age = today.getFullYear() - birth.getFullYear()
-  const m = today.getMonth() - birth.getMonth()
-  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--
+  const [year, month, day] = birthday.split('-').map(Number)
+  let age = today.getFullYear() - year
+  const m = today.getMonth() + 1 - month
+  if (m < 0 || (m === 0 && today.getDate() < day)) age--
   return age
+}
+
+function isAdultBirthday(birthday: string): boolean {
+  return getAge(birthday) >= MINIMUM_AGE
 }
 
 // ── 日曆日期選擇器 ───────────────────────────────────────────────────────────
@@ -70,7 +76,7 @@ function CalendarPicker({ value, onChange }: { value: string; onChange: (v: stri
   const currentYear = new Date().getFullYear()
   const [open, setOpen] = useState(false)
   const [showYearGrid, setShowYearGrid] = useState(false)
-  const [viewYear,  setViewYear]  = useState(() => value ? +value.split('-')[0] : currentYear - 25)
+  const [viewYear,  setViewYear]  = useState(() => value ? +value.split('-')[0] : DEFAULT_BIRTHDAY_YEAR)
   const [viewMonth, setViewMonth] = useState(() => value ? +value.split('-')[1] - 1 : 0)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -126,7 +132,14 @@ function CalendarPicker({ value, onChange }: { value: string; onChange: (v: stri
     <div className="cal-picker" ref={containerRef}>
       <div
         className="cal-input"
-        onClick={() => { setOpen(o => !o); setShowYearGrid(false) }}
+        onClick={() => {
+          if (!value && !open) {
+            setViewYear(DEFAULT_BIRTHDAY_YEAR)
+            setViewMonth(0)
+          }
+          setOpen(o => !o)
+          setShowYearGrid(false)
+        }}
         role="button"
         tabIndex={0}
       >
@@ -251,11 +264,10 @@ function ProfileCardFullscreen({
     <div className={`profile-fs-overlay${visible ? ' visible' : ''}`}>
       <div className="profile-fs-topbar">
         <div className="profile-fs-topbar-left">
-          <Eye size={15} strokeWidth={2} />
           <span>預覽模式</span>
         </div>
-        <button className="profile-fs-close" onClick={handleClose} aria-label="關閉">
-          <X size={16} strokeWidth={2} />
+        <button className="profile-fs-close" onClick={handleClose} aria-label="關閉預覽">
+          <EyeOff size={18} strokeWidth={1.8} />
         </button>
       </div>
 
@@ -366,6 +378,11 @@ export default function ProfilePage({ user, setUser }: Props) {
   }
 
   async function save() {
+    if (birthday && !isAdultBirthday(birthday)) {
+      showToast('未滿 18 歲暫時不能使用同頻 Today。')
+      return
+    }
+
     setSaving(true)
     try {
       await updateProfile(user.userId, { bio, birthday: birthday || undefined, interestTags, photoDataUrls: photos })
@@ -400,7 +417,7 @@ export default function ProfilePage({ user, setUser }: Props) {
             onClick={() => setShowPreview(true)}
             aria-label="預覽我的卡"
           >
-            {showPreview ? <Eye size={18} strokeWidth={1.8} /> : <EyeOff size={18} strokeWidth={1.8} />}
+            <Eye size={18} strokeWidth={1.8} />
           </button>
         </div>
         <div className="profile-photo-grid" style={{ marginTop: 12 }}>

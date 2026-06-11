@@ -89,6 +89,8 @@ function toUserMessage(code?: string, message?: string) {
       return '目前尚未設定寄信服務，無法寄出驗證碼。'
     case 'TERMS_NOT_ACCEPTED':
       return '請先閱讀並同意服務條款與隱私權政策。'
+    case 'UNDERAGE':
+      return '未滿 18 歲暫時不能使用同頻 Today。'
     case 'INVALID_CODE':
       return '驗證碼錯誤或已過期，請確認後再輸入。'
     case 'EMAIL_SEND_FAILED':
