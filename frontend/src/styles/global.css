@@ -5183,3 +5183,93 @@ blockquote {
 .profile-fs-muted {
   opacity: 0.4;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   夜間模式補漏：panel、我的頁、樹洞新增貼文
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── panel（我的頁各區塊）── */
+[data-theme="dark"] .panel {
+  background: rgba(22, 40, 32, 0.55);
+  border-color: #2a4035;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* ── 樹洞新增貼文頁 ── */
+[data-theme="dark"] .new-post-header {
+  background: rgba(5, 15, 10, 0.96);
+  border-bottom-color: rgba(168, 212, 204, 0.1);
+}
+[data-theme="dark"] .new-post-back { color: #a8d4cc; }
+[data-theme="dark"] .new-post-back:hover { background: rgba(168, 212, 204, 0.1); }
+[data-theme="dark"] .new-post-title { color: #c8e8e0; }
+
+[data-theme="dark"] .post-input-block {
+  background: rgba(22, 40, 32, 0.75);
+  border-color: #2a4035;
+}
+[data-theme="dark"] .post-input-block textarea {
+  color: #d4ede8;
+}
+[data-theme="dark"] .post-input-block textarea::placeholder {
+  color: rgba(168, 212, 204, 0.4);
+}
+[data-theme="dark"] .post-input-toolbar {
+  border-top-color: rgba(168, 212, 204, 0.12);
+}
+
+/* ── Hashtag 輸入元件 ── */
+[data-theme="dark"] .hashtag-input-field {
+  background: rgba(22, 40, 32, 0.75);
+  border-color: #2a4035;
+}
+[data-theme="dark"] .hashtag-input-field:focus-within {
+  border-color: #4e9188;
+}
+[data-theme="dark"] .hashtag-text-input {
+  color: #d4ede8;
+}
+[data-theme="dark"] .hashtag-text-input::placeholder {
+  color: rgba(168, 212, 204, 0.4);
+}
+[data-theme="dark"] .hashtag-dropdown {
+  background: rgba(18, 36, 28, 0.98);
+  border-color: #2a4035;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+[data-theme="dark"] .hashtag-dropdown-item {
+  color: #d4ede8;
+}
+[data-theme="dark"] .hashtag-dropdown-item:hover {
+  background: rgba(168, 212, 204, 0.08);
+}
+[data-theme="dark"] .hashtag-dropdown-item.custom {
+  color: #7ec8bc;
+  border-bottom-color: #2a4035;
+}
+[data-theme="dark"] .hashtag-preset-chip {
+  background: rgba(45, 110, 101, 0.22);
+  border-color: rgba(126, 200, 188, 0.28);
+  color: #a8d4cc;
+}
+[data-theme="dark"] .hashtag-preset-chip:hover:not(:disabled) {
+  background: rgba(45, 110, 101, 0.44);
+  border-color: #7ec8bc;
+}
+[data-theme="dark"] .hashtag-limit-hint { color: rgba(168, 212, 204, 0.5); }
+
+/* ── 新貼文模式下拉 select ── */
+[data-theme="dark"] .new-post-body select {
+  background: rgba(22, 40, 32, 0.75);
+  border: 1.5px solid #2a4035;
+  color: #d4ede8;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 15px;
+  font-family: inherit;
+  outline: none;
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+}
