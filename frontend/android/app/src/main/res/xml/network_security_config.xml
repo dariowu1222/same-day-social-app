@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
+    <!-- 實機測試：允許 http 連到開發電腦的後端（http://<電腦IP>:5000） -->
+    <!-- 上架正式版（後端部署 https 後）應移除 base-config、只保留 domain-config -->
+    <base-config cleartextTrafficPermitted="true" />
     <!-- 允許 Android 模擬器存取宿主機的開發伺服器 -->
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="false">10.0.2.2</domain>

@@ -1,21 +1,33 @@
 import type { CapacitorConfig } from '@capacitor/cli'
 
-// ─── 開發模式 ────────────────────────────────────────────
-// 讓 app 直接連 Vite dev server，改完程式碼不用重新 build
-// 使用前：先啟動 `npm run dev`，再執行 `npx cap sync` + Android Studio Run
+// ─── 兩種模式 ────────────────────────────────────────────
+// 開發模式（預設）：app 直接連 Vite dev server，改完程式碼不用重新 build
+//   使用前：先啟動 `npm run dev`，再執行 `npx cap sync` + Android Studio Run
 //
-// ─── 上架模式 ────────────────────────────────────────────
-// 把下方 server.url 整行刪除（或加 //），執行：
-//   npm run build  →  npx cap sync  →  Android Studio Build APK/AAB
+// 實機測試 / 上架模式：打包 dist 進 app，不依賴 dev server
+//   執行：`npm run cap:device`（= vite build --mode device + CAP_BUILD=device cap sync）
+//   API 位址由 frontend/.env.device 的 VITE_API_BASE_URL 決定
+//   詳細步驟見 docs/device-build.md
+
+const isDeviceBuild = process.env.CAP_BUILD === 'device'
 
 const config: CapacitorConfig = {
   appId: 'com.tongpin.today',
   appName: '同頻 Today',
   webDir: 'dist',
-  server: {
-    androidScheme: 'https',
-    url: 'http://10.0.2.2:5173',  // 開發用 live reload，上架前改回來
-    cleartext: true,
+  server: isDeviceBuild
+    ? {
+        androidScheme: 'https',
+      }
+    : {
+        androidScheme: 'https',
+        url: 'http://10.0.2.2:5173',  // 開發用 live reload（Android 模擬器）
+        cleartext: true,
+      },
+  android: {
+    // 實機測試時 app（https://localhost）需要呼叫 http://<電腦IP>:5000
+    // 上架正式版（後端有 https）後應改回 false
+    allowMixedContent: true,
   },
   plugins: {
     StatusBar: {

@@ -28,3 +28,6 @@ test-results/
 playwright-report/
 blob-report/
 playwright/.cache/
+
+# 實機測試環境變數（每台機器 IP 不同，不 commit）
+.env.device
