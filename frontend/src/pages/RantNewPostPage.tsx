@@ -38,13 +38,6 @@ export default function RantNewPostPage({ user }: Props) {
           <ArrowLeft size={20} />
         </button>
         <span className="new-post-title">說說看</span>
-        <button
-          className="new-post-submit"
-          onClick={submitPost}
-          disabled={!content.trim() || submitting}
-        >
-          {submitting ? '送出中…' : '放進樹洞'}
-        </button>
       </div>
 
       <div className="new-post-body">
@@ -71,6 +64,14 @@ export default function RantNewPostPage({ user }: Props) {
           <option value="DISTRACT_ME">想轉移注意力</option>
           <option value="FIND_SIMILAR">想找同類</option>
         </select>
+
+        <button
+          className="new-post-submit"
+          onClick={submitPost}
+          disabled={!content.trim() || submitting}
+        >
+          {submitting ? '送出中…' : '放進樹洞'}
+        </button>
 
         {error && <p className="notice">{error}</p>}
       </div>

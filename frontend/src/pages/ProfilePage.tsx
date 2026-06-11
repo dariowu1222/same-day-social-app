@@ -243,6 +243,9 @@ function ProfileCardFullscreen({
 }) {
   const [photoIndex, setPhotoIndex] = useState(0)
   const [visible, setVisible] = useState(false)
+  const [bioExpanded, setBioExpanded] = useState(false)
+  const [bioOverflow, setBioOverflow] = useState(false)
+  const bioRef = useRef<HTMLParagraphElement>(null)
 
   useEffect(() => {
     requestAnimationFrame(() => setVisible(true))
@@ -250,6 +253,12 @@ function ProfileCardFullscreen({
     window.addEventListener('popstate', onPopState)
     return () => window.removeEventListener('popstate', onPopState)
   }, [])
+
+  // 量測自介在收合（3 行截斷）狀態下是否有溢出，決定是否顯示「更多」
+  useEffect(() => {
+    const el = bioRef.current
+    setBioOverflow(!!el && el.scrollHeight > el.clientHeight + 1)
+  }, [bio])
 
   function handleClose() { setVisible(false); setTimeout(onClose, 250) }
 
@@ -308,18 +317,37 @@ function ProfileCardFullscreen({
                 </>
               )}
             </div>
-            {bio
-              ? <p className="swipe-bio">{bio}</p>
-              : <p className="swipe-bio profile-fs-muted">還沒填自我介紹</p>
-            }
+            <div className="swipe-field">
+              <p className="swipe-field-label">關於我</p>
+              {bio ? (
+                <>
+                  <p
+                    ref={bioRef}
+                    className={`swipe-bio${bioExpanded ? '' : ' clamped'}`}
+                  >{bio}</p>
+                  {bioOverflow && (
+                    <button
+                      type="button"
+                      className="swipe-bio-more"
+                      onClick={() => setBioExpanded(v => !v)}
+                    >{bioExpanded ? '收合' : '更多'}</button>
+                  )}
+                </>
+              ) : (
+                <p className="swipe-bio profile-fs-muted">還沒填自我介紹</p>
+              )}
+            </div>
             <div className="swipe-divider" />
             <div className="swipe-resonance-strip">
               <span className="swipe-resonance-dot" />
               <span>你今天的共鳴語句，會顯示在這裡</span>
             </div>
             {interestTags.length > 0 && (
-              <div className="swipe-tags" style={{ marginTop: 10 }}>
-                {interestTags.map(tag => <span key={tag} className="swipe-tag">{tag}</span>)}
+              <div className="swipe-field">
+                <p className="swipe-field-label">興趣</p>
+                <div className="swipe-tags">
+                  {interestTags.map(tag => <span key={tag} className="swipe-tag">{tag}</span>)}
+                </div>
               </div>
             )}
           </div>
@@ -334,6 +362,7 @@ export default function ProfilePage({ user, setUser }: Props) {
   const [birthday, setBirthday] = useState('')
   const [interestTags, setInterestTags] = useState<string[]>([])
   const [photos, setPhotos] = useState<string[]>([])
+  const [photosDirty, setPhotosDirty] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
@@ -371,10 +400,12 @@ export default function ProfilePage({ user, setUser }: Props) {
     const picked = Array.from(files).slice(0, remaining)
     const results = await Promise.all(picked.map(fileToResizedBase64))
     setPhotos(prev => [...prev, ...results])
+    setPhotosDirty(true)
   }
 
   function removePhoto(index: number) {
     setPhotos(prev => prev.filter((_, i) => i !== index))
+    setPhotosDirty(true)
   }
 
   async function save() {
@@ -385,7 +416,12 @@ export default function ProfilePage({ user, setUser }: Props) {
 
     setSaving(true)
     try {
-      await updateProfile(user.userId, { bio, birthday: birthday || undefined, interestTags, photoDataUrls: photos })
+      await updateProfile(user.userId, {
+        bio,
+        birthday: birthday || undefined,
+        interestTags,
+        ...(photosDirty ? { photoDataUrls: photos } : {}),
+      })
       showToast('已儲存 ✓')
     } catch (err) {
       showToast(err instanceof Error ? err.message : '儲存失敗')
@@ -410,14 +446,14 @@ export default function ProfilePage({ user, setUser }: Props) {
       {/* Photos */}
       <section className="panel profile-photos-panel">
         <div className="profile-section-header">
-          <p className="setting-section-title" style={{ marginBottom: 0 }}>自拍照片</p>
+          <p className="setting-section-title" style={{ marginBottom: 0 }}>照片</p>
           <button
             className={`profile-eye-btn${showPreview ? ' active' : ''}`}
             type="button"
             onClick={() => setShowPreview(true)}
             aria-label="預覽我的卡"
           >
-            <Eye size={18} strokeWidth={1.8} />
+            <Eye size={26} strokeWidth={2} />
           </button>
         </div>
         <div className="profile-photo-grid" style={{ marginTop: 12 }}>

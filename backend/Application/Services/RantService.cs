@@ -59,26 +59,26 @@ public sealed class RantService
     {
         if (db != null)
         {
-            var posts = db.RantPosts.AsNoTracking()
+            var rows = db.RantPosts.AsNoTracking()
                 .Where(x => !x.IsHidden)
                 .OrderByDescending(x => x.CreatedAt)
+                .Select(x => new
+                {
+                    Post = x,
+                    ReplyCount = db.RantReplies.Count(reply => reply.RantPostId == x.Id),
+                    LikeCount = db.RantReactions.Count(reaction =>
+                        reaction.RantPostId == x.Id &&
+                        reaction.ReactionType == "UNDERSTAND")
+                })
                 .ToList();
-            var postIds = posts.Select(x => x.Id).ToHashSet();
-            var replies = db.RantReplies.AsNoTracking()
-                .Where(x => postIds.Contains(x.RantPostId))
-                .ToList()
-                .GroupBy(x => x.RantPostId)
-                .ToDictionary(x => x.Key, x => x.AsEnumerable());
-            var likeCounts = db.RantReactions.AsNoTracking()
-                .Where(x => postIds.Contains(x.RantPostId) && x.ReactionType == "UNDERSTAND")
-                .ToList()
-                .GroupBy(x => x.RantPostId)
-                .ToDictionary(x => x.Key, x => x.Count());
 
-            return posts
-                .Select(x => x.ToDomain(
-                    replies.GetValueOrDefault(x.Id, Array.Empty<RantReplyRecord>()),
-                    likeCounts.GetValueOrDefault(x.Id)))
+            return rows
+                .Select(x =>
+                {
+                    var post = x.Post.ToDomain(Array.Empty<RantReplyRecord>(), x.LikeCount);
+                    post.ReplyCount = x.ReplyCount;
+                    return post;
+                })
                 .ToList();
         }
 
