@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Sun, Moon, Plus, X } from 'lucide-react'
+import { Sun, Moon, Plus, X, Eye, Camera } from 'lucide-react'
 import type { DemoUser } from '../App'
 import { useTheme, type ThemePreference } from '../context/ThemeContext'
 import { getProfile, updateProfile, clearAuthToken } from '../api/client'
@@ -23,6 +23,13 @@ const PREFS: { value: ThemePreference; icon?: 'sun' | 'moon'; label?: string }[]
 
 const MAX_PHOTOS = 6
 
+// ── 測試用假照片，無自上傳照片時顯示（之後刪除）──
+const TEST_PHOTOS = [
+  'https://picsum.photos/seed/profile_a/400/500',
+  'https://picsum.photos/seed/profile_b/400/500',
+  'https://picsum.photos/seed/profile_c/400/500',
+]
+
 async function fileToResizedBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image()
@@ -44,20 +51,35 @@ async function fileToResizedBase64(file: File): Promise<string> {
   })
 }
 
-function ProfileCardPreview({
+function ProfileCardFullscreen({
   user,
   bio,
   interestTags,
   photos,
   onClose,
+  onGoAddPhoto,
 }: {
   user: DemoUser
   bio: string
   interestTags: string[]
   photos: string[]
   onClose: () => void
+  onGoAddPhoto: () => void
 }) {
   const [photoIndex, setPhotoIndex] = useState(0)
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    requestAnimationFrame(() => setVisible(true))
+    function onPopState() { handleClose() }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
+
+  function handleClose() {
+    setVisible(false)
+    setTimeout(onClose, 250)
+  }
 
   function handlePhotoTap(e: React.MouseEvent<HTMLDivElement>) {
     if (photos.length <= 1) return
@@ -70,24 +92,39 @@ function ProfileCardPreview({
   }
 
   return (
-    <div className="profile-preview-overlay" onClick={onClose}>
-      <div className="profile-preview-modal" onClick={e => e.stopPropagation()}>
-        <div className="profile-preview-topbar">
-          <span className="profile-preview-hint">別人看到你的卡會長這樣</span>
-          <button className="profile-preview-close" onClick={onClose} aria-label="關閉">
-            <X size={18} strokeWidth={2} />
-          </button>
+    <div className={`profile-fs-overlay${visible ? ' visible' : ''}`}>
+      {/* 頂部提示列 */}
+      <div className="profile-fs-topbar">
+        <div className="profile-fs-topbar-left">
+          <Eye size={15} strokeWidth={2} />
+          <span>預覽模式</span>
         </div>
+        <button className="profile-fs-close" onClick={handleClose} aria-label="關閉">
+          <X size={16} strokeWidth={2} />
+        </button>
+      </div>
 
-        <div className="profile-preview-card">
-          {/* Photo area */}
-          <div className="profile-preview-photo-wrap" onClick={handlePhotoTap}>
+      {/* 可捲動的卡片區 */}
+      <div className="profile-fs-body">
+        <div className="profile-fs-card">
+          {/* 照片區 */}
+          <div className="profile-fs-photo-area" onClick={handlePhotoTap}>
             {photos.length > 0 ? (
-              <img src={photos[photoIndex]} alt={user.nickname} className="profile-preview-photo" />
+              <img
+                src={photos[photoIndex]}
+                alt={user.nickname}
+                className="profile-fs-photo"
+              />
             ) : (
-              <div className="profile-preview-no-photo">
-                <span className="profile-preview-initial">{user.nickname[0]}</span>
-                <p className="profile-preview-no-photo-hint">還沒有照片，<br />在上方新增自拍吧</p>
+              <div className="profile-fs-no-photo">
+                <Camera size={34} color="#c89a72" strokeWidth={1.5} />
+                <p className="profile-fs-no-photo-text">加一張照片，讓別人更容易認識你</p>
+                <button
+                  className="profile-fs-add-photo-btn"
+                  onClick={e => { e.stopPropagation(); handleClose(); onGoAddPhoto() }}
+                >
+                  去新增
+                </button>
               </div>
             )}
             {photos.length > 1 && (
@@ -99,8 +136,8 @@ function ProfileCardPreview({
             )}
           </div>
 
-          {/* Info area */}
-          <div className="profile-preview-info">
+          {/* 文字資訊 */}
+          <div className="profile-fs-info">
             <div className="swipe-name-row">
               <h2 className="swipe-name">{user.nickname}</h2>
             </div>
@@ -108,8 +145,18 @@ function ProfileCardPreview({
             {bio ? (
               <p className="swipe-bio">{bio}</p>
             ) : (
-              <p className="swipe-bio" style={{ opacity: 0.4 }}>還沒填自我介紹</p>
+              <p className="swipe-bio profile-fs-muted">還沒填自我介紹</p>
             )}
+
+            <div className="swipe-divider" />
+
+            <div className="swipe-resonance-strip">
+              <span className="swipe-resonance-dot" />
+              <span>你今天的共鳴語句，會顯示在這裡</span>
+            </div>
+
+            <p className="swipe-today-label">今天想說的話</p>
+            <p className="swipe-today-text">「你今天送出的心情故事，會顯示在這裡…」</p>
 
             {interestTags.length > 0 && (
               <div className="swipe-tags" style={{ marginTop: 10 }}>
@@ -118,13 +165,6 @@ function ProfileCardPreview({
                 ))}
               </div>
             )}
-
-            <div className="profile-preview-today-placeholder">
-              <span className="swipe-today-label">今天想說的話</span>
-              <p className="profile-preview-today-text">
-                「你今天送出的心情故事，會顯示在這裡…」
-              </p>
-            </div>
           </div>
         </div>
       </div>
@@ -149,7 +189,8 @@ export default function ProfilePage({ user, setUser }: Props) {
       .then(res => {
         setBio(res.data.bio ?? '')
         setInterestTags(res.data.interestTags ?? [])
-        setPhotos(res.data.photoDataUrls ?? [])
+        const loaded = res.data.photoDataUrls ?? []
+        setPhotos(loaded.length > 0 ? loaded : TEST_PHOTOS)
       })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -323,14 +364,15 @@ export default function ProfilePage({ user, setUser }: Props) {
       {/* Center toast */}
       {toast && <div className="center-toast">{toast}</div>}
 
-      {/* Card preview modal */}
+      {/* 全螢幕卡片預覽 */}
       {showPreview && (
-        <ProfileCardPreview
+        <ProfileCardFullscreen
           user={user}
           bio={bio}
           interestTags={interestTags}
           photos={photos}
           onClose={() => setShowPreview(false)}
+          onGoAddPhoto={() => setTimeout(() => fileInputRef.current?.click(), 300)}
         />
       )}
     </div>
