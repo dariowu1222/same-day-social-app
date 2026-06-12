@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Heart, MessageCircle, ChevronLeft, Flag } from 'lucide-react'
+import { Heart, MessageCircle, ChevronLeft, Flag, HeartHandshake, ArrowUp, X } from 'lucide-react'
 import type { DemoUser } from '../App'
 import { deleteRant, getRants, likeReply, replyRant, reportRant, understandRant, type RantPost } from '../api/client'
 import MediaInput, { EMPTY_MEDIA, type MediaState } from '../components/MediaInput'
 import ReplyItem from '../components/ReplyItem'
 import PostMenu from '../components/PostMenu'
+import { COMPOSE_HINTS, QUICK_REPLIES, getHintSeenSet, markHintSeen, appendQuickReply } from '../lib/rantCompose'
 
 const MODE_LABELS: Record<string, string> = {
   JUST_SAYING: '只是想說',
@@ -37,9 +38,31 @@ export default function RantDetailPage({ user }: Props) {
   const [replyTarget, setReplyTarget] = useState<{ id: string; nickname: string } | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [composeFocused, setComposeFocused] = useState(false)
+  const [showHint, setShowHint] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
+  const hintText = post ? COMPOSE_HINTS[post.mode] : undefined
+  const quickReplies = post ? (QUICK_REPLIES[post.mode] ?? []) : []
+
   useEffect(() => { loadPost() }, [rantId])
+
+  // 首次點開留言框 → 淡入情境提示，並標記該貼文已顯示（之後永不再跳）
+  useEffect(() => {
+    if (!composeFocused || !post || !hintText) return
+    if (getHintSeenSet().has(post.id)) return
+    setShowHint(true)
+    markHintSeen(post.id)
+  }, [composeFocused, post, hintText])
+
+  // 快捷回覆：帶入輸入框可續編輯，不直接送出
+  function applyQuickReply(text: string) {
+    setReplyText(prev => appendQuickReply(prev, text))
+    setComposeFocused(true)
+    setTimeout(() => {
+      const el = inputRef.current
+      if (el) { el.focus(); const n = el.value.length; el.setSelectionRange(n, n) }
+    }, 0)
+  }
 
   async function loadPost() {
     try {
@@ -162,33 +185,60 @@ export default function RantDetailPage({ user }: Props) {
           </div>
         </div>
 
-        {/* ── 回覆輸入區 ── */}
+        {/* ── 回覆輸入區（提示 → 快捷回覆 → 輸入＋送出）── */}
         <div className="detail-thread-compose">
-          <div className="avatar-circle avatar-sm">{avatarLetter(user.nickname)}</div>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {replyTarget && (
-              <div className="reply-target-hint">↩ 回覆 @{replyTarget.nickname}
-                <button className="reply-target-clear" onClick={() => setReplyTarget(null)}>×</button>
+          {replyTarget && (
+            <div className="reply-target-hint" style={{ padding: '2px 14px' }}>↩ 回覆 @{replyTarget.nickname}
+              <button className="reply-target-clear" onClick={() => setReplyTarget(null)}>×</button>
+            </div>
+          )}
+
+          {/* 情境提示（一次性，可收合） */}
+          {showHint && hintText && (
+            <div className="reply-nudge">
+              <HeartHandshake size={15} strokeWidth={1.8} className="reply-nudge-icon" />
+              <span className="reply-nudge-text">{hintText}</span>
+              <button className="reply-nudge-close" onClick={() => setShowHint(false)} aria-label="收合提示">
+                <X size={14} strokeWidth={2} />
+              </button>
+            </div>
+          )}
+
+          {/* 快捷回覆橫條（常駐，橫滑） */}
+          {quickReplies.length > 0 && (
+            <div className="quick-reply-bar">
+              <div className="quick-reply-scroll">
+                {quickReplies.map((q) => (
+                  <button key={q} type="button" className="quick-reply-chip" onClick={() => applyQuickReply(q)}>{q}</button>
+                ))}
               </div>
-            )}
+              <span className="quick-reply-fade" />
+            </div>
+          )}
+
+          {/* 輸入框 + 送出鈕 */}
+          <div className="reply-input-row">
             <input
               ref={inputRef}
-              className="detail-thread-compose-input"
+              className="reply-input"
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
               onFocus={() => setComposeFocused(true)}
-              placeholder={replyTarget ? `回覆 @${replyTarget.nickname}…` : '留下回應…'}
+              placeholder={replyTarget ? `回覆 @${replyTarget.nickname}…` : '留下回應...'}
             />
-            {composeFocused && (
-              <>
-                <MediaInput value={replyMedia} onChange={setReplyMedia} />
-                <div className="reply-form-actions">
-                  <button className="ghost" onClick={() => { setComposeFocused(false); setReplyTarget(null); setReplyText(''); setReplyMedia(EMPTY_MEDIA) }}>取消</button>
-                  <button className="secondary" onClick={handleReply} disabled={!canReply || submitting}>送出</button>
-                </div>
-              </>
-            )}
+            <button className="reply-send-btn" onClick={handleReply} disabled={!canReply || submitting} aria-label="送出">
+              <ArrowUp size={18} strokeWidth={2.2} />
+            </button>
           </div>
+
+          {composeFocused && (
+            <div className="reply-extra-row">
+              <MediaInput value={replyMedia} onChange={setReplyMedia} />
+              <div className="reply-form-actions">
+                <button className="ghost" onClick={() => { setComposeFocused(false); setReplyTarget(null); setReplyText(''); setReplyMedia(EMPTY_MEDIA) }}>取消</button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ── 回覆列表 ── */}

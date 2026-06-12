@@ -65,20 +65,25 @@ public sealed class RantService
                 .Select(x => new
                 {
                     Post = x,
-                    ReplyCount = db.RantReplies.Count(reply => reply.RantPostId == x.Id),
                     LikeCount = db.RantReactions.Count(reaction =>
                         reaction.RantPostId == x.Id &&
                         reaction.ReactionType == "UNDERSTAND")
                 })
                 .ToList();
 
+            // 批次載入這批貼文的所有回覆（單一查詢），讓列表/詳情頁都能顯示回覆內容。
+            // session pooler(5432)支援同請求多段查詢，故安全。
+            var postIds = rows.Select(r => r.Post.Id).ToList();
+            var repliesByPost = db.RantReplies.AsNoTracking()
+                .Where(reply => postIds.Contains(reply.RantPostId))
+                .ToList()
+                .GroupBy(reply => reply.RantPostId)
+                .ToDictionary(g => g.Key, g => g.AsEnumerable());
+
             return rows
-                .Select(x =>
-                {
-                    var post = x.Post.ToDomain(Array.Empty<RantReplyRecord>(), x.LikeCount);
-                    post.ReplyCount = x.ReplyCount;
-                    return post;
-                })
+                .Select(x => x.Post.ToDomain(
+                    repliesByPost.GetValueOrDefault(x.Post.Id, Array.Empty<RantReplyRecord>()),
+                    x.LikeCount))
                 .ToList();
         }
 

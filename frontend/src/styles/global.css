@@ -3956,11 +3956,116 @@ blockquote {
 
 .detail-thread-compose {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 16px 12px;
+  flex-direction: column;
+  gap: 9px;
+  padding: 10px 0 12px;
   border-bottom: 1px solid #f0ebe0;
 }
+
+/* ── 留言情境提示（一次性 nudge）── */
+.reply-nudge {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 14px;
+  padding: 9px 11px;
+  background: #fdf3ee;
+  border: 0.5px solid #f0d8cc;
+  border-radius: 12px;
+  animation: reply-nudge-in 0.2s ease;
+}
+@keyframes reply-nudge-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.reply-nudge-icon { color: #c8785a; flex-shrink: 0; margin-top: 1px; }
+.reply-nudge-text { flex: 1; font-size: 12px; line-height: 1.5; color: #a05a3c; }
+.reply-nudge-close {
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #c8a08a;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+/* ── 快捷回覆橫條（常駐，橫滑）── */
+.quick-reply-bar { position: relative; }
+.quick-reply-scroll {
+  display: flex;
+  gap: 7px;
+  padding: 0 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.quick-reply-scroll::-webkit-scrollbar { display: none; }
+.quick-reply-chip {
+  flex-shrink: 0;
+  white-space: nowrap;
+  padding: 7px 13px;
+  border-radius: 18px;
+  background: #f0ebe3;
+  border: 0.5px solid #e0d8cc;
+  color: #6a5e52;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.quick-reply-chip:active { background: #e6dfd3; }
+.quick-reply-fade {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 28px;
+  pointer-events: none;
+  background: linear-gradient(to right, transparent, #faf7f2);
+}
+
+/* ── 輸入框 + 送出鈕 ── */
+.reply-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+}
+.reply-input {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 14px;
+  border-radius: 20px;
+  border: 0.5px solid #ddd5c8;
+  background: #ffffff;
+  font-size: 14px;
+  font-family: inherit;
+  color: #263238;
+  outline: none;
+}
+.reply-input::placeholder { color: #b0a090; }
+.reply-send-btn {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 50%;
+  border: none;
+  background: #5a9e78;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.reply-send-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.reply-extra-row { padding: 0 14px; }
+
+/* 列表頁回覆框內：提示/快捷與輸入框對齊（卡片本身已有內距，去掉 14px 偏移）*/
+.reply-form .reply-nudge { margin-left: 0; margin-right: 0; }
+.reply-form .quick-reply-scroll { padding-left: 0; padding-right: 0; }
 
 .detail-thread-compose-input {
   flex: 1;
@@ -4059,6 +4164,17 @@ blockquote {
 [data-theme="dark"] .rant-page .post-author-name { color: #c8e8e0; }
 [data-theme="dark"] .rant-page .post-content { color: #d4ede8; }
 [data-theme="dark"] .rant-page .post-time { color: rgba(168,212,204,0.55); }
+
+/* 夜間：樹洞詳情頁（.detail-page）+ 回覆文字。原本只覆寫了 .rant-page，詳情頁的字仍是深色看不到 */
+[data-theme="dark"] .detail-post-content { color: #e3f2ee; }
+[data-theme="dark"] .detail-page .post-author-name { color: #c8e8e0; }
+[data-theme="dark"] .detail-page .post-time { color: rgba(168,212,204,0.55); }
+[data-theme="dark"] .flat-reply-content { color: #d4ede8; }
+[data-theme="dark"] .thread-sub-count { color: #8fd4c8; }
+[data-theme="dark"] .quote-author { color: #8fd4c8; }
+[data-theme="dark"] .quote-text { color: rgba(212,237,232,0.72); }
+/* 詳情頁 mode 標籤：套用與列表頁相同的暗色系 */
+[data-theme="dark"] .detail-page .tag { background: rgba(45,110,101,0.4); color: #a8d4cc; border-color: rgba(168,212,204,0.2); }
 [data-theme="dark"] .rant-page .tag { background: rgba(45,110,101,0.4); color: #a8d4cc; border-color: rgba(168,212,204,0.2); }
 [data-theme="dark"] .rant-page .tag[data-mode="GIVE_ADVICE"] { background: rgba(45,110,101,0.4); color: #a8d4cc; border-color: rgba(168,212,204,0.2); }
 [data-theme="dark"] .rant-page .post-action-btn,
@@ -4097,6 +4213,30 @@ blockquote {
 }
 [data-theme="dark"] .detail-thread-compose-input::placeholder { color: rgba(168,212,204,0.45); }
 [data-theme="dark"] .detail-thread-reply-right { border-bottom-color: rgba(168,212,204,0.1); }
+
+/* 留言提示 + 快捷回覆 + 輸入：夜間覆寫 */
+[data-theme="dark"] .reply-nudge {
+  background: rgba(200,120,90,0.10);
+  border-color: rgba(200,120,90,0.30);
+}
+[data-theme="dark"] .reply-nudge-text { color: #e3a986; }
+[data-theme="dark"] .reply-nudge-icon { color: #d98a64; }
+[data-theme="dark"] .reply-nudge-close { color: rgba(217,138,100,0.7); }
+[data-theme="dark"] .quick-reply-chip {
+  background: rgba(22,40,32,0.85);
+  border-color: #2a4035;
+  color: #c4d6d0;
+}
+[data-theme="dark"] .quick-reply-chip:active { background: rgba(22,40,32,1); }
+[data-theme="dark"] .quick-reply-fade {
+  background: linear-gradient(to right, transparent, var(--theme-bg, #12201a));
+}
+[data-theme="dark"] .reply-input {
+  background: rgba(22, 40, 32, 0.97);
+  border-color: #2a4035;
+  color: #d4ede8;
+}
+[data-theme="dark"] .reply-input::placeholder { color: rgba(168,212,204,0.45); }
 
 /* 樹洞列表卡片內回覆輸入框：近全不透明，打字不受光點干擾 */
 [data-theme="dark"] .rant-page .reply-form input {

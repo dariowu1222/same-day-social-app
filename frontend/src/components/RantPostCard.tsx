@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Heart, MessageCircle, Flag } from 'lucide-react'
+import { Heart, MessageCircle, Flag, HeartHandshake, X } from 'lucide-react'
 import { likeReply, type RantPost } from '../api/client'
 import MediaInput, { type MediaState } from './MediaInput'
 import ReplyItem from './ReplyItem'
 import PostMenu from './PostMenu'
+import { COMPOSE_HINTS, QUICK_REPLIES, getHintSeenSet, markHintSeen, appendQuickReply } from '../lib/rantCompose'
 
 const MODE_LABELS: Record<string, string> = {
   JUST_SAYING: '只是想說',
@@ -43,12 +44,34 @@ export default function RantPostCard({
   const [showReplies, setShowReplies] = useState(false)
   const [showReplyForm, setShowReplyForm] = useState(false)
   const [replyTarget, setReplyTarget] = useState<{ id: string; nickname: string } | null>(null)
+  const [showHint, setShowHint] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
   const canReply = replyText.trim() || replyMedia.imageDataUrl || replyMedia.audioDataUrl
+
+  const hintText = COMPOSE_HINTS[post.mode]
+  const quickReplies = QUICK_REPLIES[post.mode] ?? []
+
+  // 首次點開留言框 → 淡入情境提示，並標記該貼文已顯示（與詳情頁共用同一份 postId 記憶）
+  useEffect(() => {
+    if (!showReplyForm || !hintText) return
+    if (getHintSeenSet().has(post.id)) return
+    setShowHint(true)
+    markHintSeen(post.id)
+  }, [showReplyForm, hintText, post.id])
+
+  function applyQuickReply(text: string) {
+    onReplyTextChange(appendQuickReply(replyText, text))
+    setTimeout(() => {
+      const el = inputRef.current
+      if (el) { el.focus(); const n = el.value.length; el.setSelectionRange(n, n) }
+    }, 0)
+  }
 
   function handleReply() {
     onReply(replyTarget?.id)
     setShowReplyForm(false)
     setReplyTarget(null)
+    setShowHint(false)
   }
 
   function openReplyToPost() {
@@ -138,7 +161,32 @@ export default function RantPostCard({
               <button className="reply-target-clear" onClick={() => setReplyTarget(null)}>×</button>
             </div>
           )}
+
+          {/* 情境提示（一次性，可收合） */}
+          {showHint && hintText && (
+            <div className="reply-nudge">
+              <HeartHandshake size={15} strokeWidth={1.8} className="reply-nudge-icon" />
+              <span className="reply-nudge-text">{hintText}</span>
+              <button className="reply-nudge-close" onClick={() => setShowHint(false)} aria-label="收合提示">
+                <X size={14} strokeWidth={2} />
+              </button>
+            </div>
+          )}
+
+          {/* 快捷回覆橫條（常駐，橫滑） */}
+          {quickReplies.length > 0 && (
+            <div className="quick-reply-bar">
+              <div className="quick-reply-scroll">
+                {quickReplies.map((q) => (
+                  <button key={q} type="button" className="quick-reply-chip" onClick={() => applyQuickReply(q)}>{q}</button>
+                ))}
+              </div>
+              <span className="quick-reply-fade" />
+            </div>
+          )}
+
           <input
+            ref={inputRef}
             value={replyText}
             onChange={(e) => onReplyTextChange(e.target.value)}
             placeholder={replyTarget ? `回覆 @${replyTarget.nickname}…` : '留一句溫和回應'}
