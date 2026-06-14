@@ -53,7 +53,7 @@ if (!string.IsNullOrWhiteSpace(databaseConnectionString))
 
 builder.Services.AddSingleton<JwtService>();
 
-var jwtService = new JwtService(builder.Configuration);
+var jwtService = new JwtService(builder.Configuration, builder.Environment);
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
