@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>聊天室改版 Prototype</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --bg:          #f6f3ec;
+    --bg-grad:     linear-gradient(180deg, #fbf7f0 0%, #f3f0e6 100%);
+    --header-bg:   rgba(251,247,240,0.92);
+    --text-main:   #3a4a40;
+    --text-title:  #2f4636;
+    --text-sub:    #9aa89c;
+    --bubble-in:   #ffffff;
+    --bubble-in-bd:#eae6da;
+    --bubble-out:  linear-gradient(135deg, #6db585 0%, #5a9e6a 100%);
+    --accent:      #5a9e6a;
+    --accent-soft: #e8f3e6;
+    --divider:     rgba(120,150,120,0.18);
+    --shadow-sm:   0 1px 3px rgba(80,100,80,0.06);
+    --shadow-md:   0 8px 30px rgba(60,90,60,0.16);
+  }
+
+  body {
+    font-family: -apple-system, 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+    background: #c8ccc4;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+
+  /* ── 手機外框 ── */
+  .phone {
+    width: 390px;
+    height: 800px;
+    background: var(--bg-grad);
+    border-radius: 38px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ══════════════ 精簡標題列 ══════════════ */
+  .chat-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    background: var(--header-bg);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--divider);
+    z-index: 20;
+    position: relative;
+  }
+
+  .back-btn {
+    font-size: 22px;
+    color: var(--text-title);
+    cursor: pointer;
+    line-height: 1;
+    padding: 2px 4px;
+    flex-shrink: 0;
+  }
+
+  .header-avatar {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    cursor: pointer;
+    background: linear-gradient(135deg, #ffd9a0, #ffb877);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 19px;
+    box-shadow: var(--shadow-sm);
+    position: relative;
+    transition: transform 0.15s;
+  }
+  .header-avatar:active { transform: scale(0.92); }
+  .header-avatar .online-dot {
+    position: absolute;
+    width: 9px; height: 9px;
+    background: #4ad07a;
+    border: 2px solid var(--header-bg);
+    border-radius: 50%;
+    bottom: 0; right: 0;
+  }
+
+  .header-info {
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+  }
+  .header-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-title);
+    line-height: 1.2;
+  }
+  .header-status {
+    font-size: 11px;
+    color: var(--accent);
+    margin-top: 1px;
+  }
+
+  .header-menu {
+    font-size: 20px;
+    color: var(--text-sub);
+    cursor: pointer;
+    padding: 4px 6px;
+    flex-shrink: 0;
+  }
+
+  /* ══════════════ 訊息區 ══════════════ */
+  .chat-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 14px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    scrollbar-width: none;
+  }
+  .chat-body::-webkit-scrollbar { display: none; }
+
+  /* 日期分隔 */
+  .date-divider {
+    align-self: center;
+    font-size: 11px;
+    color: var(--text-sub);
+    background: rgba(255,255,255,0.6);
+    padding: 3px 14px;
+    border-radius: 12px;
+    margin: 10px 0;
+    letter-spacing: 0.5px;
+  }
+
+  /* 訊息列（含頭像） */
+  .msg-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    max-width: 100%;
+  }
+  .msg-row.in  { justify-content: flex-start; }
+  .msg-row.out { justify-content: flex-end; }
+
+  /* 對方頭像（只在訊息群組第一則顯示） */
+  .row-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    cursor: pointer;
+    background: linear-gradient(135deg, #ffd9a0, #ffb877);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.15s;
+  }
+  .row-avatar:active { transform: scale(0.9); }
+  .row-avatar.spacer { background: none; box-shadow: none; cursor: default; }
+
+  /* 泡泡 + 時間 容器 */
+  .bubble-wrap {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    max-width: 76%;
+  }
+  .msg-row.out .bubble-wrap { flex-direction: row; }
+  .msg-row.in  .bubble-wrap { flex-direction: row; }
+
+  .bubble {
+    padding: 9px 13px;
+    font-size: 14.5px;
+    line-height: 1.5;
+    word-break: break-word;
+    position: relative;
+    box-shadow: var(--shadow-sm);
+  }
+  /* 對方泡泡 */
+  .msg-row.in .bubble {
+    background: var(--bubble-in);
+    color: var(--text-main);
+    border: 1px solid var(--bubble-in-bd);
+    border-radius: 4px 16px 16px 16px;
+  }
+  /* 自己泡泡 */
+  .msg-row.out .bubble {
+    background: var(--bubble-out);
+    color: #fff;
+    border-radius: 16px 4px 16px 16px;
+  }
+  /* 群組中段泡泡，圓角統一 */
+  .msg-row.in.mid .bubble  { border-radius: 16px; }
+  .msg-row.out.mid .bubble { border-radius: 16px; }
+
+  /* 時間戳：只在群組最後一則 */
+  .msg-time {
+    font-size: 10px;
+    color: var(--text-sub);
+    flex-shrink: 0;
+    margin-bottom: 2px;
+    white-space: nowrap;
+  }
+
+  /* 圖片訊息 */
+  .msg-img {
+    width: 150px;
+    border-radius: 14px;
+    box-shadow: var(--shadow-sm);
+    display: block;
+  }
+
+  /* ══════════════ 輸入列 ══════════════ */
+  .chat-input {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px 16px;
+    background: var(--header-bg);
+    backdrop-filter: blur(14px);
+    border-top: 1px solid var(--divider);
+  }
+  .input-icon {
+    font-size: 22px;
+    color: var(--text-sub);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .input-box {
+    flex: 1;
+    background: #fff;
+    border: 1px solid var(--bubble-in-bd);
+    border-radius: 22px;
+    padding: 10px 16px;
+    font-size: 14px;
+    color: var(--text-main);
+    outline: none;
+  }
+  .input-box::placeholder { color: #bcc6bc; }
+  .send-btn {
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    border: none;
+    background: var(--bubble-out);
+    color: #fff;
+    font-size: 18px;
+    cursor: pointer;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.15s;
+  }
+  .send-btn:active { transform: scale(0.9); }
+
+  /* ══════════════ 自介 Bottom Sheet ══════════════ */
+  .sheet-mask {
+    position: absolute;
+    inset: 0;
+    background: rgba(30,40,30,0);
+    pointer-events: none;
+    transition: background 0.35s ease;
+    z-index: 50;
+  }
+  .sheet-mask.show {
+    background: rgba(30,40,30,0.45);
+    pointer-events: all;
+  }
+
+  .bio-sheet {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    background: #fbf8f2;
+    border-radius: 26px 26px 0 0;
+    padding: 10px 24px 28px;
+    transform: translateY(100%);
+    transition: transform 0.4s cubic-bezier(0.25,0.1,0.25,1);
+    z-index: 60;
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.2);
+  }
+  .bio-sheet.show { transform: translateY(0); }
+
+  .sheet-handle {
+    width: 40px; height: 4px;
+    background: #d8d2c4;
+    border-radius: 4px;
+    margin: 0 auto 18px;
+  }
+
+  .bio-avatar {
+    width: 78px; height: 78px;
+    border-radius: 50%;
+    margin: 0 auto 12px;
+    background: linear-gradient(135deg, #ffd9a0, #ffb877);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 38px;
+    box-shadow: 0 6px 20px rgba(200,150,80,0.3);
+  }
+  .bio-name {
+    text-align: center;
+    font-size: 19px;
+    font-weight: 700;
+    color: var(--text-title);
+  }
+  .bio-meta {
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-sub);
+    margin-top: 3px;
+  }
+  .bio-mood {
+    text-align: center;
+    margin: 14px 0;
+  }
+  .bio-tag {
+    display: inline-block;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 12px;
+    padding: 5px 13px;
+    border-radius: 16px;
+    margin: 0 4px 6px 0;
+  }
+  .bio-text {
+    font-size: 13.5px;
+    line-height: 1.85;
+    color: var(--text-main);
+    background: #fff;
+    border: 1px solid var(--bubble-in-bd);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-top: 6px;
+  }
+  .bio-label {
+    font-size: 11px;
+    color: var(--text-sub);
+    letter-spacing: 1px;
+    margin: 16px 0 6px;
+  }
+</style>
+</head>
+<body>
+
+<div class="phone">
+
+  <!-- 精簡標題列 -->
+  <div class="chat-header">
+    <span class="back-btn">‹</span>
+    <div class="header-avatar" onclick="openBio()">
+      🦊<span class="online-dot"></span>
+    </div>
+    <div class="header-info" onclick="openBio()">
+      <div class="header-name">同頻對話 · 小狐</div>
+      <div class="header-status">● 線上 · 今日同頻 87%</div>
+    </div>
+    <span class="header-menu">⋮</span>
+  </div>
+
+  <!-- 訊息區 -->
+  <div class="chat-body" id="chatBody">
+
+    <div class="date-divider">06/13 下午</div>
+
+    <!-- 對方訊息群組 -->
+    <div class="msg-row in">
+      <div class="row-avatar" onclick="openBio()">🦊</div>
+      <div class="bubble-wrap">
+        <div class="bubble">嗨，今天想慢慢聊一下。</div>
+      </div>
+    </div>
+    <div class="msg-row in mid">
+      <div class="row-avatar spacer"></div>
+      <div class="bubble-wrap">
+        <div class="bubble">你今天也辛苦了，先休息一下。</div>
+        <span class="msg-time">17:24</span>
+      </div>
+    </div>
+
+    <!-- 自己訊息群組 -->
+    <div class="msg-row out">
+      <div class="bubble-wrap">
+        <div class="bubble">謝謝你這樣說，今天確實有點累。</div>
+      </div>
+    </div>
+    <div class="msg-row out mid">
+      <div class="bubble-wrap">
+        <div class="bubble">不過聊一下感覺好多了。</div>
+        <span class="msg-time">17:26</span>
+      </div>
+    </div>
+
+    <div class="date-divider">06/13 下午 18:01</div>
+
+    <!-- 對方訊息群組（含圖片） -->
+    <div class="msg-row in">
+      <div class="row-avatar" onclick="openBio()">🦊</div>
+      <div class="bubble-wrap">
+        <div class="bubble">今天聚餐～來希爾頓酒店吃飯 🍽️</div>
+      </div>
+    </div>
+    <div class="msg-row in mid">
+      <div class="row-avatar spacer"></div>
+      <div class="bubble-wrap">
+        <div class="bubble" style="padding:5px;">
+          <div style="width:150px;height:100px;border-radius:12px;
+            background:linear-gradient(135deg,#c9b89a,#8a7a5e);
+            display:flex;align-items:center;justify-content:center;font-size:30px;">🍱</div>
+        </div>
+        <span class="msg-time">18:05</span>
+      </div>
+    </div>
+
+    <!-- 自己訊息群組 -->
+    <div class="msg-row out">
+      <div class="bubble-wrap">
+        <div class="bubble">看起來好好吃！</div>
+      </div>
+    </div>
+    <div class="msg-row out mid">
+      <div class="bubble-wrap">
+        <div class="bubble">下次也想去看看 😋</div>
+        <span class="msg-time">22:52</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 輸入列 -->
+  <div class="chat-input">
+    <span class="input-icon">＋</span>
+    <input class="input-box" placeholder="慢慢說，不急。">
+    <button class="send-btn">↑</button>
+  </div>
+
+  <!-- 自介 Bottom Sheet -->
+  <div class="sheet-mask" id="sheetMask" onclick="closeBio()"></div>
+  <div class="bio-sheet" id="bioSheet">
+    <div class="sheet-handle"></div>
+    <div class="bio-avatar">🦊</div>
+    <div class="bio-name">小狐</div>
+    <div class="bio-meta">今日同頻 87% · 配對於 06/13</div>
+
+    <div class="bio-mood">
+      <span class="bio-tag">😌 想找人靜靜聊</span>
+      <span class="bio-tag"># 內向</span>
+      <span class="bio-tag"># 喜歡夜晚</span>
+    </div>
+
+    <div class="bio-label">自我介紹</div>
+    <div class="bio-text">
+      白天上班，晚上喜歡一個人散步。<br>
+      不太會主動，但聊起來其實有很多話。<br>
+      希望能找到同頻率、能慢慢說話的人。
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function openBio() {
+    document.getElementById('sheetMask').classList.add('show');
+    document.getElementById('bioSheet').classList.add('show');
+  }
+  function closeBio() {
+    document.getElementById('sheetMask').classList.remove('show');
+    document.getElementById('bioSheet').classList.remove('show');
+  }
+  /* 載入後捲到底 */
+  window.onload = () => {
+    const b = document.getElementById('chatBody');
+    b.scrollTop = b.scrollHeight;
+  };
+</script>
+</body>
+</html>

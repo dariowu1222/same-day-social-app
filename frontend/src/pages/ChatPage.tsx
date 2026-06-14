@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { DemoUser } from '../App'
-import { getChatRooms, getMessages, sendMessage, type ChatMessage, type ChatRoom as ChatRoomType } from '../api/client'
+import { getChatRooms, getMessages, getProfile, sendMessage, type ChatMessage, type ChatRoom as ChatRoomType, type UserProfile } from '../api/client'
 import ChatRoom from '../components/ChatRoom'
+import Avatar from '../components/Avatar'
+import { testAvatarPhoto } from '../lib/userDisplay'
 
 type Props = {
   user: DemoUser
@@ -11,6 +13,7 @@ export default function ChatPage({ user }: Props) {
   const [rooms, setRooms] = useState<ChatRoomType[]>([])
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null)
   const [roomMessages, setRoomMessages] = useState<Record<string, ChatMessage[]>>({})
+  const [profiles, setProfiles] = useState<Record<string, UserProfile>>({})
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [draft, setDraft] = useState('')
 
@@ -34,6 +37,24 @@ export default function ChatPage({ user }: Props) {
       }),
     )
     setRoomMessages(Object.fromEntries(messagePairs))
+
+    // 載入每個對話中「對方」的個人資料，供頭像與自介使用
+    const otherIds = Array.from(new Set(
+      response.data
+        .map((room) => room.userIds.find((id) => id !== user.userId))
+        .filter((id): id is string => !!id),
+    ))
+    const profileEntries = await Promise.all(
+      otherIds.map(async (id) => {
+        try {
+          const res = await getProfile(id)
+          return [id, res.data] as const
+        } catch {
+          return null
+        }
+      }),
+    )
+    setProfiles(Object.fromEntries(profileEntries.filter((entry): entry is readonly [string, UserProfile] => !!entry)))
   }
 
   async function loadMessages(roomId: string) {
@@ -52,22 +73,27 @@ export default function ChatPage({ user }: Props) {
   const activeRoom = rooms.find((room) => room.id === activeRoomId) ?? null
   const roomSummaries = useMemo(
     () => rooms
-      .map((room, index) => buildRoomSummary(room, roomMessages[room.id] ?? [], user.userId, index))
+      .map((room) => buildRoomSummary(room, roomMessages[room.id] ?? [], profiles, user.userId))
       .sort((a, b) => b.lastAt.getTime() - a.lastAt.getTime()),
-    [rooms, roomMessages, user.userId],
+    [rooms, roomMessages, profiles, user.userId],
   )
   const todayRooms = roomSummaries.filter((summary) => isToday(summary.room.createdAt))
   const previousRooms = roomSummaries.filter((summary) => !isToday(summary.room.createdAt))
 
   if (activeRoom) {
+    const otherUserId = activeRoom.userIds.find((id) => id !== user.userId) ?? activeRoom.id
     return (
-      <div className="page chat-detail-page">
-        <div className="chat-list-header">
-          <button className="chat-back-button" type="button" onClick={() => setActiveRoomId(null)}>‹</button>
-          <h1>{buildRoomTitle(activeRoom, user.userId)}</h1>
-        </div>
-        <ChatRoom room={activeRoom} messages={messages} draft={draft} onDraftChange={setDraft} onSend={submitMessage} />
-      </div>
+      <ChatRoom
+        room={activeRoom}
+        otherProfile={profiles[otherUserId] ?? null}
+        otherUserId={otherUserId}
+        currentUserId={user.userId}
+        messages={messages}
+        draft={draft}
+        onDraftChange={setDraft}
+        onSend={submitMessage}
+        onBack={() => setActiveRoomId(null)}
+      />
     )
   }
 
@@ -91,7 +117,7 @@ export default function ChatPage({ user }: Props) {
         <p className="eyebrow">聊天</p>
         <h1>慢慢說就好。</h1>
       </header>
-      <ChatRoom room={null} messages={[]} draft={draft} onDraftChange={setDraft} onSend={submitMessage} />
+      <section className="panel empty-state">還沒有聊天室。雙方都按「想聊聊」後，這裡會出現對話。</section>
     </div>
   )
 }
@@ -99,8 +125,8 @@ export default function ChatPage({ user }: Props) {
 type ChatSummary = {
   room: ChatRoomType
   title: string
-  avatarText: string
-  avatarClass: string
+  otherUserId: string
+  avatarPhoto: string
   preview: string
   lastAt: Date
   timeLabel: string
@@ -116,7 +142,7 @@ function ChatSection({ title, rooms, onOpen }: { title: string; rooms: ChatSumma
       <div className="chat-card-list">
         {rooms.map((summary) => (
           <button key={summary.room.id} className="chat-list-card" type="button" onClick={() => onOpen(summary.room.id)}>
-            <span className={`chat-avatar ${summary.avatarClass}`}>{summary.avatarText}</span>
+            <Avatar photo={summary.avatarPhoto} seed={summary.otherUserId} className="chat-avatar" />
             <span className="chat-card-main">
               <span className="chat-card-name-row">
                 <strong>{summary.title}</strong>
@@ -134,16 +160,19 @@ function ChatSection({ title, rooms, onOpen }: { title: string; rooms: ChatSumma
   )
 }
 
-function buildRoomSummary(room: ChatRoomType, messages: ChatMessage[], currentUserId: string, index: number): ChatSummary {
+function buildRoomSummary(room: ChatRoomType, messages: ChatMessage[], profiles: Record<string, UserProfile>, currentUserId: string): ChatSummary {
   const lastMessage = messages[messages.length - 1]
-  const title = buildRoomTitle(room, currentUserId)
+  const otherUserId = room.userIds.find((id) => id !== currentUserId) ?? room.id
+  const profile = profiles[otherUserId]
+  const title = buildRoomTitle(room, profile, currentUserId)
   const lastAt = new Date(lastMessage?.createdAt ?? room.createdAt)
 
   return {
     room,
     title,
-    avatarText: title.slice(0, 1),
-    avatarClass: `tone-${index % 5}`,
+    otherUserId,
+    // 正式環境用帳號 photoDataUrls[0]；測試先給寫死照片，失效時 Avatar 退回動物頭像
+    avatarPhoto: profile?.photoDataUrls?.[0] ?? testAvatarPhoto(otherUserId),
     preview: formatMessagePreview(lastMessage),
     lastAt,
     timeLabel: formatRelativeTime(lastAt),
@@ -151,7 +180,9 @@ function buildRoomSummary(room: ChatRoomType, messages: ChatMessage[], currentUs
   }
 }
 
-function buildRoomTitle(room: ChatRoomType, currentUserId: string) {
+function buildRoomTitle(room: ChatRoomType, profile: UserProfile | undefined, currentUserId: string) {
+  if (profile?.nickname?.trim()) return profile.nickname.trim()
+
   const otherUserId = room.userIds.find((id) => id !== currentUserId)
   if (otherUserId) {
     return `同頻對話 ${otherUserId.slice(-4)}`
