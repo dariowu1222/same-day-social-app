@@ -1,0 +1,181 @@
+/* ==========================================================================
+   主題 Token + 基礎骨架（app-shell / page）
+   （由 global.css 依原順序拆出，請勿調換 @import 順序）
+   ========================================================================== */
+
+/* ── 主題 Token ─────────────────────────────────────────────── */
+:root {
+  --theme-bg: #faf7f2;
+  --theme-title: #4a7c59;
+  --theme-secondary: #7aaa88;
+  --theme-card-bg: #ffffff;
+  --theme-card-border: #e8e0d4;
+  --theme-nav-bg: rgba(255, 255, 255, 0.9);
+  --theme-nav-border: #e8e0d4;
+  --theme-tag-bg: #f0ebe3;
+  --theme-btn: #5a9e6a;
+  --theme-divider: #e8e0d4;
+  --theme-text: #4a3f35;
+  --theme-muted: #b0a090;
+}
+
+[data-theme="dark"] {
+  --theme-bg: #050208;
+  --theme-title: rgba(200, 245, 180, 0.9);
+  --theme-secondary: rgba(150, 210, 130, 0.55);
+  --theme-card-bg: rgba(20, 35, 18, 0.7);
+  --theme-card-border: rgba(100, 200, 80, 0.12);
+  --theme-nav-bg: rgba(8, 12, 6, 0.85);
+  --theme-nav-border: rgba(80, 160, 60, 0.15);
+  --theme-tag-bg: rgba(60, 120, 40, 0.3);
+  --theme-btn: rgba(60, 140, 50, 0.6);
+  --theme-divider: rgba(80, 160, 60, 0.15);
+  --theme-text: rgba(200, 245, 180, 0.85);
+  --theme-muted: rgba(150, 210, 130, 0.55);
+}
+
+:root {
+  color: #263238;
+  background: #f7f3ea;
+  font-family: Inter, "Noto Sans TC", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: var(--theme-bg, #fffcf7);
+  transition: background 0.3s ease;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  border: 0;
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: #7ab7ad;
+  color: #102a2a;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+button.secondary {
+  background: #d9ece8;
+}
+
+button.ghost {
+  background: transparent;
+  color: #5e706e;
+}
+
+input,
+textarea,
+select {
+  width: 100%;
+  border: 1px solid #d7dedb;
+  border-radius: 8px;
+  padding: 12px;
+  background: #fffdf8;
+  color: #263238;
+}
+
+textarea {
+  resize: vertical;
+}
+
+label {
+  display: grid;
+  gap: 8px;
+  color: #40504f;
+  font-weight: 700;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  font-size: 30px;
+  line-height: 1.18;
+  margin-bottom: 12px;
+}
+
+h2 {
+  font-size: 20px;
+}
+
+h3 {
+  font-size: 17px;
+  margin-bottom: 0;
+}
+
+.app-shell {
+  width: min(100%, 520px);
+  min-height: 100vh;
+  margin: 0 auto;
+  /* Safe area：iOS 劉海/Dynamic Island（頂部）+ Android/iOS 手勢列（底部）*/
+  padding-top: max(20px, env(safe-area-inset-top));
+  padding-right: max(16px, env(safe-area-inset-right));
+  padding-bottom: calc(92px + env(safe-area-inset-bottom));
+  padding-left: max(16px, env(safe-area-inset-left));
+  position: relative;
+  z-index: 1;
+}
+
+.auth-shell {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  padding-top: 22px;
+}
+
+.page {
+  display: grid;
+  gap: 16px;
+}
+
+.today-page.page {
+  gap: 4px;
+  align-content: start;
+}
+
+.page-header,
+.hero-panel {
+  padding: 8px 2px 0;
+}
+
+.page-header p,
+.hero-panel p,
+.muted {
+  color: #637271;
+}
+
+.today-page {
+  position: relative;
+  min-height: calc(100vh - 112px);
+}
+
+.today-page::before {
+  display: none;
+}
+

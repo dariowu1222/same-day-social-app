@@ -1,0 +1,362 @@
+/* ==========================================================================
+   Onboarding 導引 / 設定 + 貼文選單
+   （由 global.css 依原順序拆出，請勿調換 @import 順序）
+   ========================================================================== */
+
+/* ── Onboarding Overlay ─────────────────────────────── */
+.onboarding-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 430px);
+  margin: 0 auto;
+  background: #fff9ef;
+  overflow: hidden;
+}
+
+.ob-slides-viewport {
+  flex: 1;
+  overflow: hidden;
+  user-select: none;
+}
+
+.ob-track {
+  display: flex;
+  height: 100%;
+  transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  will-change: transform;
+}
+
+.ob-track.dragging {
+  transition: none;
+}
+
+.ob-slide {
+  flex-shrink: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  padding: 40px 32px 16px;
+  text-align: center;
+}
+
+.ob-slide-visual {
+  width: 200px;
+  height: 200px;
+  border-radius: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.65);
+  flex-shrink: 0;
+}
+
+.ob-slide-visual img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.ob-slide-title {
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1.3;
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+
+.ob-slide-desc {
+  font-size: 16px;
+  color: #8a705f;
+  line-height: 1.75;
+  max-width: 280px;
+  margin: 0;
+}
+
+.ob-controls {
+  padding: 18px 28px 36px;
+  display: grid;
+  gap: 16px;
+  background: #fff9ef;
+}
+
+.ob-dots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.ob-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #eaded4;
+  padding: 0;
+  transition: width 0.25s, background 0.25s;
+  cursor: pointer;
+}
+
+.ob-dot.active {
+  width: 24px;
+}
+
+.ob-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ob-skip-btn {
+  background: transparent;
+  color: #9a8574;
+  font-size: 16px;
+  font-weight: 700;
+  padding: 10px 14px;
+}
+
+.ob-next-btn {
+  height: 52px;
+  padding: 0 28px;
+  border-radius: 16px;
+  color: #fff8f1;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  transition: background 0.25s;
+}
+
+/* ── Onboarding Setup ───────────────────────────────── */
+.onboarding-setup {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.ob-setup-top {
+  padding: 52px 28px 24px;
+  text-align: center;
+  background: linear-gradient(180deg, #fff9ef 0%, #fff5e6 100%);
+  flex-shrink: 0;
+}
+
+.ob-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #ef8968, #d86c4e);
+  color: #fff8f1;
+  font-size: 28px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  box-shadow: 0 12px 28px rgba(188, 86, 54, 0.26);
+}
+
+.ob-setup-top h1 {
+  font-size: 26px;
+  color: #3e1d0a;
+  margin: 0 0 8px;
+}
+
+.ob-setup-top p {
+  color: #8a705f;
+  font-size: 15px;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.ob-setup-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px;
+  display: grid;
+  gap: 22px;
+  align-content: start;
+}
+
+.ob-field {
+  display: grid;
+  gap: 8px;
+}
+
+.ob-field label,
+.ob-field-label {
+  font-size: 13px;
+  font-weight: 800;
+  color: #6e594a;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ob-field textarea {
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-size: 15px;
+  resize: none;
+  border: 1px solid #ead3bf;
+  background: rgba(255, 253, 248, 0.9);
+  color: #5a4638;
+  line-height: 1.6;
+}
+
+.ob-field-count {
+  font-size: 12px;
+  color: #9a8574;
+  text-align: right;
+  font-weight: 700;
+}
+
+.ob-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ob-tag {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1.5px solid #eaded4;
+  background: rgba(255, 253, 248, 0.9);
+  color: #6e594a;
+  font-size: 14px;
+  font-weight: 700;
+  transition: border-color 0.18s, background 0.18s, color 0.18s;
+}
+
+.ob-tag.selected {
+  border-color: #e8754e;
+  background: rgba(232, 117, 78, 0.12);
+  color: #c25830;
+}
+
+.ob-setup-footer {
+  padding: 16px 24px 40px;
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid #f0dfd1;
+  background: #fff9ef;
+  flex-shrink: 0;
+}
+
+.ob-primary-btn {
+  height: 56px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ef8968, #d86c4e);
+  color: #fff8f1;
+  font-size: 20px;
+  font-weight: 900;
+  box-shadow: 0 10px 20px rgba(188, 86, 54, 0.22);
+}
+
+.ob-text-btn {
+  background: transparent;
+  color: #9a8574;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  padding: 4px;
+}
+
+/* ── Card clickable area ── */
+.card-clickable {
+  cursor: pointer;
+}
+
+/* ── Post three-dot menu ── */
+.post-menu-wrap {
+  position: relative;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.post-menu-trigger {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  color: #8a9e9c;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.post-menu-trigger:hover {
+  background: #edf5f3;
+  color: #3d7a72;
+}
+
+.post-menu-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: #fff;
+  border: 1px solid #e0ede9;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  min-width: 140px;
+  z-index: 100;
+  overflow: hidden;
+}
+
+.post-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #3d4f4d;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s;
+}
+
+.post-menu-item:hover {
+  background: #f5f9f8;
+}
+
+.post-menu-item.danger {
+  color: #d93025;
+}
+
+.post-menu-item.danger:hover {
+  background: #fff5f4;
+}
+
+.post-menu-toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #2d3f3e;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 18px;
+  border-radius: 20px;
+  z-index: 200;
+  pointer-events: none;
+  animation: fade-in-up 0.2s ease;
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+

@@ -1,0 +1,448 @@
+/* ==========================================================================
+   配對結果頁 + 滑動卡片堆疊
+   （由 global.css 依原順序拆出，請勿調換 @import 順序）
+   ========================================================================== */
+
+/* ── 配對結果頁 ───────────────────────────── */
+.match-result-page {
+  position: relative;
+  min-height: calc(100vh - 56px);
+}
+
+/* 載入遮罩 */
+.match-loading-mask {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  min-height: calc(100vh - 112px);
+}
+
+@keyframes spin-ring {
+  to { transform: rotate(360deg); }
+}
+
+.match-spinner-ring {
+  width: 52px;
+  height: 52px;
+  border: 3px solid #dbeee9;
+  border-top-color: #6ab8ae;
+  border-radius: 50%;
+  animation: spin-ring 0.9s linear infinite;
+}
+
+.match-loading-text {
+  margin: 0;
+  color: #7a9e9a;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+/* 結果內容區 */
+.match-result-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: calc(100vh - 112px);
+}
+
+.match-result-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0 2px;
+}
+
+.match-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px 6px 6px;
+  border-radius: 20px;
+  background: transparent;
+  color: #5a7a74;
+  font-size: 14px;
+  font-weight: 500;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.match-back-btn:active {
+  background: rgba(90, 122, 116, 0.08);
+}
+
+.match-remain-badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  background: #e8f4f1;
+  color: #5a7a74;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ── 滑動卡片堆疊 ─────────────────────────── */
+.swipe-stack-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.swipe-stack {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.swipe-card {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: 24px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 8px 32px rgba(54, 71, 70, 0.13);
+  will-change: transform;
+}
+
+/* 同頻 / 跳過 標籤 */
+.swipe-label {
+  position: absolute;
+  top: 24px;
+  z-index: 20;
+  padding: 6px 14px;
+  border-radius: 10px;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  pointer-events: none;
+  transition: opacity 0.05s;
+}
+
+.swipe-label-like {
+  right: 20px;
+  background: rgba(120, 210, 180, 0.18);
+  border: 2px solid #78d2b4;
+  color: #2e8a6e;
+  transform: rotate(8deg);
+}
+
+.swipe-label-nope {
+  left: 20px;
+  background: rgba(220, 100, 90, 0.14);
+  border: 2px solid #dc645a;
+  color: #c04040;
+  transform: rotate(-8deg);
+}
+
+/* 照片區 */
+.swipe-photo-wrap {
+  position: relative;
+  width: 100%;
+  height: 50%;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 20px 20px 0 0;
+  background: #e8e0d8;
+  transition: height 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.swipe-photo-wrap.compressed {
+  height: 24%;
+}
+
+.swipe-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  animation: photo-fade 0.2s ease;
+}
+
+@keyframes photo-fade {
+  from { opacity: 0.6; }
+  to   { opacity: 1; }
+}
+
+/* 左右點擊區半透明提示 */
+.swipe-photo-hint {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40%;
+  z-index: 2;
+}
+.swipe-photo-hint.left  { left: 0; }
+.swipe-photo-hint.right { right: 0; }
+
+/* 圓點指示器 */
+.swipe-photo-dots {
+  position: absolute;
+  top: 10px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  z-index: 3;
+}
+
+.swipe-photo-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.55);
+  transition: background 0.2s, transform 0.2s;
+}
+
+.swipe-photo-dot.active {
+  background: #fff;
+  transform: scale(1.25);
+}
+
+/* 頭像區 */
+.swipe-avatar {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  height: 200px;
+  flex-shrink: 0;
+  padding: 16px;
+}
+
+.swipe-avatar-emoji {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -60%);
+  font-size: 52px;
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.swipe-avatar-char {
+  position: relative;
+  z-index: 1;
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(4px);
+  font-size: 22px;
+  font-weight: 800;
+  color: #2e4240;
+}
+
+/* 卡片下方資訊 */
+.swipe-card-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 17px 18px 14px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: flex 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.swipe-card-info.expanded {
+  flex: 3;
+  overflow-y: auto;
+  cursor: default;
+  -webkit-overflow-scrolling: touch;
+}
+
+.swipe-collapse-btn {
+  margin-top: 18px;
+  align-self: center;
+  background: transparent;
+  color: #9a8b80;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 0;
+}
+
+.swipe-name-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.swipe-name {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  color: #2e4240;
+}
+
+.swipe-age {
+  font-size: 15px;
+  font-weight: 600;
+  color: #4a6260;
+}
+
+.swipe-city {
+  font-size: 13px;
+  color: #8aada8;
+  font-weight: 500;
+}
+
+.swipe-zodiac {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  color: #8aada8;
+  font-weight: 500;
+}
+
+.swipe-zodiac-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.swipe-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.swipe-field-label {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 400;
+  color: #b0a090;
+}
+
+.swipe-bio {
+  margin: 0;
+  font-size: 13px;
+  color: #7a9e9a;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* 收合：最多 3 行，溢出以 … 截斷 */
+.swipe-bio.clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  white-space: normal;
+  overflow: hidden;
+}
+
+.swipe-bio-more {
+  align-self: flex-start;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 13px;
+  color: #c8785a;
+  cursor: pointer;
+}
+
+.swipe-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #dbeee9, transparent);
+  margin: 2px 0;
+}
+
+.swipe-resonance-strip {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  border-radius: 12px;
+  padding: 9px 10px;
+  background: #f4faf8;
+  color: #4e746e;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.swipe-resonance-dot {
+  width: 6px;
+  height: 6px;
+  margin-top: 6px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: #78d2b4;
+}
+
+.swipe-today-label {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #8aada8;
+  text-transform: uppercase;
+}
+
+.swipe-today-text {
+  margin: 0;
+  font-size: 14px;
+  color: #3a5450;
+  line-height: 1.7;
+  font-style: italic;
+}
+
+.swipe-today-text.clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.swipe-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.swipe-tag {
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: #eef7f4;
+  color: #5a7a74;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.swipe-tag-more {
+  background: #f0ebe6;
+  color: #9a8878;
+}
+
+.swipe-score-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 12px;
+  color: #8aada8;
+  font-weight: 500;
+}
+
+
+.swipe-tap-hint {
+  margin: auto 0 0;
+  border-top: 1px solid #edf1ee;
+  padding-top: 8px;
+  text-align: center;
+  font-size: 12px;
+  color: #8b9f9a;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+

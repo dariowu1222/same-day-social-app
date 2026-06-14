@@ -1,0 +1,355 @@
+/* ==========================================================================
+   今日頁：進場動畫 / header / 快速心情 / 心靈小語
+   （由 global.css 依原順序拆出，請勿調換 @import 順序）
+   ========================================================================== */
+
+/* ── 首次進場動畫 ─────────────────────────── */
+@keyframes intro-fade-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+.today-intro-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: 40px 32px;
+  background: linear-gradient(160deg, #fff8f2 0%, #fffcf7 60%, #fff0e8 100%);
+  transition: opacity 0.9s ease, transform 0.9s ease;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.today-intro-center {
+  opacity: 1;
+}
+
+.today-intro-rising {
+  opacity: 0;
+  transform: translateY(-24px);
+}
+
+.today-intro-headline {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  white-space: nowrap;
+  text-align: center;
+  font-size: clamp(18px, 6vw, 26px);
+  font-weight: 800;
+  line-height: 1.5;
+  letter-spacing: 0.03em;
+  color: #7a3a20;
+}
+
+.today-intro-cursor {
+  display: inline-block;
+  width: 0;
+  height: 0.85em;
+  border-right: 2px solid #e0785a;
+  vertical-align: middle;
+  margin-left: 2px;
+  animation: cursor-blink 0.8s ease-in-out infinite;
+  transition: opacity 0.3s ease;
+}
+
+.today-intro-cursor.hidden {
+  opacity: 0;
+  animation: none;
+}
+
+/* ── 今日 header ──────────────────────────── */
+
+.today-header {
+  padding: 0;
+  max-height: 80px;
+  overflow: hidden;
+  opacity: 1;
+  transition: max-height 0.6s ease, opacity 0.6s ease;
+}
+
+.today-header-hidden {
+  max-height: 0;
+  opacity: 0;
+}
+
+.today-header h1 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: #7a3a20;
+}
+
+.today-entry-card {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 12px;
+  border: 1px solid rgba(220, 200, 185, 0.5);
+  border-radius: 20px;
+  padding: 14px;
+  background: #ffffff;
+  box-shadow: 0 8px 28px rgba(100, 55, 30, 0.07);
+}
+
+.quick-entry-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.quick-entry-button {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 88px;
+  align-items: flex-start;
+  border: none;
+  border-radius: 20px;
+  padding: 14px 14px 12px;
+  color: #2e4240;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* 每格情緒色調 — 柔化版 */
+.quick-entry-tired {
+  background: #eef4f8;
+}
+.quick-entry-wronged {
+  background: #f8eeee;
+}
+.quick-entry-talk {
+  background: #faf3e8;
+}
+.quick-entry-good {
+  background: #edf5ef;
+}
+
+.quick-entry-emoji {
+  font-size: 22px;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+.quick-entry-button strong {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.quick-entry-button span:not(.quick-entry-emoji) {
+  color: #6a6a6a;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.quick-entry-button:active {
+  transform: scale(0.96);
+}
+
+/* ── 心靈小語 ─────────────────────────────── */
+@keyframes soul-note-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.soul-note {
+  overflow: hidden;
+  border-radius: 20px;
+  background: linear-gradient(145deg, #fdf0e8 0%, #fef8f2 55%, #fdeee4 100%);
+  box-shadow: 0 2px 18px rgba(180, 100, 60, 0.10), 0 1px 4px rgba(0, 0, 0, 0.04);
+  animation: soul-note-enter 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.soul-note-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  border-radius: 0;
+  padding: 14px 16px;
+  background: transparent;
+  color: #3a5450;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.soul-note-toggle:active {
+  background: transparent;
+  opacity: 0.85;
+}
+
+.soul-note-toggle span:first-child {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #8a5040;
+}
+
+.soul-note-chevron {
+  color: #c89080;
+  flex-shrink: 0;
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.soul-note-chevron.open {
+  transform: rotate(180deg);
+}
+
+.soul-note-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.soul-note.open .soul-note-body {
+  grid-template-rows: 1fr;
+}
+
+.soul-note-body > div {
+  min-height: 0;
+  overflow: hidden;
+  padding: 0 20px;
+  opacity: 0;
+  filter: blur(6px);
+  transform: translateY(-6px) scale(0.97);
+  transition:
+    padding 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.3s ease 0.06s,
+    filter 0.3s ease 0.06s,
+    transform 0.3s cubic-bezier(0.22, 1, 0.36, 1) 0.06s;
+}
+
+.soul-note.open .soul-note-body > div {
+  padding: 0 20px 20px;
+  opacity: 1;
+  filter: blur(0);
+  transform: translateY(0) scale(1);
+}
+
+/* 裝飾分隔線 */
+.soul-note.open .soul-note-body > div::before {
+  content: '';
+  display: block;
+  width: 36px;
+  height: 1px;
+  margin: 0 auto 18px;
+  background: linear-gradient(90deg, transparent, #b8d4ce, transparent);
+}
+
+.soul-note blockquote {
+  margin: 0;
+  padding-left: 14px;
+  border-left: 2px solid #e8a88c;
+  color: #304442;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.7;
+  letter-spacing: 0.01em;
+}
+
+
+.soul-note-author {
+  margin: 14px 0 0;
+  color: #8aada8;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.soul-note-text {
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.52);
+  border-radius: 12px;
+  color: #5a706c;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.85;
+  letter-spacing: 0.01em;
+}
+
+.today-note-field > span {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #7a9e9a;
+  letter-spacing: 0.04em;
+}
+
+.today-note-field {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.today-note-field textarea {
+  flex: 1;
+  min-height: 80px;
+  border: none;
+  border-radius: 16px;
+  padding: 14px 16px;
+  background: #f5ede6;
+  color: #3a2a1e;
+  font-size: 15px;
+  line-height: 1.75;
+  resize: none;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+  transition: background 0.2s;
+}
+
+.today-note-field textarea:focus {
+  background: #ede0d6;
+}
+
+.today-note-field textarea::placeholder {
+  color: #aac4be;
+}
+
+/* 送出按鈕 */
+.today-submit-btn {
+  width: 100%;
+  padding: 16px;
+  border-radius: 28px;
+  background: linear-gradient(135deg, #f0856a, #d4654a);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  box-shadow: 0 6px 20px rgba(200, 90, 60, 0.28);
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+.today-submit-btn:disabled {
+  background: linear-gradient(135deg, #e8c8bc, #d8b4a8);
+  box-shadow: none;
+  color: rgba(255,255,255,0.7);
+}
+
+.today-submit-btn:not(:disabled):active {
+  opacity: 0.88;
+  transform: scale(0.98);
+}
+

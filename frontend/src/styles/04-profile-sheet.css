@@ -1,0 +1,370 @@
+/* ==========================================================================
+   Profile Bottom Sheet + 教學頁
+   （由 global.css 依原順序拆出，請勿調換 @import 順序）
+   ========================================================================== */
+
+/* ── Profile Bottom Sheet ─────────────────── */
+@keyframes sheet-slide-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+@keyframes sheet-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.profile-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(30, 20, 15, 0.45);
+  display: flex;
+  align-items: flex-end;
+  animation: sheet-fade-in 0.25s ease both;
+}
+
+.profile-sheet {
+  width: 100%;
+  max-height: 90vh;
+  border-radius: 24px 24px 0 0;
+  background: #fffcf7;
+  overflow-y: auto;
+  animation: sheet-slide-up 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+  -webkit-overflow-scrolling: touch;
+}
+
+.profile-sheet-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: #ddd;
+  margin: 12px auto 8px;
+}
+
+.profile-sheet-photos {
+  position: relative;
+  width: 100%;
+  height: 52vw;
+  max-height: 320px;
+  overflow: hidden;
+  background: #e8e0d8;
+}
+
+.profile-sheet-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  animation: photo-fade 0.2s ease;
+}
+
+.profile-sheet-photo-nav {
+  position: absolute;
+  bottom: 10px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 12px;
+  z-index: 3;
+}
+
+.profile-sheet-nav-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.75);
+  color: #3a2a1e;
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+}
+
+.profile-sheet-body {
+  padding: 16px 20px 32px;
+  display: grid;
+  gap: 10px;
+}
+
+.profile-sheet-bio {
+  margin: 0;
+  font-size: 14px;
+  color: #6a5a50;
+  line-height: 1.65;
+}
+
+.profile-sheet-icebreaker {
+  border-left: 3px solid #e8b49c;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #fbf4ee;
+}
+
+.profile-sheet-icebreaker-text {
+  margin: 5px 0 0;
+  font-size: 14px;
+  color: #7b5547;
+  line-height: 1.65;
+  font-style: italic;
+}
+
+.swipe-profile-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 12px;
+  border-top: 1px solid #f0eee9;
+}
+
+.swipe-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  border-radius: 16px;
+  font-size: 15px;
+  font-weight: 800;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: none;
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+}
+
+.swipe-action-btn:active {
+  transform: scale(0.97);
+  opacity: 0.9;
+}
+
+.swipe-action-btn.nope {
+  border: 1px solid #d9c9c6;
+  background: #f5eeec;
+  color: #8c6a65;
+}
+
+.swipe-action-btn.like {
+  border: 1px solid #a8c4be;
+  background: #e8f0ee;
+  color: #3d6b63;
+  box-shadow: 0 6px 16px rgba(90, 140, 130, 0.14);
+}
+
+.swipe-score-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #78d2b4;
+  flex-shrink: 0;
+}
+
+/* 操作按鈕 */
+.swipe-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  padding: 4px 0;
+}
+
+.swipe-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.swipe-btn:active {
+  transform: scale(0.92);
+}
+
+.swipe-btn-nope {
+  background: #fff;
+  color: #dc645a;
+  box-shadow: 0 4px 16px rgba(220, 100, 90, 0.18);
+}
+
+.swipe-btn-like {
+  background: #fff;
+  color: #5fc4a8;
+  box-shadow: 0 4px 16px rgba(95, 196, 168, 0.22);
+}
+
+.swipe-hint {
+  margin: 0;
+  text-align: center;
+  font-size: 12px;
+  color: #8aada8;
+  min-height: 18px;
+}
+
+/* ── 教學頁 ───────────────────────────────── */
+.swipe-tutorial {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 112px);
+}
+
+.swipe-tutorial-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 0 24px;
+  text-align: center;
+}
+
+.swipe-tutorial-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: #2e4240;
+}
+
+.swipe-tutorial-sub {
+  margin: 0;
+  font-size: 14px;
+  color: #7a9e9a;
+  line-height: 1.6;
+  max-width: 240px;
+}
+
+.swipe-tutorial-illustration {
+  margin: 4px 0;
+}
+
+.swipe-tutorial-tips {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 14px 28px;
+  border-radius: 20px;
+  background: #f5faf8;
+}
+
+.swipe-tip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #4a6260;
+}
+
+.swipe-tip-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.swipe-tip-icon.nope {
+  background: #fdecea;
+  color: #dc645a;
+}
+
+.swipe-tip-icon.like {
+  background: #e8f8f3;
+  color: #5fc4a8;
+}
+
+.swipe-tip-divider {
+  width: 1px;
+  height: 28px;
+  background: #d4e8e4;
+}
+
+.swipe-tutorial-note {
+  margin: 0;
+  font-size: 12px;
+  color: #a0bab6;
+}
+
+.swipe-tutorial-btn {
+  margin-top: 4px;
+  padding: 13px 48px;
+  border-radius: 28px;
+  background: linear-gradient(135deg, #7ac8be, #5aaa9e);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  box-shadow: 0 4px 18px rgba(90, 170, 158, 0.3);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.swipe-tutorial-btn:active {
+  opacity: 0.88;
+  transform: scale(0.97);
+}
+
+/* 空狀態 */
+.match-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.match-empty-icon {
+  opacity: 0.85;
+}
+
+.match-empty-title {
+  margin: 0;
+  color: #3a5450;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.match-empty-desc {
+  margin: 0;
+  color: #7a9e9a;
+  font-size: 14px;
+  line-height: 1.85;
+}
+
+.match-empty-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.match-empty-rant {
+  padding: 11px 32px;
+  border-radius: 20px;
+  background: #e8f4f1;
+  color: #3d6b63;
+  font-size: 14px;
+  font-weight: 600;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.match-empty-back {
+  padding: 8px 24px;
+  border-radius: 20px;
+  background: transparent;
+  color: #a0a0a0;
+  font-size: 13px;
+  -webkit-tap-highlight-color: transparent;
+}
+
