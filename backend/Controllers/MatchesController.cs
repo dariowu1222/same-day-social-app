@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SameDaySocialApp.Application.Dto;
 using SameDaySocialApp.Application.Services;
@@ -7,11 +8,16 @@ namespace SameDaySocialApp.Controllers;
 
 [ApiController]
 [Route("api/matches")]
+[Authorize]
 public sealed class MatchesController(MatchService matchService) : ControllerBase
 {
+    private string CallerId => User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                               ?? User.FindFirst("sub")?.Value!;
+
     [HttpGet("today/{userId}")]
     public ActionResult<ApiResponse<List<MatchResponse>>> Today(string userId)
     {
+        if (CallerId != userId) return Forbid();
         return ApiResponse<List<MatchResponse>>.Ok(matchService.GetTodayMatches(userId));
     }
 

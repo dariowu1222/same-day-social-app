@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SameDaySocialApp.Application.Dto;
 using SameDaySocialApp.Application.Services;
@@ -8,23 +9,30 @@ namespace SameDaySocialApp.Controllers;
 
 [ApiController]
 [Route("api/today-entries")]
+[Authorize]
 public sealed class TodayEntriesController(TodayEntryService todayEntryService) : ControllerBase
 {
+    private string CallerId => User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                               ?? User.FindFirst("sub")?.Value!;
+
     [HttpPost]
     public ActionResult<ApiResponse<object>> Create([FromBody] CreateTodayEntryRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.UserId) || string.IsNullOrWhiteSpace(request.Content))
+        if (string.IsNullOrWhiteSpace(request.Content))
         {
-            return BadRequest(ApiResponse<object>.Fail("INVALID_REQUEST", "userId 與 content 為必填。"));
+            return BadRequest(ApiResponse<object>.Fail("INVALID_REQUEST", "content 為必填。"));
         }
 
-        var result = todayEntryService.Create(request.UserId, request.Content, request.ResponseMode, request.Visibility);
+        // 以 token 的身分建立，忽略 body 傳來的 userId，避免冒名發文。
+        var result = todayEntryService.Create(CallerId, request.Content, request.ResponseMode, request.Visibility);
         return ApiResponse<object>.Ok(new { entry = result.Entry, analysis = result.Analysis });
     }
 
     [HttpGet("user/{userId}")]
     public ActionResult<ApiResponse<List<TodayEntry>>> GetByUser(string userId)
     {
+        // 今日記錄屬高度私密內容，僅本人可讀取。
+        if (CallerId != userId) return Forbid();
         return ApiResponse<List<TodayEntry>>.Ok(todayEntryService.GetByUser(userId));
     }
 }

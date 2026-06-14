@@ -13,6 +13,8 @@ public sealed class ProfileController(JsonStorageService storage, IServiceProvid
 {
     private readonly AppDbContext? db = services.GetService<AppDbContext>();
 
+    // 個人資料會顯示在配對 / 聊天中，故任何登入者皆可讀取（但需登入，避免匿名爬取列舉）。
+    [Authorize]
     [HttpGet("{userId}")]
     public async Task<ActionResult<ApiResponse<User>>> Get(string userId, CancellationToken cancellationToken)
     {
