@@ -207,20 +207,31 @@ function SwipeCard({
     const dx = currentX.current
     const dy = e.clientY - startY.current
 
-    // 點擊判斷：移動距離極小 → 切換照片
+    // 點擊判斷：移動距離極小 → 依點擊位置切換照片或展開介紹。
+    // 指標捕獲（setPointerCapture）會吃掉後續的原生 click，故展開不能依賴
+    // .swipe-card-info 的 onClick，必須在此 pointerup 直接處理。
     if (Math.abs(dx) < TAP_THRESHOLD && Math.abs(dy) < TAP_THRESHOLD) {
       const card = cardRef.current
-      if (card && match.photos.length > 1) {
+      if (card) {
         const rect = card.getBoundingClientRect()
         const relY = e.clientY - rect.top
         const photoAreaHeight = rect.width * 1.05
         if (relY < photoAreaHeight) {
-          const relX = e.clientX - rect.left
-          if (relX < rect.width / 2) {
-            setPhotoIndex(i => Math.max(0, i - 1))
-          } else {
-            setPhotoIndex(i => Math.min(match.photos.length - 1, i + 1))
+          // 點在照片區 → 切換照片（多張時）
+          if (match.photos.length > 1) {
+            const relX = e.clientX - rect.left
+            if (relX < rect.width / 2) {
+              setPhotoIndex(i => Math.max(0, i - 1))
+            } else {
+              setPhotoIndex(i => Math.min(match.photos.length - 1, i + 1))
+            }
           }
+          setDragX(0)
+          return
+        }
+        // 點在照片下方的資訊區 → 展開「看更多關於他今天的狀態」
+        if (!showProfile) {
+          setShowProfile(true)
           setDragX(0)
           return
         }
