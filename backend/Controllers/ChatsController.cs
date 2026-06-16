@@ -41,9 +41,21 @@ public sealed class ChatsController(ChatService chatService) : ControllerBase
     {
         var rooms = chatService.GetRoomsByUser(CallerId);
         if (rooms.All(r => r.Id != chatRoomId)) return Forbid();
-        return ApiResponse<ChatMessage>.Ok(chatService.SendMessage(chatRoomId, CallerId, request.Content));
+        return ApiResponse<ChatMessage>.Ok(chatService.SendMessage(
+            chatRoomId, CallerId, request.Content,
+            request.QuotedMessageId, request.QuotedSenderName, request.QuotedContent));
+    }
+
+    [HttpPost("{chatRoomId}/messages/{messageId}/recall")]
+    public ActionResult<ApiResponse<ChatMessage>> RecallMessage(string chatRoomId, string messageId)
+    {
+        var rooms = chatService.GetRoomsByUser(CallerId);
+        if (rooms.All(r => r.Id != chatRoomId)) return Forbid();
+        var recalled = chatService.RecallMessage(messageId, CallerId);
+        if (recalled == null) return BadRequest(ApiResponse<ChatMessage>.Fail("MESSAGE_RECALL_DENIED", "訊息無法收回（僅限本人發出後 2 分鐘內）。"));
+        return ApiResponse<ChatMessage>.Ok(recalled);
     }
 }
 
 public sealed record CreateChatRoomRequest(List<string> UserIds, string SourceType, string SourceId);
-public sealed record SendMessageRequest(string Content);
+public sealed record SendMessageRequest(string Content, string? QuotedMessageId = null, string? QuotedSenderName = null, string? QuotedContent = null);

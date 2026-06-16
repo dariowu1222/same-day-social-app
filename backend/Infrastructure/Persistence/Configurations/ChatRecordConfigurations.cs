@@ -41,8 +41,12 @@ public sealed class ChatMessageRecordConfiguration : IEntityTypeConfiguration<Ch
         builder.Property(x => x.Id).HasColumnName("id").HasMaxLength(64);
         builder.Property(x => x.ChatRoomId).HasColumnName("chat_room_id").HasMaxLength(64).IsRequired();
         builder.Property(x => x.SenderId).HasColumnName("sender_id").HasMaxLength(64).IsRequired();
-        builder.Property(x => x.Content).HasColumnName("content").HasMaxLength(2000).IsRequired();
+        builder.Property(x => x.Content).HasColumnName("content").HasColumnType("text").IsRequired();
         builder.Property(x => x.CreatedAt).HasColumnName("created_at");
+        builder.Property(x => x.QuotedMessageId).HasColumnName("quoted_message_id").HasMaxLength(64);
+        builder.Property(x => x.QuotedSenderName).HasColumnName("quoted_sender_name").HasMaxLength(100);
+        builder.Property(x => x.QuotedContent).HasColumnName("quoted_content").HasMaxLength(2000);
+        builder.Property(x => x.IsRecalled).HasColumnName("is_recalled").HasDefaultValue(false);
         builder.HasIndex(x => new { x.ChatRoomId, x.CreatedAt });
     }
 }

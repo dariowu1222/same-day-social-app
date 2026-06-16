@@ -7,6 +7,7 @@ import {
   Reply, Copy, RotateCcw,
 } from 'lucide-react'
 import type { ChatMessage, ChatRoom as ChatRoomType } from './types'
+import type { QuoteInfo } from './api'
 import type { UserProfile } from '../profile/types'
 import { getAge, getZodiac, ZODIAC_ICON, testAvatarPhoto } from '../../shared/lib/userDisplay'
 import Avatar from '../../shared/ui/Avatar'
@@ -19,8 +20,8 @@ type Props = {
   messages: ChatMessage[]
   draft: string
   onDraftChange: (value: string) => void
-  onSend: () => void
-  onSendContent?: (content: string) => void
+  onSendContent: (content: string, quote?: QuoteInfo) => void
+  onRecall?: (messageId: string) => void
   onBack: () => void
 }
 
@@ -44,7 +45,7 @@ type RenderRow =
 
 export default function ChatRoom({
   room, otherProfile, otherUserId, currentUserId,
-  messages, draft, onDraftChange, onSend, onSendContent, onBack,
+  messages, draft, onDraftChange, onSendContent, onRecall, onBack,
 }: Props) {
   const navigate = useNavigate()
   const [sheet, setSheet] = useState<SheetState>('closed')
@@ -149,11 +150,20 @@ export default function ChatRoom({
     showToast('已複製')
   }
   function actReport() { setAction(null); showToast('檢舉將在後端批次接通') }
-  function actRecall() { setAction(null); showToast('收回將在後端批次接通') }
+  function actRecall() {
+    if (action) onRecall?.(action.msg.id)
+    setAction(null)
+  }
 
-  // 送出時清掉引用條（引用關聯的後端串接在 Task #4）
+  // 送出文字（含引用條時帶上引用資訊）
   function handleSend() {
-    onSend()
+    const text = draft.trim()
+    if (!text) return
+    const q: QuoteInfo | undefined = quote
+      ? { quotedMessageId: quote.id, quotedSenderName: quoteName(quote), quotedContent: quotePreview(quote.content) }
+      : undefined
+    onSendContent?.(text, q)
+    onDraftChange('')
     setQuote(null)
   }
 

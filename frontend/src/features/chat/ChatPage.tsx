@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Search, X } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
-import { getChatRooms, getMessages, sendMessage } from './api'
+import { getChatRooms, getMessages, sendMessage, recallMessage, type QuoteInfo } from './api'
 import type { ChatMessage, ChatRoom as ChatRoomType } from './types'
 import { getProfile } from '../profile/api'
 import type { UserProfile } from '../profile/types'
@@ -66,15 +66,16 @@ export default function ChatPage() {
     setMessages(response.data)
   }
 
-  async function submitMessage() {
-    if (!activeRoomId || !draft.trim()) return
-    await submitContent(draft)
-    setDraft('')
+  async function submitContent(content: string, quote?: QuoteInfo) {
+    if (!activeRoomId || !content.trim()) return
+    await sendMessage(activeRoomId, content, quote)
+    await loadMessages(activeRoomId)
+    await loadRooms()
   }
 
-  async function submitContent(content: string) {
-    if (!activeRoomId || !content.trim()) return
-    await sendMessage(activeRoomId, content)
+  async function recallMsg(messageId: string) {
+    if (!activeRoomId) return
+    await recallMessage(activeRoomId, messageId)
     await loadMessages(activeRoomId)
     await loadRooms()
   }
@@ -114,8 +115,8 @@ export default function ChatPage() {
         messages={messages}
         draft={draft}
         onDraftChange={setDraft}
-        onSend={submitMessage}
         onSendContent={submitContent}
+        onRecall={recallMsg}
         onBack={() => setActiveRoomId(null)}
       />
     )

@@ -234,8 +234,12 @@ public static class RecordMapper
             Id = record.Id,
             ChatRoomId = record.ChatRoomId,
             SenderId = record.SenderId,
-            Content = record.Content,
-            CreatedAt = record.CreatedAt
+            Content = record.IsRecalled ? "" : record.Content,
+            CreatedAt = record.CreatedAt,
+            QuotedMessageId = record.QuotedMessageId,
+            QuotedSenderName = record.QuotedSenderName,
+            QuotedContent = record.QuotedContent,
+            IsRecalled = record.IsRecalled
         };
     }
 

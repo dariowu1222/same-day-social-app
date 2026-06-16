@@ -16,4 +16,8 @@ public sealed class ChatMessage
     public string SenderId { get; set; } = "";
     public string Content { get; set; } = "";
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public string? QuotedMessageId { get; set; }
+    public string? QuotedSenderName { get; set; }
+    public string? QuotedContent { get; set; }
+    public bool IsRecalled { get; set; }
 }

@@ -123,16 +123,23 @@ public sealed class ChatService
             .ToList();
     }
 
-    public ChatMessage SendMessage(string chatRoomId, string senderId, string content)
+    public ChatMessage SendMessage(
+        string chatRoomId, string senderId, string content,
+        string? quotedMessageId = null, string? quotedSenderName = null, string? quotedContent = null)
     {
+        var id = $"message_{Guid.NewGuid():N}";
+
         if (db != null)
         {
             var messageRecord = new ChatMessageRecord
             {
-                Id = $"message_{Guid.NewGuid():N}",
+                Id = id,
                 ChatRoomId = chatRoomId,
                 SenderId = senderId,
-                Content = content.Trim()
+                Content = content.Trim(),
+                QuotedMessageId = quotedMessageId,
+                QuotedSenderName = quotedSenderName,
+                QuotedContent = quotedContent
             };
             db.ChatMessages.Add(messageRecord);
             db.SaveChanges();
@@ -141,12 +148,47 @@ public sealed class ChatService
 
         var message = new ChatMessage
         {
-            Id = $"message_{Guid.NewGuid():N}",
+            Id = id,
             ChatRoomId = chatRoomId,
             SenderId = senderId,
-            Content = content.Trim()
+            Content = content.Trim(),
+            QuotedMessageId = quotedMessageId,
+            QuotedSenderName = quotedSenderName,
+            QuotedContent = quotedContent
         };
         return storage.InsertOne("chatMessages", message);
+    }
+
+    // 收回訊息：限本人、限發出後 2 分鐘內
+    public ChatMessage? RecallMessage(string messageId, string callerId)
+    {
+        var cutoff = DateTimeOffset.UtcNow.AddMinutes(-2);
+
+        if (db != null)
+        {
+            var record = db.ChatMessages.FirstOrDefault(x => x.Id == messageId);
+            if (record == null || record.SenderId != callerId || record.CreatedAt < cutoff)
+            {
+                return null;
+            }
+            record.IsRecalled = true;
+            record.Content = "";
+            db.SaveChanges();
+            return record.ToDomain();
+        }
+
+        var existing = storage.ReadCollection<ChatMessage>("chatMessages")
+            .FirstOrDefault(x => x.Id == messageId);
+        if (existing == null || existing.SenderId != callerId || existing.CreatedAt < cutoff)
+        {
+            return null;
+        }
+        var updated = storage.UpdateOne<ChatMessage>("chatMessages", messageId, m =>
+        {
+            m.IsRecalled = true;
+            m.Content = "";
+        });
+        return updated;
     }
 
     private ChatRoom? BuildRoom(string roomId)
