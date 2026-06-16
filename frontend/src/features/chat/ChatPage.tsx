@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Search, X } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
 import { getChatRooms, getMessages, sendMessage } from './api'
 import type { ChatMessage, ChatRoom as ChatRoomType } from './types'
@@ -16,6 +17,8 @@ export default function ChatPage() {
   const [profiles, setProfiles] = useState<Record<string, UserProfile>>({})
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [draft, setDraft] = useState('')
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     loadRooms()
@@ -64,9 +67,14 @@ export default function ChatPage() {
   }
 
   async function submitMessage() {
-    if (!activeRoomId) return
-    await sendMessage(activeRoomId, draft)
+    if (!activeRoomId || !draft.trim()) return
+    await submitContent(draft)
     setDraft('')
+  }
+
+  async function submitContent(content: string) {
+    if (!activeRoomId || !content.trim()) return
+    await sendMessage(activeRoomId, content)
     await loadMessages(activeRoomId)
     await loadRooms()
   }
@@ -80,6 +88,18 @@ export default function ChatPage() {
   )
   const todayRooms = roomSummaries.filter((summary) => isToday(summary.room.createdAt))
   const previousRooms = roomSummaries.filter((summary) => !isToday(summary.room.createdAt))
+
+  // 名字搜尋：連續片段(contains)、不分大小寫，僅比對對話對象名字
+  const query = search.trim().toLowerCase()
+  const searchResults = useMemo(
+    () => (query ? roomSummaries.filter((summary) => summary.title.toLowerCase().includes(query)) : roomSummaries),
+    [roomSummaries, query],
+  )
+
+  function closeSearch() {
+    setSearch('')
+    setSearchOpen(false)
+  }
 
   if (!user) return null
 
@@ -95,6 +115,7 @@ export default function ChatPage() {
         draft={draft}
         onDraftChange={setDraft}
         onSend={submitMessage}
+        onSendContent={submitContent}
         onBack={() => setActiveRoomId(null)}
       />
     )
@@ -105,10 +126,46 @@ export default function ChatPage() {
       <div className="page chat-list-page">
         <header className="chat-list-header">
           <h1>聊天</h1>
+          {searchOpen ? (
+            <div className="chat-search-box">
+              <Search size={14} className="chat-search-icon" strokeWidth={2} />
+              <input
+                className="chat-search-input"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="搜尋名字"
+                autoFocus
+              />
+              <button className="chat-search-clear" type="button" onClick={closeSearch} aria-label="關閉搜尋">
+                <X size={14} strokeWidth={2} />
+              </button>
+            </div>
+          ) : (
+            <button className="chat-search-btn" type="button" onClick={() => setSearchOpen(true)} aria-label="搜尋名字">
+              <Search size={18} strokeWidth={2} />
+            </button>
+          )}
         </header>
         <section className="chat-list-scroll" aria-label="聊天列表">
-          <ChatSection title="今天聊起的" rooms={todayRooms} onOpen={setActiveRoomId} />
-          <ChatSection title="先前的對話" rooms={previousRooms} onOpen={setActiveRoomId} />
+          {searchOpen ? (
+            searchResults.length > 0 ? (
+              <div className="chat-card-list chat-search-results">
+                {searchResults.map((summary) => (
+                  <ChatCard key={summary.room.id} summary={summary} onOpen={setActiveRoomId} highlight={query} />
+                ))}
+              </div>
+            ) : (
+              <div className="chat-search-empty">
+                <p>找不到符合的對話</p>
+                <p>換個關鍵字試試</p>
+              </div>
+            )
+          ) : (
+            <>
+              <ChatSection title="今天聊起的" rooms={todayRooms} onOpen={setActiveRoomId} />
+              <ChatSection title="先前的對話" rooms={previousRooms} onOpen={setActiveRoomId} />
+            </>
+          )}
         </section>
       </div>
     )
@@ -144,22 +201,41 @@ function ChatSection({ title, rooms, onOpen }: { title: string; rooms: ChatSumma
       <h2>{title}</h2>
       <div className="chat-card-list">
         {rooms.map((summary) => (
-          <button key={summary.room.id} className="chat-list-card" type="button" onClick={() => onOpen(summary.room.id)}>
-            <Avatar photo={summary.avatarPhoto} seed={summary.otherUserId} className="chat-avatar" />
-            <span className="chat-card-main">
-              <span className="chat-card-name-row">
-                <strong>{summary.title}</strong>
-                <time>{summary.timeLabel}</time>
-              </span>
-              <span className={`chat-card-preview${summary.unreadCount > 0 ? ' unread' : ''}`}>{summary.preview}</span>
-            </span>
-            {summary.unreadCount > 0 && (
-              <span className="chat-unread-badge">{summary.unreadCount > 99 ? '99+' : summary.unreadCount}</span>
-            )}
-          </button>
+          <ChatCard key={summary.room.id} summary={summary} onOpen={onOpen} />
         ))}
       </div>
     </section>
+  )
+}
+
+function ChatCard({ summary, onOpen, highlight }: { summary: ChatSummary; onOpen: (roomId: string) => void; highlight?: string }) {
+  return (
+    <button className="chat-list-card" type="button" onClick={() => onOpen(summary.room.id)}>
+      <Avatar photo={summary.avatarPhoto} seed={summary.otherUserId} className="chat-avatar" />
+      <span className="chat-card-main">
+        <span className="chat-card-name-row">
+          <strong>{highlight ? <HighlightName name={summary.title} query={highlight} /> : summary.title}</strong>
+          <time>{summary.timeLabel}</time>
+        </span>
+        <span className={`chat-card-preview${summary.unreadCount > 0 ? ' unread' : ''}`}>{summary.preview}</span>
+      </span>
+      {summary.unreadCount > 0 && (
+        <span className="chat-unread-badge">{summary.unreadCount > 99 ? '99+' : summary.unreadCount}</span>
+      )}
+    </button>
+  )
+}
+
+// 名字中命中片段高亮（query 已小寫）
+function HighlightName({ name, query }: { name: string; query: string }) {
+  const idx = name.toLowerCase().indexOf(query)
+  if (idx === -1) return <>{name}</>
+  return (
+    <>
+      {name.slice(0, idx)}
+      <mark className="chat-search-hl">{name.slice(idx, idx + query.length)}</mark>
+      {name.slice(idx + query.length)}
+    </>
   )
 }
 

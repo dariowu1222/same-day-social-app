@@ -6,6 +6,8 @@
 /* ── Chat list ── */
 .chat-list-page {
   gap: 0;
+  /* 標題列=內容高、清單=填滿剩餘並內部捲動；避免 .page 的 grid stretch 把標題列撐高 */
+  grid-template-rows: auto 1fr;
   min-height: calc(100vh - 112px);
   margin: calc(-1 * max(16px, env(safe-area-inset-left))) calc(-1 * max(16px, env(safe-area-inset-right))) calc(-92px - env(safe-area-inset-bottom));
   padding-bottom: calc(92px + env(safe-area-inset-bottom));
@@ -25,7 +27,7 @@
   align-items: center;
   gap: 10px;
   min-height: 58px;
-  padding: 16px;
+  padding: 12px 16px;
   background: #faf7f2;
   border-bottom: 0.5px solid #e8e0d4;
   flex-shrink: 0;
@@ -37,7 +39,77 @@
   font-size: 17px;
   font-weight: 500;
   line-height: 1.2;
+  flex-shrink: 0;
 }
+
+/* ── 名字搜尋（第十節）── */
+.chat-search-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #6a5e52;
+  cursor: pointer;
+}
+.chat-search-btn:active { background: #f0ebe3; }
+
+.chat-search-box {
+  margin-left: auto;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 6px 11px;
+  border-radius: 18px;
+  background: #f0ebe3;
+  border: 0.5px solid #ddd5c8;
+}
+.chat-search-box .chat-search-icon { color: #b0a090; flex-shrink: 0; }
+.chat-search-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  outline: none;
+  font-family: inherit;
+  font-size: 13px;
+  color: #3a3028;
+}
+.chat-search-input::placeholder { color: #b0a090; }
+.chat-search-clear {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #b0a090;
+  cursor: pointer;
+}
+
+.chat-search-hl {
+  background: #fce2b0;
+  color: #3a3028;
+  border-radius: 3px;
+  padding: 0 1px;
+}
+
+.chat-search-empty {
+  padding: 48px 24px;
+  text-align: center;
+  color: #a89a88;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.chat-search-empty p { margin: 0; }
 
 .chat-back-button {
   display: grid;
@@ -401,35 +473,57 @@
   flex-shrink: 0;
 }
 
+.cr-input-icon {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #6a8e76;
+  cursor: pointer;
+}
+.cr-input-icon:active { background: #e9f0ea; }
+
 .cr-input-box {
   flex: 1;
   min-width: 0;
-  padding: 10px 16px;
-  border: 1px solid #eae6da;
-  border-radius: 22px;
+  height: 36px;
+  padding: 6px 14px;
+  border: 0.5px solid #ddd5c8;
+  border-radius: 20px;
   background: #ffffff;
   color: #3a4a40;
   font-size: 14px;
   outline: none;
 }
-.cr-input-box::placeholder { color: #bcc6bc; }
+.cr-input-box::placeholder { color: #b0a090; }
 
 .cr-send {
   flex-shrink: 0;
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
+  width: 36px;
+  height: 36px;
   border: none;
   border-radius: 50%;
-  background: linear-gradient(135deg, #6db585 0%, #5a9e6a 100%);
+  background: #5a9e78;
   color: #ffffff;
-  font-size: 18px;
-  box-shadow: 0 1px 3px rgba(80, 100, 80, 0.12);
   transition: transform 0.15s;
 }
 .cr-send:active { transform: scale(0.9); }
 .cr-send:disabled { opacity: 0.45; }
+
+.cr-bubble-img {
+  display: block;
+  max-width: 200px;
+  max-height: 240px;
+  border-radius: 12px;
+}
+.cr-bubble-audio { max-width: 220px; }
 
 /* 自介 Bottom Sheet */
 .cr-sheet-mask {

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Capacitor } from '@capacitor/core'
+import { Image as ImageIcon, Mic, ArrowUp } from 'lucide-react'
 import type { ChatMessage, ChatRoom as ChatRoomType } from './types'
 import type { UserProfile } from '../profile/types'
 import { getAge, getZodiac, ZODIAC_ICON, testAvatarPhoto } from '../../shared/lib/userDisplay'
@@ -14,6 +15,7 @@ type Props = {
   draft: string
   onDraftChange: (value: string) => void
   onSend: () => void
+  onSendContent?: (content: string) => void
   onBack: () => void
 }
 
@@ -37,11 +39,12 @@ type RenderRow =
 
 export default function ChatRoom({
   room, otherProfile, otherUserId, currentUserId,
-  messages, draft, onDraftChange, onSend, onBack,
+  messages, draft, onDraftChange, onSend, onSendContent, onBack,
 }: Props) {
   const [sheet, setSheet] = useState<SheetState>('closed')
   const bodyRef = useRef<HTMLDivElement>(null)
   const sheetRef = useRef<HTMLDivElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
   // App（原生）走上拉拖曳；網頁版走點擊兩段式切換。
   const isNative = Capacitor.isNativePlatform()
   // 拖曳過程的暫存：起點、起始位移(px)、是否真的移動過、最後位移比例。
@@ -68,6 +71,15 @@ export default function ChatRoom({
       event.preventDefault()
       onSend()
     }
+  }
+
+  // 圖片訊息：縮圖後以 data URL 直接當訊息內容送出（泡泡會偵測 data:image 並渲染圖片）
+  async function handlePickImage(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file || !onSendContent) return
+    const dataUrl = await imageToDataUrl(file)
+    onSendContent(dataUrl)
   }
 
   // 把手被觸/點：網頁版直接 peek↔full 切換；原生版交給拖曳處理（tap 才在 touchend 切換）。
@@ -163,8 +175,14 @@ export default function ChatRoom({
         )}
       </div>
 
-      {/* 輸入列 */}
+      {/* 輸入列：圖片 / 語音 / 輸入框 / 送出 */}
       <div className="cr-input">
+        <button className="cr-input-icon cr-img" type="button" onClick={() => fileRef.current?.click()} aria-label="傳送圖片">
+          <ImageIcon size={20} strokeWidth={1.9} />
+        </button>
+        <button className="cr-input-icon cr-voice" type="button" aria-label="語音訊息">
+          <Mic size={20} strokeWidth={1.9} />
+        </button>
         <input
           className="cr-input-box"
           value={draft}
@@ -172,7 +190,10 @@ export default function ChatRoom({
           onKeyDown={handleKeyDown}
           placeholder="慢慢說，不急。"
         />
-        <button className="cr-send" type="button" onClick={onSend} disabled={!draft.trim()} aria-label="送出">↑</button>
+        <button className="cr-send" type="button" onClick={onSend} disabled={!draft.trim()} aria-label="送出">
+          <ArrowUp size={18} strokeWidth={2.4} />
+        </button>
+        <input ref={fileRef} type="file" accept="image/*" hidden onChange={handlePickImage} />
       </div>
 
       {/* 自介 Sheet：closed → peek（半截）→ full（全屏） */}
@@ -281,9 +302,33 @@ function dateKeyOf(message: ChatMessage) {
 
 function renderContent(content: string) {
   const trimmed = content.trim()
+  if (trimmed.startsWith('data:image/')) return <img src={trimmed} className="cr-bubble-img" alt="圖片" />
+  if (trimmed.startsWith('data:audio/')) return <audio controls src={trimmed} className="cr-bubble-audio" />
   if (trimmed === '[image]') return '🖼️ 圖片'
   if (trimmed === '[sticker]') return '😊 貼圖'
   return content
+}
+
+// 圖片縮圖 → data URL（與個人頁同樣的 canvas 縮放，控制體積）
+function imageToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      const maxSize = 800
+      const scale = Math.min(1, maxSize / Math.max(img.width, img.height))
+      const w = Math.round(img.width * scale)
+      const h = Math.round(img.height * scale)
+      const canvas = document.createElement('canvas')
+      canvas.width = w
+      canvas.height = h
+      canvas.getContext('2d')!.drawImage(img, 0, 0, w, h)
+      resolve(canvas.toDataURL('image/jpeg', 0.82))
+    }
+    img.onerror = reject
+    img.src = url
+  })
 }
 
 function formatTime(value: string) {
