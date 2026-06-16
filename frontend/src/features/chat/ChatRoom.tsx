@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Capacitor } from '@capacitor/core'
-import { Image as ImageIcon, Mic, ArrowUp } from 'lucide-react'
+import {
+  Image as ImageIcon, Mic, ArrowUp, MoreHorizontal, X, Search,
+  User, Flag, Pencil, Pin, BellOff, BellRing, LogOut, Ban,
+} from 'lucide-react'
 import type { ChatMessage, ChatRoom as ChatRoomType } from './types'
 import type { UserProfile } from '../profile/types'
 import { getAge, getZodiac, ZODIAC_ICON, testAvatarPhoto } from '../../shared/lib/userDisplay'
@@ -41,7 +45,15 @@ export default function ChatRoom({
   room, otherProfile, otherUserId, currentUserId,
   messages, draft, onDraftChange, onSend, onSendContent, onBack,
 }: Props) {
+  const navigate = useNavigate()
   const [sheet, setSheet] = useState<SheetState>('closed')
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [confirm, setConfirm] = useState<{ title: string; desc: string; danger?: boolean; onYes: () => void } | null>(null)
+  const [chatSearch, setChatSearch] = useState<string | null>(null)
+  const [muted, setMuted] = useState(false)
+  const [pinned, setPinned] = useState(false)
+  const [toast, setToast] = useState('')
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
   const sheetRef = useRef<HTMLDivElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -58,7 +70,10 @@ export default function ChatRoom({
     ? `${getAge(birthday)} · ${getZodiac(birthday)}`
     : '輕觸看 TA 的介紹'
 
-  const rows = buildRows(messages, currentUserId)
+  const shownMessages = chatSearch
+    ? messages.filter((m) => m.content.toLowerCase().includes(chatSearch.toLowerCase()))
+    : messages
+  const rows = buildRows(shownMessages, currentUserId)
 
   // 訊息更新後捲到底
   useEffect(() => {
@@ -71,6 +86,33 @@ export default function ChatRoom({
       event.preventDefault()
       onSend()
     }
+  }
+
+  function showToast(msg: string) {
+    setToast(msg)
+    if (toastTimer.current) clearTimeout(toastTimer.current)
+    toastTimer.current = setTimeout(() => setToast(''), 2000)
+  }
+
+  // ── 更多選單動作 ──
+  function openProfile() { setMenuOpen(false); setSheet('peek') }
+  function goTask() { setMenuOpen(false); navigate('/tasks') }
+  function openChatSearch() { setMenuOpen(false); setChatSearch('') }
+  function togglePin() { setMenuOpen(false); setPinned((v) => !v); showToast(pinned ? '已取消釘選' : '已釘選對話') }
+  function toggleMute() { setMenuOpen(false); setMuted((v) => !v); showToast(muted ? '已開啟通知' : '已靜音通知') }
+  function setNote() { setMenuOpen(false); showToast('備註名稱將在後端批次接通') }
+  // 離開類：三項都先二次確認（封鎖/檢舉的後端在 Task #5 接通）
+  function confirmLeave() {
+    setMenuOpen(false)
+    setConfirm({ title: '離開聊天室', desc: '離開後此對話會從你的列表移除。', danger: true, onYes: () => { setConfirm(null); onBack() } })
+  }
+  function confirmBlock() {
+    setMenuOpen(false)
+    setConfirm({ title: '離開並封鎖對方', desc: '封鎖後對方無法再與你聊天，此對話也會移除。', danger: true, onYes: () => { setConfirm(null); showToast('封鎖將在後端批次接通'); onBack() } })
+  }
+  function confirmReport() {
+    setMenuOpen(false)
+    setConfirm({ title: '離開並檢舉對方', desc: '我們會收到你的檢舉並審核，此對話也會移除。', danger: true, onYes: () => { setConfirm(null); showToast('檢舉將在後端批次接通'); onBack() } })
   }
 
   // 圖片訊息：縮圖後以 data URL 直接當訊息內容送出（泡泡會偵測 data:image 並渲染圖片）
@@ -139,8 +181,27 @@ export default function ChatRoom({
             <span className="cr-header-sub">{subtitle}</span>
           </span>
         </button>
-        <button className="cr-menu" type="button" aria-label="更多">⋯</button>
+        <button className="cr-menu" type="button" onClick={() => setMenuOpen(true)} aria-label="更多">
+          <MoreHorizontal size={19} strokeWidth={2} />
+        </button>
       </header>
+
+      {/* 站內搜尋對話內容 */}
+      {chatSearch !== null && (
+        <div className="cr-search-bar">
+          <Search size={14} className="cr-search-icon" strokeWidth={2} />
+          <input
+            className="cr-search-input"
+            value={chatSearch}
+            onChange={(e) => setChatSearch(e.target.value)}
+            placeholder="搜尋對話內容"
+            autoFocus
+          />
+          <button className="cr-search-close" type="button" onClick={() => setChatSearch(null)} aria-label="關閉搜尋">
+            <X size={14} strokeWidth={2} />
+          </button>
+        </div>
+      )}
 
       {/* 訊息區 */}
       <div className="cr-body" ref={bodyRef}>
@@ -195,6 +256,62 @@ export default function ChatRoom({
         </button>
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={handlePickImage} />
       </div>
+
+      {/* 更多選單 action sheet */}
+      <div className={`cr-menu-mask${menuOpen ? ' show' : ''}`} onClick={() => setMenuOpen(false)} />
+      <div className={`cr-menu-sheet${menuOpen ? ' show' : ''}`} role="dialog" aria-label="更多選項">
+        <div className="cr-menu-grip" />
+        <div className="cr-menu-section-label">互動 / 設定</div>
+        <button className="cr-menu-item" type="button" onClick={openProfile}>
+          <User size={19} strokeWidth={1.8} className="cr-menu-ic" /><span>查看資料</span>
+        </button>
+        <button className="cr-menu-item" type="button" onClick={goTask}>
+          <Flag size={19} strokeWidth={1.8} className="cr-menu-ic" /><span>一起做任務</span>
+          <span className="cr-menu-badge">招牌</span>
+        </button>
+        <button className="cr-menu-item" type="button" onClick={openChatSearch}>
+          <Search size={19} strokeWidth={1.8} className="cr-menu-ic" /><span>搜尋對話內容</span>
+        </button>
+        <button className="cr-menu-item" type="button" onClick={setNote}>
+          <Pencil size={19} strokeWidth={1.8} className="cr-menu-ic" /><span>設定備註名稱</span>
+        </button>
+        <button className="cr-menu-item" type="button" onClick={togglePin}>
+          <Pin size={19} strokeWidth={1.8} className="cr-menu-ic" /><span>{pinned ? '取消釘選' : '釘選對話'}</span>
+        </button>
+        <button className="cr-menu-item" type="button" onClick={toggleMute}>
+          {muted
+            ? <BellRing size={19} strokeWidth={1.8} className="cr-menu-ic" />
+            : <BellOff size={19} strokeWidth={1.8} className="cr-menu-ic" />}
+          <span>{muted ? '開啟通知' : '靜音通知'}</span>
+        </button>
+        <div className="cr-menu-divider" />
+        <div className="cr-menu-section-label">離開</div>
+        <button className="cr-menu-item danger" type="button" onClick={confirmLeave}>
+          <LogOut size={19} strokeWidth={1.8} className="cr-menu-ic" /><span>離開聊天室</span>
+        </button>
+        <button className="cr-menu-item danger" type="button" onClick={confirmBlock}>
+          <Ban size={19} strokeWidth={1.8} className="cr-menu-ic" /><span>離開並封鎖對方</span>
+        </button>
+        <button className="cr-menu-item danger" type="button" onClick={confirmReport}>
+          <Flag size={19} strokeWidth={1.8} className="cr-menu-ic" /><span>離開並檢舉對方</span>
+        </button>
+      </div>
+
+      {/* 離開類動作二次確認 */}
+      {confirm && (
+        <div className="cr-confirm-mask" onClick={() => setConfirm(null)}>
+          <div className="cr-confirm" role="alertdialog" onClick={(e) => e.stopPropagation()}>
+            <div className="cr-confirm-title">{confirm.title}</div>
+            <div className="cr-confirm-desc">{confirm.desc}</div>
+            <div className="cr-confirm-actions">
+              <button className="cr-confirm-cancel" type="button" onClick={() => setConfirm(null)}>取消</button>
+              <button className={`cr-confirm-ok${confirm.danger ? ' danger' : ''}`} type="button" onClick={confirm.onYes}>確認</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {toast && <div className="cr-toast">{toast}</div>}
 
       {/* 自介 Sheet：closed → peek（半截）→ full（全屏） */}
       <div

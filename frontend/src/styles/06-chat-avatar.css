@@ -357,13 +357,18 @@
 
 .cr-menu {
   flex-shrink: 0;
-  padding: 4px 8px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
   border: none;
+  border-radius: 50%;
   background: transparent;
-  color: #9aa89c;
-  font-size: 20px;
-  line-height: 1;
+  color: #6a5e52;
+  cursor: pointer;
 }
+.cr-menu:active { background: #f0ebe3; }
 
 /* 訊息區 */
 .cr-body {
@@ -524,6 +529,163 @@
   border-radius: 12px;
 }
 .cr-bubble-audio { max-width: 220px; }
+
+/* ── 站內搜尋對話內容 ── */
+.cr-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  background: #faf7f2;
+  border-bottom: 0.5px solid #e8e0d4;
+  flex-shrink: 0;
+}
+.cr-search-icon { color: #b0a090; flex-shrink: 0; }
+.cr-search-input {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  border: none;
+  background: none;
+  outline: none;
+  font-family: inherit;
+  font-size: 14px;
+  color: #3a3028;
+}
+.cr-search-input::placeholder { color: #b0a090; }
+.cr-search-close {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #b0a090;
+  cursor: pointer;
+}
+
+/* ── 更多選單 action sheet (11.2) ── */
+.cr-menu-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(40, 32, 24, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.cr-menu-mask.show { opacity: 1; pointer-events: auto; }
+
+.cr-menu-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 61;
+  background: #faf7f2;
+  border-radius: 18px 18px 0 0;
+  padding: 8px 0 calc(12px + env(safe-area-inset-bottom));
+  transform: translateY(100%);
+  transition: transform 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.12);
+}
+.cr-menu-sheet.show { transform: translateY(0); }
+
+.cr-menu-grip {
+  width: 36px;
+  height: 4px;
+  margin: 4px auto 10px;
+  border-radius: 2px;
+  background: #ddd5c8;
+}
+.cr-menu-section-label {
+  padding: 6px 20px 4px;
+  font-size: 11px;
+  color: #a89a88;
+}
+.cr-menu-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 12px 20px;
+  border: none;
+  background: transparent;
+  color: #3a3028;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.cr-menu-item:active { background: #f0ebe3; }
+.cr-menu-ic {
+  width: 22px;
+  margin-right: 12px;
+  flex-shrink: 0;
+  color: #7a6e62;
+}
+.cr-menu-item.danger { color: #c0392b; }
+.cr-menu-item.danger .cr-menu-ic { color: #c0392b; }
+.cr-menu-badge {
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: #5a9e78;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 600;
+}
+.cr-menu-divider {
+  height: 6px;
+  margin: 6px 0;
+  background: #f0ebe3;
+}
+
+/* ── 離開類二次確認 ── */
+.cr-confirm-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(40, 32, 24, 0.45);
+}
+.cr-confirm {
+  width: 100%;
+  max-width: 300px;
+  padding: 20px;
+  border-radius: 16px;
+  background: #faf7f2;
+  text-align: center;
+}
+.cr-confirm-title { font-size: 16px; font-weight: 600; color: #3a3028; }
+.cr-confirm-desc { margin-top: 8px; font-size: 13px; line-height: 1.6; color: #7a6e62; }
+.cr-confirm-actions { display: flex; gap: 10px; margin-top: 18px; }
+.cr-confirm-cancel,
+.cr-confirm-ok {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.cr-confirm-cancel { background: #ece6dc; color: #5a5048; }
+.cr-confirm-ok { background: #5a9e78; color: #ffffff; }
+.cr-confirm-ok.danger { background: #c0392b; }
+
+.cr-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 90px;
+  z-index: 80;
+  transform: translateX(-50%);
+  padding: 9px 16px;
+  border-radius: 20px;
+  background: rgba(40, 32, 24, 0.9);
+  color: #ffffff;
+  font-size: 13px;
+  white-space: nowrap;
+}
 
 /* 自介 Bottom Sheet */
 .cr-sheet-mask {

@@ -663,6 +663,24 @@
 }
 [data-theme="dark"] .cr-input-box::placeholder { color: rgba(168, 212, 204, 0.4); }
 
+/* 更多選單 / 站內搜尋 / 確認框：夜間 */
+[data-theme="dark"] .cr-search-bar { background: rgba(5, 15, 10, 0.96); border-bottom-color: rgba(168, 212, 204, 0.1); }
+[data-theme="dark"] .cr-search-input { color: #d4ede8; }
+[data-theme="dark"] .cr-search-input::placeholder { color: rgba(168, 212, 204, 0.4); }
+[data-theme="dark"] .cr-menu-sheet { background: #0c1810; box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5); }
+[data-theme="dark"] .cr-menu-grip { background: #2a4035; }
+[data-theme="dark"] .cr-menu-section-label { color: rgba(168, 212, 204, 0.5); }
+[data-theme="dark"] .cr-menu-item { color: #d4ede8; }
+[data-theme="dark"] .cr-menu-item:active { background: rgba(22, 40, 32, 0.7); }
+[data-theme="dark"] .cr-menu-ic { color: rgba(168, 212, 204, 0.7); }
+[data-theme="dark"] .cr-menu-item.danger,
+[data-theme="dark"] .cr-menu-item.danger .cr-menu-ic { color: #ef6f63; }
+[data-theme="dark"] .cr-menu-divider { background: rgba(168, 212, 204, 0.08); }
+[data-theme="dark"] .cr-confirm { background: #0c1810; }
+[data-theme="dark"] .cr-confirm-title { color: #d4ede8; }
+[data-theme="dark"] .cr-confirm-desc { color: rgba(212, 237, 232, 0.7); }
+[data-theme="dark"] .cr-confirm-cancel { background: rgba(22, 40, 32, 0.8); color: #c4d6d0; }
+
 [data-theme="dark"] .cr-sheet {
   background: #0c1810;
   box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5);
