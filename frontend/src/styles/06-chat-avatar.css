@@ -687,6 +687,94 @@
   white-space: nowrap;
 }
 
+/* ── 長按訊息操作列 (11.4) ── */
+.cr-action-mask { position: fixed; inset: 0; z-index: 65; }
+.cr-action-bar {
+  position: fixed;
+  z-index: 66;
+  display: flex;
+  gap: 2px;
+  padding: 6px 4px;
+  background: #2c2620;
+  border-radius: 12px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  transform: translateY(calc(-100% - 8px));
+}
+.cr-action-bar.out { transform: translate(-100%, calc(-100% - 8px)); }
+.cr-action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 46px;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #f0ebe3;
+  cursor: pointer;
+}
+.cr-action-btn span { font-size: 10px; color: #d8d0c4; }
+.cr-action-btn:active { background: rgba(255, 255, 255, 0.08); }
+
+/* ── 引用回覆條（輸入框上方）(11.5) ── */
+.cr-quote-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: #faf7f2;
+  border-top: 0.5px solid #e8e0d4;
+  border-left: 3px solid #5a9e78;
+  flex-shrink: 0;
+}
+.cr-quote-bar-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.cr-quote-bar-name { font-size: 11px; font-weight: 500; color: #4a8a62; }
+.cr-quote-bar-text {
+  font-size: 12px;
+  color: #7a6e62;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cr-quote-bar-close {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #b0a090;
+  cursor: pointer;
+}
+
+/* ── 泡泡內引用塊 ── */
+.cr-quote-block {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-bottom: 4px;
+  padding: 4px 8px;
+  border-left: 3px solid #c8b8a0;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.04);
+  opacity: 0.85;
+}
+.cr-quote-block.out {
+  border-left-color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.12);
+}
+.cr-quote-block-name { font-size: 11px; font-weight: 600; }
+.cr-quote-block-text {
+  max-width: 180px;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cr-recalled { font-size: 13px; font-style: italic; opacity: 0.6; }
+
 /* 自介 Bottom Sheet */
 .cr-sheet-mask {
   position: fixed;

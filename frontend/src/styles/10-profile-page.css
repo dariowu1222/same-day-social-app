@@ -680,6 +680,8 @@
 [data-theme="dark"] .cr-confirm-title { color: #d4ede8; }
 [data-theme="dark"] .cr-confirm-desc { color: rgba(212, 237, 232, 0.7); }
 [data-theme="dark"] .cr-confirm-cancel { background: rgba(22, 40, 32, 0.8); color: #c4d6d0; }
+[data-theme="dark"] .cr-quote-bar { background: rgba(5, 15, 10, 0.96); border-top-color: rgba(168, 212, 204, 0.1); }
+[data-theme="dark"] .cr-quote-bar-text { color: rgba(212, 237, 232, 0.7); }
 
 [data-theme="dark"] .cr-sheet {
   background: #0c1810;

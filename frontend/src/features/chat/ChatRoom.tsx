@@ -4,6 +4,7 @@ import { Capacitor } from '@capacitor/core'
 import {
   Image as ImageIcon, Mic, ArrowUp, MoreHorizontal, X, Search,
   User, Flag, Pencil, Pin, BellOff, BellRing, LogOut, Ban,
+  Reply, Copy, RotateCcw,
 } from 'lucide-react'
 import type { ChatMessage, ChatRoom as ChatRoomType } from './types'
 import type { UserProfile } from '../profile/types'
@@ -53,7 +54,12 @@ export default function ChatRoom({
   const [muted, setMuted] = useState(false)
   const [pinned, setPinned] = useState(false)
   const [toast, setToast] = useState('')
+  // 長按訊息操作列：紀錄目標訊息、歸屬、浮層座標
+  const [action, setAction] = useState<{ msg: ChatMessage; isOut: boolean; x: number; y: number } | null>(null)
+  // 引用回覆：被引用的訊息
+  const [quote, setQuote] = useState<ChatMessage | null>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
   const sheetRef = useRef<HTMLDivElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -84,7 +90,7 @@ export default function ChatRoom({
   function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
     if (event.key === 'Enter' && !event.nativeEvent.isComposing && draft.trim()) {
       event.preventDefault()
-      onSend()
+      handleSend()
     }
   }
 
@@ -113,6 +119,52 @@ export default function ChatRoom({
   function confirmReport() {
     setMenuOpen(false)
     setConfirm({ title: '離開並檢舉對方', desc: '我們會收到你的檢舉並審核，此對話也會移除。', danger: true, onYes: () => { setConfirm(null); showToast('檢舉將在後端批次接通'); onBack() } })
+  }
+
+  // ── 長按 / 右鍵訊息 → 操作列 ──
+  function openAction(node: HTMLElement, msg: ChatMessage, isOut: boolean) {
+    const rect = node.getBoundingClientRect()
+    setAction({ msg, isOut, x: isOut ? rect.right : rect.left, y: rect.top })
+  }
+  function onBubbleContextMenu(e: React.MouseEvent, msg: ChatMessage, isOut: boolean) {
+    e.preventDefault()
+    openAction(e.currentTarget as HTMLElement, msg, isOut)
+  }
+  function onBubbleTouchStart(e: React.TouchEvent, msg: ChatMessage, isOut: boolean) {
+    const node = e.currentTarget as HTMLElement
+    pressTimer.current = setTimeout(() => openAction(node, msg, isOut), 450)
+  }
+  function clearPress() {
+    if (pressTimer.current) clearTimeout(pressTimer.current)
+  }
+  // 收回限本人發出後 2 分鐘內
+  function canRecall(msg: ChatMessage) {
+    return Date.now() - new Date(msg.createdAt).getTime() < 2 * 60 * 1000
+  }
+  function actReply() { if (action) { setQuote(action.msg); setAction(null) } }
+  function actCopy() {
+    if (!action) return
+    navigator.clipboard?.writeText(action.msg.content).catch(() => {})
+    setAction(null)
+    showToast('已複製')
+  }
+  function actReport() { setAction(null); showToast('檢舉將在後端批次接通') }
+  function actRecall() { setAction(null); showToast('收回將在後端批次接通') }
+
+  // 送出時清掉引用條（引用關聯的後端串接在 Task #4）
+  function handleSend() {
+    onSend()
+    setQuote(null)
+  }
+
+  function quoteName(msg: ChatMessage) {
+    return msg.senderId === currentUserId ? '你' : displayName
+  }
+  function quotePreview(content: string) {
+    const t = content.trim()
+    if (t.startsWith('data:image/')) return '圖片'
+    if (t.startsWith('data:audio/')) return '語音'
+    return content
   }
 
   // 圖片訊息：縮圖後以 data URL 直接當訊息內容送出（泡泡會偵測 data:image 並渲染圖片）
@@ -226,7 +278,23 @@ export default function ChatRoom({
                 )
               )}
               <div className="cr-bubble-wrap">
-                <div className="cr-bubble">{renderContent(row.message.content)}</div>
+                <div
+                  className="cr-bubble"
+                  onContextMenu={(e) => onBubbleContextMenu(e, row.message, row.isOut)}
+                  onTouchStart={(e) => onBubbleTouchStart(e, row.message, row.isOut)}
+                  onTouchEnd={clearPress}
+                  onTouchMove={clearPress}
+                >
+                  {row.message.quotedContent && (
+                    <div className={`cr-quote-block${row.isOut ? ' out' : ''}`}>
+                      <span className="cr-quote-block-name">{row.message.quotedSenderName}</span>
+                      <span className="cr-quote-block-text">{row.message.quotedContent}</span>
+                    </div>
+                  )}
+                  {row.message.isRecalled
+                    ? <span className="cr-recalled">訊息已收回</span>
+                    : renderContent(row.message.content)}
+                </div>
                 {row.isGroupEnd && (
                   <span className="cr-time">{formatTime(row.message.createdAt)}</span>
                 )}
@@ -235,6 +303,19 @@ export default function ChatRoom({
           ),
         )}
       </div>
+
+      {/* 引用回覆條 */}
+      {quote && (
+        <div className="cr-quote-bar">
+          <div className="cr-quote-bar-body">
+            <span className="cr-quote-bar-name">回覆 {quoteName(quote)}</span>
+            <span className="cr-quote-bar-text">{quotePreview(quote.content)}</span>
+          </div>
+          <button className="cr-quote-bar-close" type="button" onClick={() => setQuote(null)} aria-label="取消回覆">
+            <X size={14} strokeWidth={2} />
+          </button>
+        </div>
+      )}
 
       {/* 輸入列：圖片 / 語音 / 輸入框 / 送出 */}
       <div className="cr-input">
@@ -251,7 +332,7 @@ export default function ChatRoom({
           onKeyDown={handleKeyDown}
           placeholder="慢慢說，不急。"
         />
-        <button className="cr-send" type="button" onClick={onSend} disabled={!draft.trim()} aria-label="送出">
+        <button className="cr-send" type="button" onClick={handleSend} disabled={!draft.trim()} aria-label="送出">
           <ArrowUp size={18} strokeWidth={2.4} />
         </button>
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={handlePickImage} />
@@ -312,6 +393,39 @@ export default function ChatRoom({
       )}
 
       {toast && <div className="cr-toast">{toast}</div>}
+
+      {/* 長按訊息操作列 */}
+      {action && (
+        <>
+          <div
+            className="cr-action-mask"
+            onClick={() => setAction(null)}
+            onContextMenu={(e) => { e.preventDefault(); setAction(null) }}
+          />
+          <div
+            className={`cr-action-bar${action.isOut ? ' out' : ''}`}
+            style={{ left: action.x, top: action.y }}
+          >
+            <button className="cr-action-btn" type="button" onClick={actReply}>
+              <Reply size={17} strokeWidth={1.9} /><span>回覆</span>
+            </button>
+            <button className="cr-action-btn" type="button" onClick={actCopy}>
+              <Copy size={17} strokeWidth={1.9} /><span>複製</span>
+            </button>
+            {action.isOut
+              ? (canRecall(action.msg) && (
+                  <button className="cr-action-btn" type="button" onClick={actRecall}>
+                    <RotateCcw size={17} strokeWidth={1.9} /><span>收回</span>
+                  </button>
+                ))
+              : (
+                  <button className="cr-action-btn" type="button" onClick={actReport}>
+                    <Flag size={17} strokeWidth={1.9} /><span>檢舉</span>
+                  </button>
+                )}
+          </div>
+        </>
+      )}
 
       {/* 自介 Sheet：closed → peek（半截）→ full（全屏） */}
       <div
