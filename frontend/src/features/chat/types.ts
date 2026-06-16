@@ -6,6 +6,13 @@ export type ChatRoom = {
   createdAt: string
 }
 
+export type ChatMemberSetting = {
+  chatRoomId: string
+  noteName?: string | null
+  pinned: boolean
+  muted: boolean
+}
+
 export type ChatMessage = {
   id: string
   chatRoomId: string

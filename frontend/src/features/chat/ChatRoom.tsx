@@ -6,7 +6,7 @@ import {
   User, Flag, Pencil, Pin, BellOff, BellRing, LogOut, Ban,
   Reply, Copy, RotateCcw,
 } from 'lucide-react'
-import type { ChatMessage, ChatRoom as ChatRoomType } from './types'
+import type { ChatMessage, ChatRoom as ChatRoomType, ChatMemberSetting } from './types'
 import type { QuoteInfo } from './api'
 import type { UserProfile } from '../profile/types'
 import { getAge, getZodiac, ZODIAC_ICON, testAvatarPhoto } from '../../shared/lib/userDisplay'
@@ -22,6 +22,11 @@ type Props = {
   onDraftChange: (value: string) => void
   onSendContent: (content: string, quote?: QuoteInfo) => void
   onRecall?: (messageId: string) => void
+  setting?: ChatMemberSetting
+  onUpdateSetting?: (patch: { noteName?: string | null; pinned?: boolean; muted?: boolean }) => void
+  onLeave?: () => void
+  onBlock?: () => void
+  onReport?: () => void
   onBack: () => void
 }
 
@@ -45,15 +50,16 @@ type RenderRow =
 
 export default function ChatRoom({
   room, otherProfile, otherUserId, currentUserId,
-  messages, draft, onDraftChange, onSendContent, onRecall, onBack,
+  messages, draft, onDraftChange, onSendContent, onRecall,
+  setting, onUpdateSetting, onLeave, onBlock, onReport, onBack,
 }: Props) {
   const navigate = useNavigate()
   const [sheet, setSheet] = useState<SheetState>('closed')
   const [menuOpen, setMenuOpen] = useState(false)
   const [confirm, setConfirm] = useState<{ title: string; desc: string; danger?: boolean; onYes: () => void } | null>(null)
   const [chatSearch, setChatSearch] = useState<string | null>(null)
-  const [muted, setMuted] = useState(false)
-  const [pinned, setPinned] = useState(false)
+  const muted = !!setting?.muted
+  const pinned = !!setting?.pinned
   const [toast, setToast] = useState('')
   // 長按訊息操作列：紀錄目標訊息、歸屬、浮層座標
   const [action, setAction] = useState<{ msg: ChatMessage; isOut: boolean; x: number; y: number } | null>(null)
@@ -69,7 +75,7 @@ export default function ChatRoom({
   // 拖曳過程的暫存：起點、起始位移(px)、是否真的移動過、最後位移比例。
   const dragRef = useRef<{ startY: number; baseY: number; height: number; moved: boolean; ratio: number } | null>(null)
 
-  const displayName = otherProfile?.nickname?.trim() || `同頻對話 ${otherUserId.slice(-4)}`
+  const displayName = setting?.noteName?.trim() || otherProfile?.nickname?.trim() || `同頻對話 ${otherUserId.slice(-4)}`
   // 正式環境會改用帳號實際 photoDataUrls[0]；目前測試先給寫死照片，照片失效時 Avatar 會退回動物頭像。
   const avatarPhoto = otherProfile?.photoDataUrls?.[0] ?? testAvatarPhoto(otherUserId)
   const birthday = otherProfile?.birthday
@@ -105,21 +111,26 @@ export default function ChatRoom({
   function openProfile() { setMenuOpen(false); setSheet('peek') }
   function goTask() { setMenuOpen(false); navigate('/tasks') }
   function openChatSearch() { setMenuOpen(false); setChatSearch('') }
-  function togglePin() { setMenuOpen(false); setPinned((v) => !v); showToast(pinned ? '已取消釘選' : '已釘選對話') }
-  function toggleMute() { setMenuOpen(false); setMuted((v) => !v); showToast(muted ? '已開啟通知' : '已靜音通知') }
-  function setNote() { setMenuOpen(false); showToast('備註名稱將在後端批次接通') }
-  // 離開類：三項都先二次確認（封鎖/檢舉的後端在 Task #5 接通）
+  function togglePin() { setMenuOpen(false); onUpdateSetting?.({ pinned: !pinned }); showToast(pinned ? '已取消釘選' : '已釘選對話') }
+  function toggleMute() { setMenuOpen(false); onUpdateSetting?.({ muted: !muted }); showToast(muted ? '已開啟通知' : '已靜音通知') }
+  function setNote() {
+    setMenuOpen(false)
+    const next = window.prompt('設定備註名稱（僅自己看得到，清空可移除）', setting?.noteName ?? displayName)
+    if (next === null) return
+    onUpdateSetting?.({ noteName: next.trim() })
+    showToast(next.trim() ? '已設定備註名稱' : '已移除備註名稱')
+  }
   function confirmLeave() {
     setMenuOpen(false)
-    setConfirm({ title: '離開聊天室', desc: '離開後此對話會從你的列表移除。', danger: true, onYes: () => { setConfirm(null); onBack() } })
+    setConfirm({ title: '離開聊天室', desc: '離開後此對話會從你的列表移除。', danger: true, onYes: () => { setConfirm(null); onLeave ? onLeave() : onBack() } })
   }
   function confirmBlock() {
     setMenuOpen(false)
-    setConfirm({ title: '離開並封鎖對方', desc: '封鎖後對方無法再與你聊天，此對話也會移除。', danger: true, onYes: () => { setConfirm(null); showToast('封鎖將在後端批次接通'); onBack() } })
+    setConfirm({ title: '離開並封鎖對方', desc: '封鎖後對方無法再與你聊天，此對話也會移除。', danger: true, onYes: () => { setConfirm(null); onBlock ? onBlock() : onBack() } })
   }
   function confirmReport() {
     setMenuOpen(false)
-    setConfirm({ title: '離開並檢舉對方', desc: '我們會收到你的檢舉並審核，此對話也會移除。', danger: true, onYes: () => { setConfirm(null); showToast('檢舉將在後端批次接通'); onBack() } })
+    setConfirm({ title: '離開並檢舉對方', desc: '我們會收到你的檢舉並審核，此對話也會移除。', danger: true, onYes: () => { setConfirm(null); onReport ? onReport() : onBack() } })
   }
 
   // ── 長按 / 右鍵訊息 → 操作列 ──

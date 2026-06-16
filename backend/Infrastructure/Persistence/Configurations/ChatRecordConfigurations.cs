@@ -50,3 +50,49 @@ public sealed class ChatMessageRecordConfiguration : IEntityTypeConfiguration<Ch
         builder.HasIndex(x => new { x.ChatRoomId, x.CreatedAt });
     }
 }
+
+public sealed class ChatMemberSettingRecordConfiguration : IEntityTypeConfiguration<ChatMemberSettingRecord>
+{
+    public void Configure(EntityTypeBuilder<ChatMemberSettingRecord> builder)
+    {
+        builder.ToTable("chat_member_settings");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Id).HasColumnName("id").HasMaxLength(64);
+        builder.Property(x => x.ChatRoomId).HasColumnName("chat_room_id").HasMaxLength(64).IsRequired();
+        builder.Property(x => x.UserId).HasColumnName("user_id").HasMaxLength(64).IsRequired();
+        builder.Property(x => x.NoteName).HasColumnName("note_name").HasMaxLength(100);
+        builder.Property(x => x.Pinned).HasColumnName("pinned").HasDefaultValue(false);
+        builder.Property(x => x.Muted).HasColumnName("muted").HasDefaultValue(false);
+        builder.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+        builder.HasIndex(x => new { x.UserId, x.ChatRoomId }).IsUnique();
+    }
+}
+
+public sealed class UserBlockRecordConfiguration : IEntityTypeConfiguration<UserBlockRecord>
+{
+    public void Configure(EntityTypeBuilder<UserBlockRecord> builder)
+    {
+        builder.ToTable("user_blocks");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Id).HasColumnName("id").HasMaxLength(64);
+        builder.Property(x => x.BlockerId).HasColumnName("blocker_id").HasMaxLength(64).IsRequired();
+        builder.Property(x => x.BlockedId).HasColumnName("blocked_id").HasMaxLength(64).IsRequired();
+        builder.Property(x => x.CreatedAt).HasColumnName("created_at");
+        builder.HasIndex(x => new { x.BlockerId, x.BlockedId }).IsUnique();
+    }
+}
+
+public sealed class ChatReportRecordConfiguration : IEntityTypeConfiguration<ChatReportRecord>
+{
+    public void Configure(EntityTypeBuilder<ChatReportRecord> builder)
+    {
+        builder.ToTable("chat_reports");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Id).HasColumnName("id").HasMaxLength(64);
+        builder.Property(x => x.ReporterId).HasColumnName("reporter_id").HasMaxLength(64).IsRequired();
+        builder.Property(x => x.ReportedUserId).HasColumnName("reported_user_id").HasMaxLength(64).IsRequired();
+        builder.Property(x => x.ChatRoomId).HasColumnName("chat_room_id").HasMaxLength(64).IsRequired();
+        builder.Property(x => x.Reason).HasColumnName("reason").HasMaxLength(500);
+        builder.Property(x => x.CreatedAt).HasColumnName("created_at");
+    }
+}

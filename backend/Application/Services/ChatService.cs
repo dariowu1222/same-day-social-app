@@ -191,6 +191,119 @@ public sealed class ChatService
         return updated;
     }
 
+    public List<ChatMemberSetting> GetMemberSettings(string userId)
+    {
+        if (db != null)
+        {
+            return db.ChatMemberSettings.AsNoTracking()
+                .Where(x => x.UserId == userId)
+                .ToList()
+                .Select(ToSetting)
+                .ToList();
+        }
+        return storage.ReadCollection<ChatMemberSettingRecord>("chatMemberSettings")
+            .Where(x => x.UserId == userId)
+            .Select(ToSetting)
+            .ToList();
+    }
+
+    public ChatMemberSetting UpdateMemberSetting(string userId, string chatRoomId, string? noteName, bool? pinned, bool? muted)
+    {
+        void Apply(ChatMemberSettingRecord r)
+        {
+            if (noteName != null) r.NoteName = string.IsNullOrWhiteSpace(noteName) ? null : noteName.Trim();
+            if (pinned.HasValue) r.Pinned = pinned.Value;
+            if (muted.HasValue) r.Muted = muted.Value;
+            r.UpdatedAt = DateTimeOffset.UtcNow;
+        }
+
+        if (db != null)
+        {
+            var rec = db.ChatMemberSettings.FirstOrDefault(x => x.UserId == userId && x.ChatRoomId == chatRoomId);
+            if (rec == null)
+            {
+                rec = new ChatMemberSettingRecord { Id = $"cms_{Guid.NewGuid():N}", UserId = userId, ChatRoomId = chatRoomId };
+                Apply(rec);
+                db.ChatMemberSettings.Add(rec);
+            }
+            else
+            {
+                Apply(rec);
+            }
+            db.SaveChanges();
+            return ToSetting(rec);
+        }
+
+        var list = storage.ReadCollection<ChatMemberSettingRecord>("chatMemberSettings");
+        var item = list.FirstOrDefault(x => x.UserId == userId && x.ChatRoomId == chatRoomId);
+        if (item == null)
+        {
+            item = new ChatMemberSettingRecord { Id = $"cms_{Guid.NewGuid():N}", UserId = userId, ChatRoomId = chatRoomId };
+            Apply(item);
+            storage.InsertOne("chatMemberSettings", item);
+        }
+        else
+        {
+            storage.UpdateOne<ChatMemberSettingRecord>("chatMemberSettings", item.Id, Apply);
+            Apply(item);
+        }
+        return ToSetting(item);
+    }
+
+    public void BlockUser(string blockerId, string blockedId)
+    {
+        if (string.IsNullOrWhiteSpace(blockedId)) return;
+        if (db != null)
+        {
+            if (!db.UserBlocks.Any(x => x.BlockerId == blockerId && x.BlockedId == blockedId))
+            {
+                db.UserBlocks.Add(new UserBlockRecord { Id = $"block_{Guid.NewGuid():N}", BlockerId = blockerId, BlockedId = blockedId });
+                db.SaveChanges();
+            }
+            return;
+        }
+        var blocks = storage.ReadCollection<UserBlockRecord>("userBlocks");
+        if (!blocks.Any(x => x.BlockerId == blockerId && x.BlockedId == blockedId))
+        {
+            storage.InsertOne("userBlocks", new UserBlockRecord { Id = $"block_{Guid.NewGuid():N}", BlockerId = blockerId, BlockedId = blockedId });
+        }
+    }
+
+    public void ReportUser(string reporterId, string reportedUserId, string chatRoomId, string? reason)
+    {
+        var rec = new ChatReportRecord
+        {
+            Id = $"creport_{Guid.NewGuid():N}",
+            ReporterId = reporterId,
+            ReportedUserId = reportedUserId,
+            ChatRoomId = chatRoomId,
+            Reason = reason
+        };
+        if (db != null) { db.ChatReports.Add(rec); db.SaveChanges(); return; }
+        storage.InsertOne("chatReports", rec);
+    }
+
+    public void LeaveRoom(string userId, string chatRoomId)
+    {
+        if (db != null)
+        {
+            var membership = db.ChatRoomUsers.Where(x => x.ChatRoomId == chatRoomId && x.UserId == userId).ToList();
+            if (membership.Count > 0) { db.ChatRoomUsers.RemoveRange(membership); db.SaveChanges(); }
+            return;
+        }
+        var rooms = storage.ReadCollection<ChatRoom>("chatRooms");
+        var room = rooms.FirstOrDefault(x => x.Id == chatRoomId);
+        if (room != null && room.UserIds.Remove(userId)) storage.WriteCollection("chatRooms", rooms);
+    }
+
+    private static ChatMemberSetting ToSetting(ChatMemberSettingRecord r) => new()
+    {
+        ChatRoomId = r.ChatRoomId,
+        NoteName = r.NoteName,
+        Pinned = r.Pinned,
+        Muted = r.Muted
+    };
+
     private ChatRoom? BuildRoom(string roomId)
     {
         if (db == null)

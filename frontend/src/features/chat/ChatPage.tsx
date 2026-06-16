@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Search, X } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
-import { getChatRooms, getMessages, sendMessage, recallMessage, type QuoteInfo } from './api'
-import type { ChatMessage, ChatRoom as ChatRoomType } from './types'
+import {
+  getChatRooms, getMessages, sendMessage, recallMessage,
+  getMemberSettings, updateChatSetting, leaveChatRoom, blockChatUser, reportChatUser,
+  type QuoteInfo,
+} from './api'
+import type { ChatMessage, ChatRoom as ChatRoomType, ChatMemberSetting } from './types'
 import { getProfile } from '../profile/api'
 import type { UserProfile } from '../profile/types'
 import ChatRoom from './ChatRoom'
@@ -15,6 +19,7 @@ export default function ChatPage() {
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null)
   const [roomMessages, setRoomMessages] = useState<Record<string, ChatMessage[]>>({})
   const [profiles, setProfiles] = useState<Record<string, UserProfile>>({})
+  const [settings, setSettings] = useState<Record<string, ChatMemberSetting>>({})
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [draft, setDraft] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
@@ -59,6 +64,12 @@ export default function ChatPage() {
       }),
     )
     setProfiles(Object.fromEntries(profileEntries.filter((entry): entry is readonly [string, UserProfile] => !!entry)))
+
+    // 設定端點未就緒（後端尚未重啟）時不影響聊天列表
+    try {
+      const settingsRes = await getMemberSettings(user.userId)
+      setSettings(Object.fromEntries(settingsRes.data.map((s) => [s.chatRoomId, s])))
+    } catch { /* ignore */ }
   }
 
   async function loadMessages(roomId: string) {
@@ -80,12 +91,44 @@ export default function ChatPage() {
     await loadRooms()
   }
 
+  async function updateSetting(patch: { noteName?: string | null; pinned?: boolean; muted?: boolean }) {
+    if (!activeRoomId) return
+    const res = await updateChatSetting(activeRoomId, patch)
+    setSettings((prev) => ({ ...prev, [activeRoomId]: res.data }))
+  }
+
+  async function leaveActiveRoom() {
+    if (!activeRoomId) return
+    await leaveChatRoom(activeRoomId)
+    setActiveRoomId(null)
+    await loadRooms()
+  }
+
+  async function blockActiveRoom() {
+    if (!activeRoomId) return
+    await blockChatUser(activeRoomId)
+    setActiveRoomId(null)
+    await loadRooms()
+  }
+
+  async function reportActiveRoom() {
+    if (!activeRoomId) return
+    await reportChatUser(activeRoomId)
+    setActiveRoomId(null)
+    await loadRooms()
+  }
+
   const activeRoom = rooms.find((room) => room.id === activeRoomId) ?? null
   const roomSummaries = useMemo(
     () => rooms
-      .map((room) => buildRoomSummary(room, roomMessages[room.id] ?? [], profiles, user?.userId ?? ''))
-      .sort((a, b) => b.lastAt.getTime() - a.lastAt.getTime()),
-    [rooms, roomMessages, profiles, user?.userId],
+      .map((room) => {
+        const base = buildRoomSummary(room, roomMessages[room.id] ?? [], profiles, user?.userId ?? '')
+        const setting = settings[room.id]
+        return { ...base, title: setting?.noteName?.trim() || base.title, pinned: !!setting?.pinned }
+      })
+      // 釘選優先，其次依最後訊息時間新到舊
+      .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.lastAt.getTime() - a.lastAt.getTime()),
+    [rooms, roomMessages, profiles, settings, user?.userId],
   )
   const todayRooms = roomSummaries.filter((summary) => isToday(summary.room.createdAt))
   const previousRooms = roomSummaries.filter((summary) => !isToday(summary.room.createdAt))
@@ -117,6 +160,11 @@ export default function ChatPage() {
         onDraftChange={setDraft}
         onSendContent={submitContent}
         onRecall={recallMsg}
+        setting={settings[activeRoom.id]}
+        onUpdateSetting={updateSetting}
+        onLeave={leaveActiveRoom}
+        onBlock={blockActiveRoom}
+        onReport={reportActiveRoom}
         onBack={() => setActiveRoomId(null)}
       />
     )
@@ -192,6 +240,7 @@ type ChatSummary = {
   lastAt: Date
   timeLabel: string
   unreadCount: number
+  pinned: boolean
 }
 
 function ChatSection({ title, rooms, onOpen }: { title: string; rooms: ChatSummary[]; onOpen: (roomId: string) => void }) {
@@ -257,6 +306,7 @@ function buildRoomSummary(room: ChatRoomType, messages: ChatMessage[], profiles:
     lastAt,
     timeLabel: formatRelativeTime(lastAt),
     unreadCount: 0,
+    pinned: false,
   }
 }
 

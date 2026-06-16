@@ -20,6 +20,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<ChatRoomRecord> ChatRooms => Set<ChatRoomRecord>();
     public DbSet<ChatRoomUserRecord> ChatRoomUsers => Set<ChatRoomUserRecord>();
     public DbSet<ChatMessageRecord> ChatMessages => Set<ChatMessageRecord>();
+    public DbSet<ChatMemberSettingRecord> ChatMemberSettings => Set<ChatMemberSettingRecord>();
+    public DbSet<UserBlockRecord> UserBlocks => Set<UserBlockRecord>();
+    public DbSet<ChatReportRecord> ChatReports => Set<ChatReportRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -21,3 +21,11 @@ public sealed class ChatMessage
     public string? QuotedContent { get; set; }
     public bool IsRecalled { get; set; }
 }
+
+public sealed class ChatMemberSetting
+{
+    public string ChatRoomId { get; set; } = "";
+    public string? NoteName { get; set; }
+    public bool Pinned { get; set; }
+    public bool Muted { get; set; }
+}
