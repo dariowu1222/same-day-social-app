@@ -850,17 +850,21 @@ blockquote {
   left: 0;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
+  height: calc(var(--bottom-nav-height, 64px) + env(safe-area-inset-bottom));
   width: min(100%, 520px);
   margin: 0 auto;
   border-top: 1px solid var(--theme-nav-border, #dfe5e1);
   background: var(--theme-nav-bg, rgba(255, 253, 248, 0.96));
   backdrop-filter: blur(10px);
+  z-index: 20;
   /* 底部安全區（iPhone home indicator / Android 手勢列）*/
   padding-bottom: env(safe-area-inset-bottom);
 }
 
 .bottom-nav button,
 .room-tabs button {
+  display: grid;
+  place-items: center;
   border-radius: 0;
   background: transparent;
   color: #6c7a78;

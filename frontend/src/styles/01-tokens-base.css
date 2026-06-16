@@ -17,6 +17,7 @@
   --theme-divider: #e8e0d4;
   --theme-text: #4a3f35;
   --theme-muted: #b0a090;
+  --bottom-nav-height: 64px;
 }
 
 [data-theme="dark"] {
