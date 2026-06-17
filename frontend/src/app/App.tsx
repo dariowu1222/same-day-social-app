@@ -56,6 +56,10 @@ function App() {
     const pageToPath: Record<PageKey, string> = {
       today: '/', rant: '/rant', tasks: '/tasks', chat: '/chat', profile: '/profile',
     }
+    // 重選目前所在的 tab：發事件讓該頁自行處理（例如關閉「我的」的預覽覆蓋層）
+    if (page === activePage) {
+      window.dispatchEvent(new Event(`nav-reselect-${page}`))
+    }
     navigate(pageToPath[page])
   }
 

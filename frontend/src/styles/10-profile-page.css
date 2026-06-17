@@ -352,7 +352,11 @@
 /* ─── Profile Card Fullscreen Preview ──────────────────────────────────────── */
 .profile-fs-overlay {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  /* 底部留出功能列高度，讓 BottomNav 在預覽時仍可見可點 */
+  bottom: calc(var(--bottom-nav-height, 64px) + env(safe-area-inset-bottom));
   z-index: 8000;
   background: #efe9e0;
   display: flex;

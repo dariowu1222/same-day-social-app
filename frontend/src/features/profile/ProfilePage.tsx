@@ -43,6 +43,13 @@ export default function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { preference, isAnimating, setPreference } = useTheme()
 
+  // 預覽中再點底部「我的」→ 關閉預覽，回到自我介紹編輯頁
+  useEffect(() => {
+    function onReselect() { setShowPreview(false) }
+    window.addEventListener('nav-reselect-profile', onReselect)
+    return () => window.removeEventListener('nav-reselect-profile', onReselect)
+  }, [])
+
   useEffect(() => {
     if (!user) return
     getProfile(user.userId)
