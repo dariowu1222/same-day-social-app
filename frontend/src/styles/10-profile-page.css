@@ -247,6 +247,55 @@
   border-color: #5a9e82;
 }
 
+/* 個人資料：文字/數字輸入 */
+.profile-text-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1.5px solid var(--theme-card-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 15px;
+  color: var(--theme-text);
+  background: var(--theme-card-bg);
+  outline: none;
+  font-family: inherit;
+}
+.profile-text-input:focus { border-color: #d86c4e; }
+[data-theme="dark"] .profile-text-input {
+  background: rgba(22,40,32,0.97);
+  border-color: #2a4035;
+  color: #e8f5f0;
+}
+[data-theme="dark"] .profile-text-input:focus { border-color: #5a9e82; }
+
+.profile-required { color: #d86c4e; }
+
+/* 身高/體重：兩欄並排，單位後綴 */
+.profile-field-row { display: flex; gap: 10px; }
+.profile-field-unit { flex: 1; position: relative; display: flex; align-items: center; }
+.profile-field-unit .profile-text-input { padding-right: 34px; }
+.profile-unit {
+  position: absolute;
+  right: 12px;
+  font-size: 13px;
+  color: var(--theme-muted, #b0a090);
+  pointer-events: none;
+}
+
+/* 外貌自訂：輸入 + 加入鈕 */
+.profile-custom-add { display: flex; gap: 8px; margin-top: 8px; }
+.profile-custom-add-btn {
+  flex-shrink: 0;
+  padding: 0 16px;
+  border: none;
+  border-radius: 10px;
+  background: #ece6dc;
+  color: #6a5e52;
+  font-size: 14px;
+  cursor: pointer;
+}
+[data-theme="dark"] .profile-custom-add-btn { background: rgba(22,40,32,0.9); color: #c4d6d0; }
+
 .profile-bio-count {
   display: block;
   text-align: right;

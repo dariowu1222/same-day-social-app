@@ -22,6 +22,14 @@ public static class RecordMapper
             PhotoDataUrls = record.PhotoDataUrls.ToList(),
             Birthday = record.Birthday,
             ResponsePreference = ParseEnum(record.ResponsePreference, ResponseMode.JUST_LISTEN),
+            Relationship = record.Relationship,
+            PersonalityTags = record.PersonalityTags.ToList(),
+            AppearanceTags = record.AppearanceTags.ToList(),
+            Height = record.Height,
+            Weight = record.Weight,
+            Occupation = record.Occupation,
+            School = record.School,
+            BloodType = record.BloodType,
             CreatedAt = record.CreatedAt
         };
     }
@@ -41,6 +49,14 @@ public static class RecordMapper
             PhotoDataUrls = user.PhotoDataUrls.ToArray(),
             Birthday = user.Birthday,
             ResponsePreference = user.ResponsePreference.ToString(),
+            Relationship = user.Relationship,
+            PersonalityTags = user.PersonalityTags.ToArray(),
+            AppearanceTags = user.AppearanceTags.ToArray(),
+            Height = user.Height,
+            Weight = user.Weight,
+            Occupation = user.Occupation,
+            School = user.School,
+            BloodType = user.BloodType,
             CreatedAt = user.CreatedAt,
             UpdatedAt = DateTimeOffset.UtcNow
         };

@@ -23,5 +23,13 @@ public sealed class UserRecordConfiguration : IEntityTypeConfiguration<UserRecor
         builder.Property(x => x.UpdatedAt).HasColumnName("updated_at");
         builder.Property(x => x.PhotoDataUrls).HasColumnName("photo_data_urls").HasColumnType("text[]");
         builder.Property(x => x.Birthday).HasColumnName("birthday").HasColumnType("date");
+        builder.Property(x => x.Relationship).HasColumnName("relationship").HasMaxLength(40);
+        builder.Property(x => x.PersonalityTags).HasColumnName("personality_tags").HasColumnType("text[]");
+        builder.Property(x => x.AppearanceTags).HasColumnName("appearance_tags").HasColumnType("text[]");
+        builder.Property(x => x.Height).HasColumnName("height");
+        builder.Property(x => x.Weight).HasColumnName("weight");
+        builder.Property(x => x.Occupation).HasColumnName("occupation").HasMaxLength(60);
+        builder.Property(x => x.School).HasColumnName("school").HasMaxLength(60);
+        builder.Property(x => x.BloodType).HasColumnName("blood_type").HasMaxLength(10);
     }
 }

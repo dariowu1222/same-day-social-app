@@ -61,6 +61,15 @@ public sealed class ProfileController(JsonStorageService storage, IServiceProvid
                     if (request.ValueTags != null) record.ValueTags = [.. request.ValueTags];
                     if (request.PhotoDataUrls != null) record.PhotoDataUrls = [.. request.PhotoDataUrls];
                     if (request.Birthday.HasValue) record.Birthday = request.Birthday;
+                    if (!string.IsNullOrWhiteSpace(request.Gender)) record.Gender = request.Gender;
+                    if (request.Relationship != null) record.Relationship = EmptyToNull(request.Relationship);
+                    if (request.PersonalityTags != null) record.PersonalityTags = [.. request.PersonalityTags];
+                    if (request.AppearanceTags != null) record.AppearanceTags = [.. request.AppearanceTags];
+                    if (request.Height.HasValue) record.Height = request.Height;
+                    if (request.Weight.HasValue) record.Weight = request.Weight;
+                    if (request.Occupation != null) record.Occupation = EmptyToNull(request.Occupation.Trim());
+                    if (request.School != null) record.School = EmptyToNull(request.School.Trim());
+                    if (request.BloodType != null) record.BloodType = EmptyToNull(request.BloodType);
                     record.UpdatedAt = DateTimeOffset.UtcNow;
                     await db.SaveChangesAsync(cancellationToken);
                     return ApiResponse<User>.Ok(record.ToDomain());
@@ -77,6 +86,15 @@ public sealed class ProfileController(JsonStorageService storage, IServiceProvid
             target.ValueTags = request.ValueTags ?? target.ValueTags;
             target.PhotoDataUrls = request.PhotoDataUrls ?? target.PhotoDataUrls;
             target.Birthday = request.Birthday ?? target.Birthday;
+            if (!string.IsNullOrWhiteSpace(request.Gender)) target.Gender = request.Gender;
+            if (request.Relationship != null) target.Relationship = EmptyToNull(request.Relationship);
+            if (request.PersonalityTags != null) target.PersonalityTags = [.. request.PersonalityTags];
+            if (request.AppearanceTags != null) target.AppearanceTags = [.. request.AppearanceTags];
+            if (request.Height.HasValue) target.Height = request.Height;
+            if (request.Weight.HasValue) target.Weight = request.Weight;
+            if (request.Occupation != null) target.Occupation = EmptyToNull(request.Occupation.Trim());
+            if (request.School != null) target.School = EmptyToNull(request.School.Trim());
+            if (request.BloodType != null) target.BloodType = EmptyToNull(request.BloodType);
         });
 
         return user == null
@@ -89,6 +107,14 @@ public sealed class ProfileController(JsonStorageService storage, IServiceProvid
         var today = DateOnly.FromDateTime(DateTimeOffset.Now.DateTime);
         return birthday.AddYears(18) <= today;
     }
+
+    private static string? EmptyToNull(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }
 
-public sealed record UpdateProfileRequest(string? Nickname, string? Bio, List<string>? InterestTags, List<string>? ValueTags, List<string>? PhotoDataUrls = null, DateOnly? Birthday = null);
+public sealed record UpdateProfileRequest(
+    string? Nickname, string? Bio, List<string>? InterestTags, List<string>? ValueTags,
+    List<string>? PhotoDataUrls = null, DateOnly? Birthday = null,
+    string? Gender = null, string? Relationship = null,
+    List<string>? PersonalityTags = null, List<string>? AppearanceTags = null,
+    int? Height = null, int? Weight = null,
+    string? Occupation = null, string? School = null, string? BloodType = null);

@@ -6,12 +6,51 @@ import { getProfile, updateProfile } from "./api"
 import { CalendarPicker } from "./CalendarPicker"
 import { ProfileCardFullscreen } from "./ProfileCardFullscreen"
 import { getZodiac, getAge, isAdultBirthday, fileToResizedBase64, ZODIAC_ICON } from "./profileUtils"
+import {
+  GENDER_OPTIONS, RELATIONSHIP_OPTIONS, PERSONALITY_OPTIONS, APPEARANCE_OPTIONS, BLOOD_OPTIONS,
+} from "./profileFields"
 
 const INTEREST_OPTIONS = [
   "咖啡", "散步", "電影", "音樂", "閱讀", "料理",
   "旅遊", "攝影", "運動", "遊戲", "動漫", "Podcast",
   "貓狗", "手作", "冥想", "追劇", "寫作", "展覽",
 ]
+
+// 單選 chip 群（再點一次可取消，性別在存檔時驗證必填）
+function SingleChips({ options, value, onChange, allowClear = true }: {
+  options: readonly string[]; value: string; onChange: (v: string) => void; allowClear?: boolean
+}) {
+  return (
+    <div className="ob-tags">
+      {options.map(o => (
+        <button
+          key={o}
+          type="button"
+          className={`ob-tag${value === o ? ' selected' : ''}`}
+          onClick={() => onChange(allowClear && value === o ? '' : o)}
+        >{o}</button>
+      ))}
+    </div>
+  )
+}
+
+// 多選 chip 群
+function MultiChips({ options, values, onToggle }: {
+  options: readonly string[]; values: string[]; onToggle: (v: string) => void
+}) {
+  return (
+    <div className="ob-tags">
+      {options.map(o => (
+        <button
+          key={o}
+          type="button"
+          className={`ob-tag${values.includes(o) ? ' selected' : ''}`}
+          onClick={() => onToggle(o)}
+        >{o}</button>
+      ))}
+    </div>
+  )
+}
 
 const PREFS: { value: ThemePreference; icon?: "sun" | "moon"; label?: string }[] = [
   { value: "day",   icon: "sun" },
@@ -33,6 +72,17 @@ export default function ProfilePage() {
   const [bio, setBio] = useState('')
   const [birthday, setBirthday] = useState('')
   const [interestTags, setInterestTags] = useState<string[]>([])
+  const [nickname, setNickname] = useState('')
+  const [gender, setGender] = useState('')
+  const [relationship, setRelationship] = useState('')
+  const [personalityTags, setPersonalityTags] = useState<string[]>([])
+  const [appearanceTags, setAppearanceTags] = useState<string[]>([])
+  const [appearanceCustom, setAppearanceCustom] = useState('')
+  const [height, setHeight] = useState('')
+  const [weight, setWeight] = useState('')
+  const [occupation, setOccupation] = useState('')
+  const [school, setSchool] = useState('')
+  const [bloodType, setBloodType] = useState('')
   const [photos, setPhotos] = useState<string[]>([])
   const [photosDirty, setPhotosDirty] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -57,6 +107,16 @@ export default function ProfilePage() {
         setBio(res.data.bio ?? '')
         setBirthday(res.data.birthday ?? '')
         setInterestTags(res.data.interestTags ?? [])
+        setNickname(res.data.nickname ?? user.nickname ?? '')
+        setGender(res.data.gender ?? '')
+        setRelationship(res.data.relationship ?? '')
+        setPersonalityTags(res.data.personalityTags ?? [])
+        setAppearanceTags(res.data.appearanceTags ?? [])
+        setHeight(res.data.height != null ? String(res.data.height) : '')
+        setWeight(res.data.weight != null ? String(res.data.weight) : '')
+        setOccupation(res.data.occupation ?? '')
+        setSchool(res.data.school ?? '')
+        setBloodType(res.data.bloodType ?? '')
         const loaded = res.data.photoDataUrls ?? []
         setPhotos(loaded.length > 0 ? loaded : TEST_PHOTOS)
       })
@@ -74,6 +134,24 @@ export default function ProfilePage() {
     setInterestTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])
   }
 
+  function togglePersonality(tag: string) {
+    setPersonalityTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])
+  }
+
+  function toggleAppearance(tag: string) {
+    setAppearanceTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])
+  }
+
+  function addAppearanceCustom() {
+    const t = appearanceCustom.trim()
+    if (!t) return
+    setAppearanceTags(prev => prev.includes(t) ? prev : [...prev, t])
+    setAppearanceCustom('')
+  }
+
+  // 預設選項以外的自訂外貌標籤（顯示成可移除 chip）
+  const customAppearance = appearanceTags.filter(t => !APPEARANCE_OPTIONS.includes(t))
+
   async function handleAddPhotos(files: FileList) {
     const remaining = MAX_PHOTOS - photos.length
     if (remaining <= 0) return
@@ -89,6 +167,10 @@ export default function ProfilePage() {
   }
 
   async function save() {
+    if (!gender) {
+      showToast('請選擇生理性別（必填）。')
+      return
+    }
     if (birthday && !isAdultBirthday(birthday)) {
       showToast('未滿 18 歲暫時不能使用同頻 Today。')
       return
@@ -98,9 +180,19 @@ export default function ProfilePage() {
     setSaving(true)
     try {
       await updateProfile(user.userId, {
+        nickname: nickname.trim() || undefined,
         bio,
         birthday: birthday || undefined,
         interestTags,
+        gender,
+        relationship: relationship || undefined,
+        personalityTags,
+        appearanceTags,
+        height: height ? Number(height) : null,
+        weight: weight ? Number(weight) : null,
+        occupation: occupation.trim() || undefined,
+        school: school.trim() || undefined,
+        bloodType: bloodType || undefined,
         ...(photosDirty ? { photoDataUrls: photos } : {}),
       })
       showToast('已儲存 ✓')
@@ -167,6 +259,24 @@ export default function ProfilePage() {
         />
       </section>
 
+      {/* 暱稱 */}
+      <section className="panel">
+        <p className="setting-section-title">暱稱</p>
+        <input
+          className="profile-text-input"
+          maxLength={20}
+          placeholder="想被怎麼稱呼？"
+          value={nickname}
+          onChange={e => setNickname(e.target.value)}
+        />
+      </section>
+
+      {/* 生理性別（必填）*/}
+      <section className="panel">
+        <p className="setting-section-title">生理性別 <span className="profile-required">*</span></p>
+        <SingleChips options={GENDER_OPTIONS} value={gender} onChange={setGender} allowClear={false} />
+      </section>
+
       {/* Birthday */}
       <section className="panel">
         <p className="setting-section-title">生日</p>
@@ -211,6 +321,97 @@ export default function ProfilePage() {
             </button>
           ))}
         </div>
+      </section>
+
+      {/* 個性 */}
+      <section className="panel">
+        <p className="setting-section-title">個性</p>
+        <MultiChips options={PERSONALITY_OPTIONS} values={personalityTags} onToggle={togglePersonality} />
+      </section>
+
+      {/* 外貌（多選 + 自訂）*/}
+      <section className="panel">
+        <p className="setting-section-title">外貌</p>
+        <MultiChips options={APPEARANCE_OPTIONS} values={appearanceTags} onToggle={toggleAppearance} />
+        {customAppearance.length > 0 && (
+          <div className="ob-tags" style={{ marginTop: 8 }}>
+            {customAppearance.map(t => (
+              <button key={t} type="button" className="ob-tag selected" onClick={() => toggleAppearance(t)}>
+                {t} <X size={11} strokeWidth={2.5} style={{ marginLeft: 2, verticalAlign: 'middle' }} />
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="profile-custom-add">
+          <input
+            className="profile-text-input"
+            maxLength={8}
+            placeholder="自訂外貌標籤…"
+            value={appearanceCustom}
+            onChange={e => setAppearanceCustom(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addAppearanceCustom() } }}
+          />
+          <button type="button" className="profile-custom-add-btn" onClick={addAppearanceCustom}>加入</button>
+        </div>
+      </section>
+
+      {/* 感情狀態 */}
+      <section className="panel">
+        <p className="setting-section-title">感情狀態</p>
+        <SingleChips options={RELATIONSHIP_OPTIONS} value={relationship} onChange={setRelationship} />
+      </section>
+
+      {/* 身高 / 體重 */}
+      <section className="panel">
+        <p className="setting-section-title">身高 / 體重</p>
+        <div className="profile-field-row">
+          <div className="profile-field-unit">
+            <input
+              className="profile-text-input"
+              type="number" inputMode="numeric" min={100} max={250}
+              placeholder="身高"
+              value={height}
+              onChange={e => setHeight(e.target.value)}
+            />
+            <span className="profile-unit">cm</span>
+          </div>
+          <div className="profile-field-unit">
+            <input
+              className="profile-text-input"
+              type="number" inputMode="numeric" min={30} max={300}
+              placeholder="體重"
+              value={weight}
+              onChange={e => setWeight(e.target.value)}
+            />
+            <span className="profile-unit">kg</span>
+          </div>
+        </div>
+      </section>
+
+      {/* 職業 / 學校 */}
+      <section className="panel">
+        <p className="setting-section-title">職業 / 學校</p>
+        <input
+          className="profile-text-input"
+          maxLength={30}
+          placeholder="職業"
+          value={occupation}
+          onChange={e => setOccupation(e.target.value)}
+          style={{ marginBottom: 8 }}
+        />
+        <input
+          className="profile-text-input"
+          maxLength={30}
+          placeholder="學校"
+          value={school}
+          onChange={e => setSchool(e.target.value)}
+        />
+      </section>
+
+      {/* 血型 */}
+      <section className="panel">
+        <p className="setting-section-title">血型</p>
+        <SingleChips options={BLOOD_OPTIONS} value={bloodType} onChange={setBloodType} />
       </section>
 
       {/* Appearance */}

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import type { DemoUser } from '../auth/types'
 import { updateProfile } from './api'
+import { GENDER_OPTIONS, RELATIONSHIP_OPTIONS } from './profileFields'
 import slide1 from '../../assets/1.webp'
 import slide2 from '../../assets/2.webp'
 import slide3 from '../../assets/3.webp'
@@ -66,6 +67,8 @@ export default function OnboardingOverlay({ user, onComplete }: Props) {
   const pointerStartX = useRef(0)
   const pointerId = useRef<number | null>(null)
 
+  const [gender, setGender] = useState('')
+  const [relationship, setRelationship] = useState('')
   const [bio, setBio] = useState('')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
@@ -108,6 +111,8 @@ export default function OnboardingOverlay({ user, onComplete }: Props) {
     setSaving(true)
     try {
       await updateProfile(user.userId, {
+        gender: gender || undefined,
+        relationship: relationship || undefined,
         bio: bio.trim() || undefined,
         interestTags: selectedTags.length > 0 ? selectedTags : undefined,
       })
@@ -134,6 +139,34 @@ export default function OnboardingOverlay({ user, onComplete }: Props) {
           </div>
 
           <div className="ob-setup-body">
+            <div className="ob-field">
+              <span className="ob-field-label">生理性別 <span className="profile-required">*</span></span>
+              <div className="ob-tags">
+                {GENDER_OPTIONS.map(o => (
+                  <button
+                    key={o}
+                    type="button"
+                    className={`ob-tag${gender === o ? ' selected' : ''}`}
+                    onClick={() => setGender(o)}
+                  >{o}</button>
+                ))}
+              </div>
+            </div>
+
+            <div className="ob-field">
+              <span className="ob-field-label">感情狀態</span>
+              <div className="ob-tags">
+                {RELATIONSHIP_OPTIONS.map(o => (
+                  <button
+                    key={o}
+                    type="button"
+                    className={`ob-tag${relationship === o ? ' selected' : ''}`}
+                    onClick={() => setRelationship(r => r === o ? '' : o)}
+                  >{o}</button>
+                ))}
+              </div>
+            </div>
+
             <div className="ob-field">
               <label htmlFor="ob-bio">自我介紹</label>
               <textarea
@@ -168,10 +201,10 @@ export default function OnboardingOverlay({ user, onComplete }: Props) {
             <button
               className="ob-primary-btn"
               type="button"
-              disabled={saving}
+              disabled={saving || !gender}
               onClick={handleComplete}
             >
-              {saving ? '儲存中⋯' : '開始同頻 Today'}
+              {saving ? '儲存中⋯' : !gender ? '請先選生理性別' : '開始同頻 Today'}
             </button>
             <button
               className="ob-text-btn"
