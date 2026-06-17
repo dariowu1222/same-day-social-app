@@ -34,21 +34,51 @@ function SingleChips({ options, value, onChange, allowClear = true }: {
   )
 }
 
-// 多選 chip 群
-function MultiChips({ options, values, onToggle }: {
-  options: readonly string[]; values: string[]; onToggle: (v: string) => void
+// 多選 chip 群 + 可自訂標籤（預設選項 + 自由新增）
+function TagPicker({ options, values, onToggle, placeholder = '自訂標籤…', maxLen = 8 }: {
+  options: readonly string[]; values: string[]; onToggle: (v: string) => void; placeholder?: string; maxLen?: number
 }) {
+  const [custom, setCustom] = useState('')
+  const customTags = values.filter(v => !options.includes(v))
+  function add() {
+    const t = custom.trim()
+    if (!t) return
+    if (!values.includes(t)) onToggle(t)
+    setCustom('')
+  }
   return (
-    <div className="ob-tags">
-      {options.map(o => (
-        <button
-          key={o}
-          type="button"
-          className={`ob-tag${values.includes(o) ? ' selected' : ''}`}
-          onClick={() => onToggle(o)}
-        >{o}</button>
-      ))}
-    </div>
+    <>
+      <div className="ob-tags">
+        {options.map(o => (
+          <button
+            key={o}
+            type="button"
+            className={`ob-tag${values.includes(o) ? ' selected' : ''}`}
+            onClick={() => onToggle(o)}
+          >{o}</button>
+        ))}
+      </div>
+      {customTags.length > 0 && (
+        <div className="ob-tags" style={{ marginTop: 8 }}>
+          {customTags.map(t => (
+            <button key={t} type="button" className="ob-tag selected" onClick={() => onToggle(t)}>
+              {t} <X size={11} strokeWidth={2.5} style={{ marginLeft: 2, verticalAlign: 'middle' }} />
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="profile-custom-add">
+        <input
+          className="profile-text-input"
+          maxLength={maxLen}
+          placeholder={placeholder}
+          value={custom}
+          onChange={e => setCustom(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add() } }}
+        />
+        <button type="button" className="profile-custom-add-btn" onClick={add}>加入</button>
+      </div>
+    </>
   )
 }
 
@@ -77,7 +107,6 @@ export default function ProfilePage() {
   const [relationship, setRelationship] = useState('')
   const [personalityTags, setPersonalityTags] = useState<string[]>([])
   const [appearanceTags, setAppearanceTags] = useState<string[]>([])
-  const [appearanceCustom, setAppearanceCustom] = useState('')
   const [height, setHeight] = useState('')
   const [weight, setWeight] = useState('')
   const [occupation, setOccupation] = useState('')
@@ -141,16 +170,6 @@ export default function ProfilePage() {
   function toggleAppearance(tag: string) {
     setAppearanceTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])
   }
-
-  function addAppearanceCustom() {
-    const t = appearanceCustom.trim()
-    if (!t) return
-    setAppearanceTags(prev => prev.includes(t) ? prev : [...prev, t])
-    setAppearanceCustom('')
-  }
-
-  // 預設選項以外的自訂外貌標籤（顯示成可移除 chip）
-  const customAppearance = appearanceTags.filter(t => !APPEARANCE_OPTIONS.includes(t))
 
   async function handleAddPhotos(files: FileList) {
     const remaining = MAX_PHOTOS - photos.length
@@ -309,50 +328,19 @@ export default function ProfilePage() {
       {/* Interest tags */}
       <section className="panel">
         <p className="setting-section-title">興趣標籤</p>
-        <div className="ob-tags">
-          {INTEREST_OPTIONS.map(tag => (
-            <button
-              key={tag}
-              type="button"
-              className={`ob-tag${interestTags.includes(tag) ? ' selected' : ''}`}
-              onClick={() => toggleTag(tag)}
-            >
-              {tag}
-            </button>
-          ))}
-        </div>
+        <TagPicker options={INTEREST_OPTIONS} values={interestTags} onToggle={toggleTag} placeholder="自訂興趣標籤…" />
       </section>
 
       {/* 個性 */}
       <section className="panel">
         <p className="setting-section-title">個性</p>
-        <MultiChips options={PERSONALITY_OPTIONS} values={personalityTags} onToggle={togglePersonality} />
+        <TagPicker options={PERSONALITY_OPTIONS} values={personalityTags} onToggle={togglePersonality} placeholder="自訂個性標籤…" />
       </section>
 
-      {/* 外貌（多選 + 自訂）*/}
+      {/* 外貌 */}
       <section className="panel">
         <p className="setting-section-title">外貌</p>
-        <MultiChips options={APPEARANCE_OPTIONS} values={appearanceTags} onToggle={toggleAppearance} />
-        {customAppearance.length > 0 && (
-          <div className="ob-tags" style={{ marginTop: 8 }}>
-            {customAppearance.map(t => (
-              <button key={t} type="button" className="ob-tag selected" onClick={() => toggleAppearance(t)}>
-                {t} <X size={11} strokeWidth={2.5} style={{ marginLeft: 2, verticalAlign: 'middle' }} />
-              </button>
-            ))}
-          </div>
-        )}
-        <div className="profile-custom-add">
-          <input
-            className="profile-text-input"
-            maxLength={8}
-            placeholder="自訂外貌標籤…"
-            value={appearanceCustom}
-            onChange={e => setAppearanceCustom(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addAppearanceCustom() } }}
-          />
-          <button type="button" className="profile-custom-add-btn" onClick={addAppearanceCustom}>加入</button>
-        </div>
+        <TagPicker options={APPEARANCE_OPTIONS} values={appearanceTags} onToggle={toggleAppearance} placeholder="自訂外貌標籤…" />
       </section>
 
       {/* 感情狀態 */}
