@@ -226,7 +226,6 @@ export default function ProfilePage() {
   return (
     <div className="page profile-page">
       <header className="page-header">
-        <p className="eyebrow">我的</p>
         <h1>{user.nickname}</h1>
       </header>
 
