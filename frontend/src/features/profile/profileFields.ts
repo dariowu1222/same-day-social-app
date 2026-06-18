@@ -9,4 +9,4 @@ export const PERSONALITY_OPTIONS = [
 export const APPEARANCE_OPTIONS = [
   '鄰家感', '陽光', '文青', '酷帥', '可愛', '成熟', '中性', '運動風', '氣質',
 ]
-export const BLOOD_OPTIONS = ['A', 'B', 'O', 'AB', '不確定'] as const
+export const BLOOD_OPTIONS = ['A', 'B', 'O', 'AB', '其他', '不確定'] as const
