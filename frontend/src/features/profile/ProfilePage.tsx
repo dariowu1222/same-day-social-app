@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import { Sun, Moon, Plus, X, Eye } from "lucide-react"
+import { Sun, Moon, Plus, X, Eye, Check } from "lucide-react"
 import { useAuth } from "../auth/AuthContext"
 import { useTheme, type ThemePreference } from "../../shared/theme/ThemeContext"
 import { getProfile, updateProfile } from "./api"
@@ -15,6 +15,21 @@ const INTEREST_OPTIONS = [
   "旅遊", "攝影", "運動", "遊戲", "動漫", "Podcast",
   "貓狗", "手作", "冥想", "追劇", "寫作", "展覽",
 ]
+
+// 欄位小標：標題 + 必填*/選填 + ·單選/·可多選 提示
+function FieldLabel({ title, required, optional, mode }: {
+  title: string; required?: boolean; optional?: boolean; mode?: 'single' | 'multi'
+}) {
+  return (
+    <p className="setting-section-title profile-field-label">
+      {title}
+      {required && <span className="profile-required"> *</span>}
+      {optional && <span className="profile-optional"> 選填</span>}
+      {mode === 'single' && <span className="profile-hint"> · 單選</span>}
+      {mode === 'multi' && <span className="profile-hint"> · 可多選</span>}
+    </p>
+  )
+}
 
 // 單選 chip 群（再點一次可取消，性別在存檔時驗證必填）
 function SingleChips({ options, value, onChange, allowClear = true }: {
@@ -34,51 +49,63 @@ function SingleChips({ options, value, onChange, allowClear = true }: {
   )
 }
 
-// 多選 chip 群 + 可自訂標籤（預設選項 + 自由新增）
-function TagPicker({ options, values, onToggle, placeholder = '自訂標籤…', maxLen = 8 }: {
-  options: readonly string[]; values: string[]; onToggle: (v: string) => void; placeholder?: string; maxLen?: number
+// 多選 chip 群 + 可自訂標籤（預設選項 + 尾端「+」內聯新增）
+function TagPicker({ options, values, onToggle, maxLen = 8 }: {
+  options: readonly string[]; values: string[]; onToggle: (v: string) => void; maxLen?: number
 }) {
-  const [custom, setCustom] = useState('')
+  const [adding, setAdding] = useState(false)
+  const [draft, setDraft] = useState('')
+  const committedRef = useRef(false)   // 防呆：Enter 與 blur 不重複觸發
   const customTags = values.filter(v => !options.includes(v))
-  function add() {
-    const t = custom.trim()
-    if (!t) return
-    if (!values.includes(t)) onToggle(t)
-    setCustom('')
+
+  function startAdd() { setDraft(''); committedRef.current = false; setAdding(true) }
+  function commit() {
+    if (committedRef.current) return
+    committedRef.current = true
+    const t = draft.trim()
+    if (t && !values.includes(t)) onToggle(t)   // 重複名稱不重加
+    setDraft('')
+    setAdding(false)
   }
+  function cancel() { setDraft(''); setAdding(false) }
+
   return (
-    <>
-      <div className="ob-tags">
-        {options.map(o => (
-          <button
-            key={o}
-            type="button"
-            className={`ob-tag${values.includes(o) ? ' selected' : ''}`}
-            onClick={() => onToggle(o)}
-          >{o}</button>
-        ))}
-      </div>
-      {customTags.length > 0 && (
-        <div className="ob-tags" style={{ marginTop: 8 }}>
-          {customTags.map(t => (
-            <button key={t} type="button" className="ob-tag selected" onClick={() => onToggle(t)}>
-              {t} <X size={11} strokeWidth={2.5} style={{ marginLeft: 2, verticalAlign: 'middle' }} />
-            </button>
-          ))}
-        </div>
-      )}
-      <div className="profile-custom-add">
+    <div className="ob-tags">
+      {options.map(o => (
+        <button
+          key={o}
+          type="button"
+          className={`ob-tag${values.includes(o) ? ' selected' : ''}`}
+          onClick={() => onToggle(o)}
+        >
+          {values.includes(o) && <Check size={13} strokeWidth={3} className="ob-tag-check" />}{o}
+        </button>
+      ))}
+      {customTags.map(t => (
+        <button key={t} type="button" className="ob-tag selected" onClick={() => onToggle(t)}>
+          <Check size={13} strokeWidth={3} className="ob-tag-check" />{t}
+        </button>
+      ))}
+      {adding ? (
         <input
-          className="profile-text-input"
+          className="ob-tag-input"
+          autoFocus
           maxLength={maxLen}
-          placeholder={placeholder}
-          value={custom}
-          onChange={e => setCustom(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add() } }}
+          placeholder="輸入後按 Enter"
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') { e.preventDefault(); commit() }
+            else if (e.key === 'Escape') { cancel() }
+          }}
+          onBlur={() => { if (draft.trim()) commit(); else cancel() }}
         />
-        <button type="button" className="profile-custom-add-btn" onClick={add}>加入</button>
-      </div>
-    </>
+      ) : (
+        <button type="button" className="ob-tag ob-tag-add" onClick={startAdd} aria-label="新增標籤">
+          <Plus size={16} strokeWidth={2.2} />
+        </button>
+      )}
+    </div>
   )
 }
 
@@ -120,6 +147,7 @@ export default function ProfilePage() {
   const [toast, setToast] = useState('')
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const dragIndex = useRef<number | null>(null)
   const { preference, isAnimating, setPreference } = useTheme()
 
   // 預覽中再點底部「我的」→ 關閉預覽，回到自我介紹編輯頁
@@ -185,6 +213,20 @@ export default function ProfilePage() {
     setPhotosDirty(true)
   }
 
+  // 拖曳排序（第一張＝個人卡主照片）
+  function dropPhoto(toIndex: number) {
+    const from = dragIndex.current
+    dragIndex.current = null
+    if (from == null || from === toIndex) return
+    setPhotos(prev => {
+      const next = [...prev]
+      const [moved] = next.splice(from, 1)
+      next.splice(toIndex, 0, moved)
+      return next
+    })
+    setPhotosDirty(true)
+  }
+
   async function save() {
     if (!gender) {
       showToast('請選擇生理性別（必填）。')
@@ -232,7 +274,9 @@ export default function ProfilePage() {
       {/* Photos */}
       <section className="panel profile-photos-panel">
         <div className="profile-section-header">
-          <p className="setting-section-title" style={{ marginBottom: 0 }}>照片</p>
+          <p className="setting-section-title profile-field-label" style={{ marginBottom: 0 }}>
+            照片 <span className="profile-hint">· 第一張為主照片，可拖曳排序</span>
+          </p>
           <button
             className={`profile-eye-btn${showPreview ? ' active' : ''}`}
             type="button"
@@ -244,8 +288,16 @@ export default function ProfilePage() {
         </div>
         <div className="profile-photo-grid" style={{ marginTop: 12 }}>
           {photos.map((src, i) => (
-            <div key={i} className="profile-photo-cell">
+            <div
+              key={i}
+              className="profile-photo-cell"
+              draggable
+              onDragStart={() => { dragIndex.current = i }}
+              onDragOver={e => e.preventDefault()}
+              onDrop={() => dropPhoto(i)}
+            >
               <img src={src} alt={`照片 ${i + 1}`} />
+              {i === 0 && <span className="profile-photo-main">主照片</span>}
               <button
                 className="profile-photo-remove"
                 type="button"
@@ -279,7 +331,7 @@ export default function ProfilePage() {
 
       {/* 暱稱 */}
       <section className="panel">
-        <p className="setting-section-title">暱稱</p>
+        <FieldLabel title="暱稱" required />
         <input
           className="profile-text-input"
           maxLength={20}
@@ -291,13 +343,13 @@ export default function ProfilePage() {
 
       {/* 生理性別（必填）*/}
       <section className="panel">
-        <p className="setting-section-title">生理性別 <span className="profile-required">*</span></p>
+        <FieldLabel title="生理性別" required mode="single" />
         <SingleChips options={GENDER_OPTIONS} value={gender} onChange={setGender} allowClear={false} />
       </section>
 
       {/* Birthday */}
       <section className="panel">
-        <p className="setting-section-title">生日</p>
+        <FieldLabel title="生日" optional />
         <CalendarPicker value={birthday} onChange={setBirthday} />
         {birthday && (
           <span className="profile-zodiac-badge">
@@ -308,49 +360,49 @@ export default function ProfilePage() {
 
       {/* Bio */}
       <section className="panel">
-        <p className="setting-section-title">自我介紹</p>
+        <FieldLabel title="自我介紹" optional />
         {loading ? (
           <div className="profile-loading-bar" />
         ) : (
           <textarea
             className="profile-bio-input"
             rows={4}
-            maxLength={150}
+            maxLength={300}
             placeholder="說說你是什麼樣的人……"
             value={bio}
             onChange={e => setBio(e.target.value)}
           />
         )}
-        <span className="profile-bio-count">{bio.length}/150</span>
+        <span className="profile-bio-count">{bio.length}/300</span>
       </section>
 
       {/* Interest tags */}
       <section className="panel">
-        <p className="setting-section-title">興趣標籤</p>
-        <TagPicker options={INTEREST_OPTIONS} values={interestTags} onToggle={toggleTag} placeholder="自訂興趣標籤…" />
+        <FieldLabel title="興趣標籤" optional mode="multi" />
+        <TagPicker options={INTEREST_OPTIONS} values={interestTags} onToggle={toggleTag} />
       </section>
 
       {/* 個性 */}
       <section className="panel">
-        <p className="setting-section-title">個性</p>
-        <TagPicker options={PERSONALITY_OPTIONS} values={personalityTags} onToggle={togglePersonality} placeholder="自訂個性標籤…" />
+        <FieldLabel title="個性" optional mode="multi" />
+        <TagPicker options={PERSONALITY_OPTIONS} values={personalityTags} onToggle={togglePersonality} />
       </section>
 
       {/* 外貌 */}
       <section className="panel">
-        <p className="setting-section-title">外貌</p>
-        <TagPicker options={APPEARANCE_OPTIONS} values={appearanceTags} onToggle={toggleAppearance} placeholder="自訂外貌標籤…" />
+        <FieldLabel title="外貌" optional mode="multi" />
+        <TagPicker options={APPEARANCE_OPTIONS} values={appearanceTags} onToggle={toggleAppearance} />
       </section>
 
       {/* 感情狀態 */}
       <section className="panel">
-        <p className="setting-section-title">感情狀態</p>
+        <FieldLabel title="感情狀態" optional mode="single" />
         <SingleChips options={RELATIONSHIP_OPTIONS} value={relationship} onChange={setRelationship} />
       </section>
 
       {/* 身高 / 體重 */}
       <section className="panel">
-        <p className="setting-section-title">身高 / 體重</p>
+        <FieldLabel title="身高 / 體重" optional />
         <div className="profile-field-row">
           <div className="profile-field-unit">
             <input
@@ -377,7 +429,7 @@ export default function ProfilePage() {
 
       {/* 職業 / 學校 */}
       <section className="panel">
-        <p className="setting-section-title">職業 / 學校</p>
+        <FieldLabel title="職業 / 學校" optional />
         <input
           className="profile-text-input"
           maxLength={30}
@@ -397,11 +449,14 @@ export default function ProfilePage() {
 
       {/* 血型 */}
       <section className="panel">
-        <p className="setting-section-title">血型</p>
+        <FieldLabel title="血型" optional mode="single" />
         <SingleChips options={BLOOD_OPTIONS} value={bloodType} onChange={setBloodType} />
       </section>
 
-      {/* Appearance */}
+      {/* ── 設定（與個人資料分開）── */}
+      <p className="profile-settings-divider">設定</p>
+
+      {/* 外觀 */}
       <section className="panel">
         <p className="setting-section-title">外觀</p>
         <div className="theme-segmented" role="radiogroup" aria-label="外觀主題" aria-disabled={isAnimating}>
@@ -422,8 +477,15 @@ export default function ProfilePage() {
         </div>
       </section>
 
-      {/* Save + Logout */}
-      <section className="panel profile-actions-panel">
+      {/* 登出 */}
+      <section className="panel">
+        <button className="profile-logout-btn" type="button" onClick={logout}>
+          登出
+        </button>
+      </section>
+
+      {/* 儲存：吸附底部 */}
+      <div className="profile-save-bar">
         <button
           className="profile-save-btn"
           type="button"
@@ -432,10 +494,7 @@ export default function ProfilePage() {
         >
           {saving ? '儲存中⋯' : '儲存變更'}
         </button>
-        <button className="profile-logout-btn" type="button" onClick={logout}>
-          登出
-        </button>
-      </section>
+      </div>
 
       {toast && <div className="center-toast">{toast}</div>}
 

@@ -14,7 +14,7 @@
 .profile-photo-cell {
   position: relative;
   aspect-ratio: 1;
-  border-radius: 12px;
+  border-radius: 10px;
   overflow: hidden;
 }
 
@@ -44,19 +44,36 @@
 
 .profile-photo-add {
   aspect-ratio: 1;
-  border-radius: 12px;
-  border: 1.5px dashed var(--theme-muted);
+  border-radius: 10px;
+  border: 1.5px dashed #d8cab4;
   background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: var(--theme-muted);
+  color: #c0ad95;
   transition: border-color 0.15s, color 0.15s;
 }
 .profile-photo-add:hover {
-  border-color: var(--theme-text);
-  color: var(--theme-text);
+  border-color: #c8785a;
+  color: #c8785a;
+}
+[data-theme="dark"] .profile-photo-add { border-color: #2a4035; color: rgba(168,212,204,0.5); }
+
+/* 第一張＝主照片標籤 */
+.profile-photo-cell { cursor: grab; }
+.profile-photo-cell:active { cursor: grabbing; }
+.profile-photo-main {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  padding: 2px 6px;
+  border-radius: 8px;
+  background: rgba(44, 38, 32, 0.6);
+  color: #fff;
+  font-size: 9px;
+  line-height: 1.3;
+  pointer-events: none;
 }
 
 .profile-section-header {
@@ -223,20 +240,21 @@
 .profile-bio-input {
   width: 100%;
   box-sizing: border-box;
-  border: 1.5px solid var(--theme-card-border);
+  border: 0.5px solid #ddd5c8;
   border-radius: 10px;
-  padding: 10px 12px;
-  font-size: 15px;
+  padding: 9px 13px;
+  font-size: 14px;
   color: var(--theme-text);
-  background: var(--theme-card-bg);
+  background: #ffffff;
   resize: none;
   outline: none;
   font-family: inherit;
   line-height: 1.6;
   margin-top: 6px;
 }
+.profile-bio-input::placeholder { color: #b0a090; }
 .profile-bio-input:focus {
-  border-color: #d86c4e;
+  border-color: #c8785a;
 }
 [data-theme="dark"] .profile-bio-input {
   background: rgba(22,40,32,0.97);
@@ -251,16 +269,17 @@
 .profile-text-input {
   width: 100%;
   box-sizing: border-box;
-  border: 1.5px solid var(--theme-card-border);
+  border: 0.5px solid #ddd5c8;
   border-radius: 10px;
-  padding: 10px 12px;
-  font-size: 15px;
+  padding: 9px 13px;
+  font-size: 13px;
   color: var(--theme-text);
-  background: var(--theme-card-bg);
+  background: #ffffff;
   outline: none;
   font-family: inherit;
 }
-.profile-text-input:focus { border-color: #d86c4e; }
+.profile-text-input::placeholder { color: #b0a090; }
+.profile-text-input:focus { border-color: #c8785a; }
 [data-theme="dark"] .profile-text-input {
   background: rgba(22,40,32,0.97);
   border-color: #2a4035;
@@ -268,7 +287,10 @@
 }
 [data-theme="dark"] .profile-text-input:focus { border-color: #5a9e82; }
 
-.profile-required { color: #d86c4e; }
+.profile-required { color: #c8785a; }
+.profile-optional { font-size: 12px; font-weight: 400; color: #b5a895; }
+.profile-hint { font-size: 12px; font-weight: 400; color: #9a8f82; }
+.profile-field-label { display: flex; align-items: baseline; flex-wrap: wrap; gap: 3px; }
 
 /* 身高/體重：兩欄並排，單位後綴 */
 .profile-field-row { display: flex; gap: 10px; }
@@ -324,15 +346,14 @@
 
 .profile-save-btn {
   width: 100%;
-  height: 48px;
-  border-radius: 14px;
+  height: 46px;
+  border-radius: 24px;
   border: none;
-  background: #d86c4e;
-  color: #fff8f1;
-  font-size: 16px;
-  font-weight: 700;
+  background: #c8785a;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 500;
   cursor: pointer;
-  letter-spacing: 0.04em;
   transition: opacity 0.15s;
 }
 .profile-save-btn:disabled {
@@ -340,13 +361,29 @@
   cursor: not-allowed;
 }
 
+/* 儲存吸附底部（固定在 nav 上方）*/
+.profile-save-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--bottom-nav-height, 64px) + env(safe-area-inset-bottom));
+  z-index: 15;
+  width: min(100%, 520px);
+  margin: 0 auto;
+  padding: 10px 16px 12px;
+  background: linear-gradient(to top, #f3eee6 78%, rgba(243, 238, 230, 0));
+}
+[data-theme="dark"] .profile-save-bar {
+  background: linear-gradient(to top, #050208 78%, rgba(5, 2, 8, 0));
+}
+
 .profile-logout-btn {
   width: 100%;
   height: 44px;
-  border-radius: 14px;
-  border: 1.5px solid var(--theme-card-border);
+  border-radius: 12px;
+  border: 0.5px solid #e0d8cc;
   background: transparent;
-  color: var(--theme-muted);
+  color: #8a7e70;
   font-size: 15px;
   cursor: pointer;
   transition: color 0.15s, border-color 0.15s;
@@ -355,6 +392,7 @@
   color: #c0392b;
   border-color: #c0392b;
 }
+[data-theme="dark"] .profile-logout-btn { border-color: rgba(168,212,204,0.18); color: rgba(212,237,232,0.7); }
 
 .profile-save-msg {
   font-size: 14px;
