@@ -38,6 +38,7 @@ public sealed class RantsController(RantService rantService) : ControllerBase
         return ApiResponse<RantPost>.Ok(result.Post!, result.Moderation.Warning);
     }
 
+    [Authorize]
     [HttpPost("{rantId}/understand")]
     public ActionResult<ApiResponse<RantPost>> Understand(string rantId)
     {
@@ -71,6 +72,7 @@ public sealed class RantsController(RantService rantService) : ControllerBase
             : NotFound(ApiResponse<bool>.Fail("RANT_NOT_FOUND", "找不到貼文，或你沒有權限刪除。"));
     }
 
+    [Authorize]
     [HttpPost("{rantId}/replies/{replyId}/understand")]
     public ActionResult<ApiResponse<RantPost>> LikeReply(string rantId, string replyId)
     {
@@ -80,6 +82,7 @@ public sealed class RantsController(RantService rantService) : ControllerBase
             : ApiResponse<RantPost>.Ok(post);
     }
 
+    [Authorize]
     [HttpPost("{rantId}/report")]
     public ActionResult<ApiResponse<RantPost>> Report(string rantId)
     {

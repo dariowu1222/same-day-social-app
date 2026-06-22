@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Hosting;
 using SameDaySocialApp.Application.Dto;
 using SameDaySocialApp.Application.Services;
 
@@ -6,11 +7,17 @@ namespace SameDaySocialApp.Controllers;
 
 [ApiController]
 [Route("api/auth")]
-public sealed class AuthController(AuthService authService, JwtService jwtService) : ControllerBase
+public sealed class AuthController(AuthService authService, JwtService jwtService, IHostEnvironment env) : ControllerBase
 {
     [HttpPost("demo-login")]
     public ActionResult<ApiResponse<object>> DemoLogin([FromBody] DemoLoginRequest request)
     {
+        // 僅限開發環境：正式環境一律拒絕，避免匿名換 token
+        if (!env.IsDevelopment())
+        {
+            return NotFound(ApiResponse<object>.Fail("NOT_FOUND", "找不到此資源。"));
+        }
+
         var user = authService.DemoLogin(request.Nickname);
         var token = jwtService.IssueToken(user.Id, user.Nickname, TimeSpan.FromDays(1));
         return ApiResponse<object>.Ok(new { userId = user.Id, user.Nickname, token });

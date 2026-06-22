@@ -24,7 +24,7 @@ public sealed class MatchesController(MatchService matchService) : ControllerBas
     [HttpPost("{matchId}/like")]
     public ActionResult<ApiResponse<MatchRecord>> Like(string matchId)
     {
-        var match = matchService.Like(matchId);
+        var match = matchService.Like(matchId, CallerId);
         return match == null
             ? NotFound(ApiResponse<MatchRecord>.Fail("MATCH_NOT_FOUND", "找不到這筆配對。"))
             : ApiResponse<MatchRecord>.Ok(match);

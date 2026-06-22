@@ -40,12 +40,13 @@ public sealed class MatchService
         return ApplyDisplayScore(matches);
     }
 
-    public MatchRecord? Like(string matchId)
+    public MatchRecord? Like(string matchId, string callerId)
     {
         if (db != null)
         {
             var record = db.Matches.FirstOrDefault(x => x.Id == matchId);
-            if (record == null)
+            // 所有權驗證：這筆配對必須屬於目前登入者
+            if (record == null || record.UserId != callerId)
             {
                 return null;
             }
@@ -55,6 +56,11 @@ public sealed class MatchService
             return record.ToDomain();
         }
 
+        var existing = storage.ReadCollection<MatchRecord>("matches").FirstOrDefault(x => x.Id == matchId);
+        if (existing == null || existing.UserId != callerId)
+        {
+            return null;
+        }
         return storage.UpdateOne<MatchRecord>("matches", matchId, match => match.UserLiked = true);
     }
 

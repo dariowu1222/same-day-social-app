@@ -194,9 +194,10 @@ public sealed class AuthService
             return AuthServiceResult<AuthUserResponse>.Fail("DATABASE_UNAVAILABLE", "目前無法連線資料庫，請稍後再試。");
         }
 
+        // 去帳號枚舉：帳號不存在與密碼錯誤回覆一致，避免探測 Email 是否註冊
         if (account == null)
         {
-            return AuthServiceResult<AuthUserResponse>.Fail("ACCOUNT_NOT_FOUND", "查無此帳號，請確認 Email 是否輸入正確，或先建立帳號。");
+            return AuthServiceResult<AuthUserResponse>.Fail("INVALID_CREDENTIALS", "Email 或密碼錯誤，請重新確認。");
         }
 
         if (account.IsDisabled)
@@ -206,7 +207,7 @@ public sealed class AuthService
 
         if (!AuthSecurity.VerifyPassword(command.Password, account.PasswordHash))
         {
-            return AuthServiceResult<AuthUserResponse>.Fail("INVALID_PASSWORD", "密碼錯誤，請重新輸入。");
+            return AuthServiceResult<AuthUserResponse>.Fail("INVALID_CREDENTIALS", "Email 或密碼錯誤，請重新確認。");
         }
 
         UserRecord user;
@@ -241,7 +242,8 @@ public sealed class AuthService
         var account = await db.AuthAccounts.FirstOrDefaultAsync(x => x.Username == email, cancellationToken);
         if (account == null || account.IsDisabled)
         {
-            return AuthServiceResult<PasswordResetRequestResponse>.Fail("ACCOUNT_NOT_FOUND", "找不到這個 Email 對應的帳號。");
+            // 去帳號枚舉：不洩漏 Email 是否註冊，一律回覆「已寄出（若該帳號存在）」
+            return AuthServiceResult<PasswordResetRequestResponse>.Ok(new PasswordResetRequestResponse(email, 10));
         }
 
         var code = AuthSecurity.CreateVerificationCode();
@@ -330,7 +332,8 @@ public sealed class AuthService
         var account = await db.AuthAccounts.FirstOrDefaultAsync(x => x.Username == email, cancellationToken);
         if (account == null || account.IsDisabled)
         {
-            return AuthServiceResult<(AuthAccountRecord, UserRecord, PasswordResetTokenRecord)>.Fail("ACCOUNT_NOT_FOUND", "找不到這個 Email 對應的帳號。");
+            // 去帳號枚舉：與「驗證碼錯誤」回覆一致
+            return AuthServiceResult<(AuthAccountRecord, UserRecord, PasswordResetTokenRecord)>.Fail("INVALID_CODE", "驗證碼錯誤或已過期。");
         }
 
         var now = DateTimeOffset.UtcNow;
