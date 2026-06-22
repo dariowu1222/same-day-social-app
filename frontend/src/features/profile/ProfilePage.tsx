@@ -109,6 +109,34 @@ function TagPicker({ options, values, onToggle, maxLen = 8 }: {
   )
 }
 
+function CompactTagPicker({ options, values, onToggle, editing }: {
+  options: readonly string[]; values: string[]; onToggle: (v: string) => void; editing: boolean
+}) {
+  return (
+    <div className={`profile-compact-tags${editing ? ' editing' : ''}`}>
+      {editing ? (
+        <div className="profile-compact-tag-editor">
+          <TagPicker options={options} values={values} onToggle={onToggle} />
+        </div>
+      ) : (
+        <div className="profile-compact-tag-bar">
+          <div className="profile-selected-tags" aria-label="已選標籤">
+            {values.length > 0 ? (
+              values.map(tag => (
+                <span key={tag} className="profile-selected-tag">
+                  <Check size={12} strokeWidth={3} />{tag}
+                </span>
+              ))
+            ) : (
+              <span className="profile-tag-empty">還沒選擇</span>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 const PREFS: { value: ThemePreference; icon?: "sun" | "moon"; label?: string }[] = [
   { value: "day",   icon: "sun" },
   { value: "night", icon: "moon" },
@@ -144,6 +172,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
+  const [editingTags, setEditingTags] = useState(false)
   const [toast, setToast] = useState('')
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -256,6 +285,7 @@ export default function ProfilePage() {
         bloodType: bloodType || undefined,
         ...(photosDirty ? { photoDataUrls: photos } : {}),
       })
+      setEditingTags(false)
       showToast('已儲存 ✓')
     } catch (err) {
       showToast(err instanceof Error ? err.message : '儲存失敗')
@@ -277,14 +307,23 @@ export default function ProfilePage() {
           <p className="setting-section-title profile-field-label" style={{ marginBottom: 0 }}>
             照片 <span className="profile-hint">· 第一張為主照片，可拖曳排序</span>
           </p>
-          <button
-            className={`profile-eye-btn${showPreview ? ' active' : ''}`}
-            type="button"
-            onClick={() => setShowPreview(true)}
-            aria-label="預覽我的卡"
-          >
-            <Eye size={26} strokeWidth={2} />
-          </button>
+          <div className="profile-photo-actions">
+            <button
+              className={`profile-photo-edit-btn${editingTags ? ' active' : ''}`}
+              type="button"
+              onClick={() => setEditingTags(value => !value)}
+            >
+              {editingTags ? '完成' : '編輯標籤'}
+            </button>
+            <button
+              className={`profile-eye-btn${showPreview ? ' active' : ''}`}
+              type="button"
+              onClick={() => setShowPreview(true)}
+              aria-label="預覽我的卡"
+            >
+              <Eye size={26} strokeWidth={2} />
+            </button>
+          </div>
         </div>
         <div className="profile-photo-grid" style={{ marginTop: 12 }}>
           {photos.map((src, i) => (
@@ -379,19 +418,34 @@ export default function ProfilePage() {
       {/* Interest tags */}
       <section className="panel">
         <FieldLabel title="興趣標籤" optional mode="multi" />
-        <TagPicker options={INTEREST_OPTIONS} values={interestTags} onToggle={toggleTag} />
+        <CompactTagPicker
+          options={INTEREST_OPTIONS}
+          values={interestTags}
+          onToggle={toggleTag}
+          editing={editingTags}
+        />
       </section>
 
       {/* 個性 */}
       <section className="panel">
         <FieldLabel title="個性" optional mode="multi" />
-        <TagPicker options={PERSONALITY_OPTIONS} values={personalityTags} onToggle={togglePersonality} />
+        <CompactTagPicker
+          options={PERSONALITY_OPTIONS}
+          values={personalityTags}
+          onToggle={togglePersonality}
+          editing={editingTags}
+        />
       </section>
 
       {/* 外貌 */}
       <section className="panel">
         <FieldLabel title="外貌" optional mode="multi" />
-        <TagPicker options={APPEARANCE_OPTIONS} values={appearanceTags} onToggle={toggleAppearance} />
+        <CompactTagPicker
+          options={APPEARANCE_OPTIONS}
+          values={appearanceTags}
+          onToggle={toggleAppearance}
+          editing={editingTags}
+        />
       </section>
 
       {/* 感情狀態 */}

@@ -80,7 +80,33 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
 }
+
+.profile-photo-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.profile-photo-edit-btn {
+  height: 34px;
+  padding: 0 13px;
+  border: none;
+  border-radius: 17px;
+  background: #f3ebe2;
+  color: #8a6a56;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.profile-photo-edit-btn.active {
+  background: #c8785a;
+  color: #ffffff;
+}
+
 .profile-eye-btn {
   width: 36px;
   height: 36px;
@@ -291,6 +317,73 @@
 .profile-optional { font-size: 12px; font-weight: 400; color: #b5a895; }
 .profile-hint { font-size: 12px; font-weight: 400; color: #9a8f82; }
 .profile-field-label { display: flex; align-items: baseline; flex-wrap: wrap; gap: 3px; }
+
+/* 興趣標籤：平常只顯示已選橫列，編輯時才展開完整選項 */
+.profile-compact-tags {
+  display: grid;
+  gap: 10px;
+}
+
+.profile-compact-tag-bar {
+  display: flex;
+  align-items: center;
+  min-height: 42px;
+  padding: 6px 10px;
+  border: 0.5px solid #eaded4;
+  border-radius: 14px;
+  background: #fffdf8;
+}
+
+.profile-selected-tags {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  white-space: nowrap;
+}
+.profile-selected-tags::-webkit-scrollbar { display: none; }
+
+.profile-selected-tag {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(232, 117, 78, 0.12);
+  color: #c25830;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.profile-tag-empty {
+  color: #b0a090;
+  font-size: 13px;
+}
+
+.profile-compact-tag-editor {
+  padding-top: 2px;
+}
+
+[data-theme="dark"] .profile-compact-tag-bar {
+  background: rgba(22,40,32,0.78);
+  border-color: rgba(168,212,204,0.16);
+}
+[data-theme="dark"] .profile-selected-tag {
+  background: rgba(90, 158, 130, 0.18);
+  color: #9fd8c4;
+}
+[data-theme="dark"] .profile-photo-edit-btn {
+  background: rgba(168,212,204,0.12);
+  color: rgba(212,237,232,0.78);
+}
+[data-theme="dark"] .profile-photo-edit-btn.active {
+  background: #5a9e82;
+  color: #07120f;
+}
 
 /* 身高/體重：兩欄並排，單位後綴 */
 .profile-field-row { display: flex; gap: 10px; }
