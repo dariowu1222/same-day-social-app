@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react"
-import { Sun, Moon, Plus, X, Eye, Check } from "lucide-react"
+import { useNavigate } from "react-router-dom"
+import { Sun, Moon, Plus, X, Eye, Check, ChevronRight } from "lucide-react"
 import { useAuth } from "../auth/AuthContext"
 import { useTheme, type ThemePreference } from "../../shared/theme/ThemeContext"
 import { getProfile, updateProfile } from "./api"
@@ -153,6 +154,7 @@ const TEST_PHOTOS = [
 ]
 
 export default function ProfilePage() {
+  const navigate = useNavigate()
   const { user, logout } = useAuth()
   const [bio, setBio] = useState('')
   const [birthday, setBirthday] = useState('')
@@ -529,6 +531,14 @@ export default function ProfilePage() {
             </button>
           ))}
         </div>
+      </section>
+
+      {/* 帳號中心 */}
+      <section className="panel">
+        <button className="profile-nav-row" type="button" onClick={() => navigate('/account')}>
+          <span>帳號中心</span>
+          <ChevronRight size={18} strokeWidth={1.8} />
+        </button>
       </section>
 
       {/* 登出 */}

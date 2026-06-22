@@ -42,6 +42,10 @@ export async function demoLogin(nickname: string) {
   return response.data
 }
 
+export async function deleteAccount() {
+  return request<boolean>('/api/account', { method: 'DELETE' })
+}
+
 export async function requestPasswordReset(email: string) {
   return request<{ email: string; expiresInMinutes: number }>('/api/auth/password-reset/request', {
     method: 'POST',

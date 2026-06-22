@@ -226,6 +226,40 @@ public sealed class AuthService
         return AuthServiceResult<AuthUserResponse>.Ok(new AuthUserResponse(user.Id, user.Nickname, account.Username));
     }
 
+    // 軟刪除帳號：停用登入並清除個資／媒體（保留列；真正硬清除另排）
+    public bool DeleteAccount(string userId)
+    {
+        if (db != null)
+        {
+            var account = db.AuthAccounts.FirstOrDefault(x => x.UserId == userId);
+            var user = db.Users.FirstOrDefault(x => x.Id == userId);
+            if (account == null && user == null) return false;
+            if (account != null)
+            {
+                account.IsDisabled = true;
+                account.UpdatedAt = DateTimeOffset.UtcNow;
+            }
+            if (user != null)
+            {
+                user.Nickname = "已離開的使用者";
+                user.Bio = "";
+                user.PhotoDataUrls = [];
+            }
+            db.SaveChanges();
+            return true;
+        }
+
+        var existing = storage.ReadCollection<User>("users").FirstOrDefault(x => x.Id == userId);
+        if (existing == null) return false;
+        storage.UpdateOne<User>("users", userId, u =>
+        {
+            u.Nickname = "已離開的使用者";
+            u.Bio = "";
+            u.PhotoDataUrls = [];
+        });
+        return true;
+    }
+
     public async Task<AuthServiceResult<PasswordResetRequestResponse>> RequestPasswordResetAsync(string email, CancellationToken cancellationToken)
     {
         if (db == null)

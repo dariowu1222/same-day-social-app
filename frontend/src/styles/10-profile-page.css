@@ -364,6 +364,55 @@
   font-size: 13px;
 }
 
+/* 帳號中心入口列 */
+.profile-nav-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 4px 2px;
+  border: none;
+  background: transparent;
+  color: var(--theme-text, #2c2620);
+  font-size: 14px;
+  cursor: pointer;
+}
+.profile-nav-row svg { color: #b0a090; }
+[data-theme="dark"] .profile-nav-row { color: #d4ede8; }
+
+/* 帳號中心頁 */
+.account-page { background: #f3eee6; }
+[data-theme="dark"] .account-page { background: #050208; }
+.account-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 13px;
+  color: #7a6e62;
+}
+.account-row strong { font-weight: 500; color: var(--theme-text, #2c2620); }
+[data-theme="dark"] .account-row { color: rgba(212, 237, 232, 0.7); }
+.account-danger-note {
+  margin: 2px 0 12px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #9a8f82;
+}
+[data-theme="dark"] .account-danger-note { color: rgba(168, 212, 204, 0.6); }
+.account-delete-btn {
+  width: 100%;
+  height: 44px;
+  border-radius: 12px;
+  border: 0.5px solid #e3b4a8;
+  background: transparent;
+  color: #c0392b;
+  font-size: 15px;
+  cursor: pointer;
+}
+.account-delete-btn:active { background: rgba(192, 57, 43, 0.06); }
+.account-error { margin-top: 8px; font-size: 13px; color: #c0392b; }
+
 .profile-compact-tag-editor {
   padding-top: 2px;
 }

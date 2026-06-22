@@ -17,6 +17,7 @@ import RantNewPostPage from '../features/rant/RantNewPostPage'
 import TasksPage from '../features/tasks/TasksPage'
 import ChatPage from '../features/chat/ChatPage'
 import ProfilePage from '../features/profile/ProfilePage'
+import AccountCenterPage from '../features/profile/AccountCenterPage'
 
 function App() {
   const navigate = useNavigate()
@@ -50,7 +51,9 @@ function App() {
     '/': 'today', '/rant': 'rant', '/tasks': 'tasks', '/chat': 'chat', '/profile': 'profile',
   }
   const activePage: PageKey = pathToPage[location.pathname]
-    ?? (location.pathname.startsWith('/rant') ? 'rant' : 'today')
+    ?? (location.pathname.startsWith('/rant') ? 'rant'
+      : location.pathname.startsWith('/account') ? 'profile'
+      : 'today')
 
   function setActivePage(page: PageKey) {
     const pageToPath: Record<PageKey, string> = {
@@ -96,6 +99,7 @@ function App() {
           <Route path="/tasks" element={<TasksPage />} />
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/account" element={<AccountCenterPage />} />
         </Routes>
         {!isDetail && <BottomNav activePage={activePage} onChange={setActivePage} />}
       </main>

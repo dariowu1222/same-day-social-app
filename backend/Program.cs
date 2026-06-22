@@ -33,6 +33,12 @@ builder.Services.AddCors(options =>
 });
 
 var databaseConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+// 正式環境必須有 DB；不允許靜默退回 JSON 檔案儲存（無鎖、不跨節點、redeploy 會遺失）
+if (string.IsNullOrWhiteSpace(databaseConnectionString) && !builder.Environment.IsDevelopment())
+{
+    throw new InvalidOperationException(
+        "正式環境必須設定 ConnectionStrings:DefaultConnection，不允許退回 JSON 檔案儲存。");
+}
 if (!string.IsNullOrWhiteSpace(databaseConnectionString))
 {
     builder.Services.AddDbContext<AppDbContext>(options =>
