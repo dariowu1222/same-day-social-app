@@ -16,7 +16,7 @@ export function getForgotDescription(step: ForgotStep) {
   return '設定新密碼後，就可以重新登入'
 }
 
-export function AuthFrame({ children, variant, onBack }: { children: ReactNode; variant: 'warm' | 'clean'; onBack?: () => void }) {
+export function AuthFrame({ children, variant, onBack, center = false }: { children: ReactNode; variant: 'warm' | 'clean'; onBack?: () => void; center?: boolean }) {
   return (
     <main className={`login-screen ${variant === 'clean' ? 'register-screen' : ''}`}>
       {onBack && (
@@ -24,7 +24,7 @@ export function AuthFrame({ children, variant, onBack }: { children: ReactNode; 
           ←
         </button>
       )}
-      <section className="login-content">
+      <section className={`login-content${center ? ' login-content--center' : ''}`}>
         {variant === 'warm' && (
           <>
             <div className="login-decoration chat-left">♡</div>

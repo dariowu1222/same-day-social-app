@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Mail } from 'lucide-react'
 import {
   confirmRegistration,
   confirmPasswordReset,
@@ -22,11 +23,31 @@ import {
   type ForgotStep,
 } from './AuthControls'
 
-type AuthMode = 'login' | 'forgot' | 'register'
+type AuthMode = 'welcome' | 'login' | 'forgot' | 'register'
 type RegisterStep = 'form' | 'verify'
 
 type Props = {
   onAuthenticated: (user: DemoUser, remember: boolean) => void
+}
+
+// 品牌圖示（官方配色），社群登入按鈕用
+function GoogleIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 48 48" aria-hidden="true">
+      <path fill="#4285F4" d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z" />
+      <path fill="#34A853" d="M24 46c5.94 0 10.92-1.97 14.56-5.33l-7.11-5.52c-1.97 1.32-4.49 2.1-7.45 2.1-5.73 0-10.58-3.87-12.31-9.07H4.34v5.7C7.96 41.07 15.4 46 24 46z" />
+      <path fill="#FBBC05" d="M11.69 28.18c-.44-1.32-.69-2.73-.69-4.18s.25-2.86.69-4.18v-5.7H4.34A21.98 21.98 0 0 0 2 24c0 3.55.85 6.91 2.34 9.88l7.35-5.7z" />
+      <path fill="#EA4335" d="M24 10.75c3.23 0 6.13 1.11 8.41 3.29l6.31-6.31C34.91 4.18 29.93 2 24 2 15.4 2 7.96 6.93 4.34 14.12l7.35 5.7c1.73-5.2 6.58-9.07 12.31-9.07z" />
+    </svg>
+  )
+}
+
+function FacebookIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="#fff" d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07c0 6.02 4.39 11.01 10.13 11.93v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.24 2.68.24v2.97h-1.51c-1.49 0-1.95.93-1.95 1.88v2.26h3.32l-.53 3.49h-2.79V24C19.61 23.08 24 18.09 24 12.07z" />
+    </svg>
+  )
 }
 
 function isAdultBirthYear(birthYear: string) {
@@ -39,7 +60,8 @@ function isAdultBirthYear(birthYear: string) {
 }
 
 export default function LoginPage({ onAuthenticated }: Props) {
-  const [mode, setMode] = useState<AuthMode>('login')
+  const [mode, setMode] = useState<AuthMode>('welcome')
+  const [optionsOpen, setOptionsOpen] = useState(false)
   const [forgotStep, setForgotStep] = useState<ForgotStep>('account')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -60,7 +82,6 @@ export default function LoginPage({ onAuthenticated }: Props) {
   const [authMessage, setAuthMessage] = useState('')
   const [authError, setAuthError] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [demoNickname, setDemoNickname] = useState('')
   const [rememberMe, setRememberMe] = useState(true)
   const [loginEmailError, setLoginEmailError] = useState('')
   const [registerEmailError, setRegisterEmailError] = useState('')
@@ -117,9 +138,24 @@ export default function LoginPage({ onAuthenticated }: Props) {
 
   async function submitDemoLogin() {
     await runAuthAction(async () => {
-      const user = await demoLogin(demoNickname.trim() || '同頻使用者')
+      const user = await demoLogin('同頻使用者')
       onAuthenticated(user, false)
     })
+  }
+
+  // TODO: 接 Google / Facebook OAuth（需設定 provider client id + 後端 token 交換 + Capacitor 外掛）。
+  // 目前先做 UI，按下顯示「即將推出」提示，Email 登入則走既有帳密流程。
+  function handleSocialLogin(provider: 'google' | 'facebook') {
+    const label = provider === 'google' ? 'Google' : 'Facebook'
+    setAuthError('')
+    setAuthMessage(`${label} 登入即將推出，目前請先用 Email 登入或快速體驗。`)
+  }
+
+  // 從歡迎頁的三選項進入 Email 帳密登入畫面
+  function openEmailLogin() {
+    resetStatus()
+    setOptionsOpen(false)
+    setMode('login')
   }
 
   async function submitRegister() {
@@ -179,6 +215,63 @@ export default function LoginPage({ onAuthenticated }: Props) {
       })
       onAuthenticated(user, true)
     })
+  }
+
+  if (mode === 'welcome') {
+    return (
+      <AuthFrame variant="warm" center>
+        {/* 點任意處 → 跳出登入選項 sheet */}
+        <button
+          className="welcome-hero"
+          type="button"
+          onClick={() => { resetStatus(); setOptionsOpen(true) }}
+          aria-label="開始登入"
+        >
+          <LogoBlock />
+          <h1 className="login-main-title">今天，也找個懂你的人</h1>
+          <p className="login-subtitle">從日常共鳴開始，慢慢認識彼此</p>
+          <span className="welcome-cta">
+            輕觸畫面，開始同頻
+            <span className="welcome-cta-arrow" aria-hidden="true">↑</span>
+          </span>
+        </button>
+
+        {/* 登入方式 Bottom Sheet */}
+        <div
+          className={`auth-options-mask${optionsOpen ? ' open' : ''}`}
+          onClick={() => setOptionsOpen(false)}
+        />
+        <div className={`auth-options-sheet${optionsOpen ? ' open' : ''}`} role="dialog" aria-label="選擇登入方式">
+          <div className="auth-options-handle" />
+          <p className="auth-options-title">登入 / 註冊同頻 Today</p>
+
+          <button className="social-button google" type="button" onClick={() => handleSocialLogin('google')}>
+            <span className="social-icon" aria-hidden="true"><GoogleIcon /></span>
+            使用 Google 繼續
+          </button>
+          <button className="social-button facebook" type="button" onClick={() => handleSocialLogin('facebook')}>
+            <span className="social-icon" aria-hidden="true"><FacebookIcon /></span>
+            使用 Facebook 繼續
+          </button>
+          <button className="social-button email" type="button" onClick={openEmailLogin}>
+            <span className="social-icon" aria-hidden="true"><Mail size={22} strokeWidth={1.9} /></span>
+            使用 Email 登入
+          </button>
+
+          <AuthNotice message={authMessage} error={authError} />
+
+          <div className="auth-options-foot">
+            <button type="button" onClick={() => { resetStatus(); setOptionsOpen(false); setMode('register') }}>
+              建立帳號
+            </button>
+            <span className="dot" aria-hidden="true">·</span>
+            <button type="button" onClick={submitDemoLogin} disabled={submitting}>
+              {submitting ? '進入中…' : '快速體驗'}
+            </button>
+          </div>
+        </div>
+      </AuthFrame>
+    )
   }
 
   if (mode === 'forgot') {
@@ -419,10 +512,10 @@ export default function LoginPage({ onAuthenticated }: Props) {
   }
 
   return (
-    <AuthFrame variant="warm">
-      <LogoBlock />
-      <h1 className="login-main-title">今天，也找個懂你的人</h1>
-      <p className="login-subtitle">從日常共鳴開始，慢慢認識彼此</p>
+    <AuthFrame variant="warm" onBack={() => { resetStatus(); setMode('welcome') }}>
+      <LogoBlock compact />
+      <h1 className="login-main-title">歡迎回來</h1>
+      <p className="login-subtitle">用 Email 登入同頻 Today</p>
 
       <form className="login-form" onSubmit={(event) => { event.preventDefault(); submitLogin() }}>
         <AuthField
@@ -463,21 +556,6 @@ export default function LoginPage({ onAuthenticated }: Props) {
       <button className="outline-login-button" type="button" onClick={() => { resetStatus(); setMode('register') }}>
         建立帳號
       </button>
-
-      <div className="demo-divider"><span>或快速體驗</span></div>
-      <div className="demo-login-block">
-        <input
-          className="demo-nickname-input"
-          value={demoNickname}
-          onChange={(e) => setDemoNickname(e.target.value)}
-          placeholder="輸入暱稱（可留空）"
-          maxLength={20}
-          onKeyDown={(e) => { if (e.key === 'Enter') submitDemoLogin() }}
-        />
-        <button className="demo-login-button" type="button" disabled={submitting} onClick={submitDemoLogin}>
-          {submitting ? '…' : '試試看'}
-        </button>
-      </div>
     </AuthFrame>
   )
 }
