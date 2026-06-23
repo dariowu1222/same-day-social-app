@@ -1,30 +1,54 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, X, Search } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
-import { deleteRant, getRants, replyRant, reportRant, understandRant } from './api'
+import { deleteRant, getRants, replyRant, reportRant, understandRant, RANT_PAGE_SIZE } from './api'
+import type { RantPost } from './types'
 import { EMPTY_MEDIA, type MediaState } from '../../shared/ui/MediaInput'
 import RantPostCard from './RantPostCard'
-import { useResource } from '../../shared/hooks/useResource'
 
 export default function RantBoardPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { data: posts, reload: loadPosts } = useResource(getRants)
+  const [posts, setPosts] = useState<RantPost[]>([])
+  const [hasMore, setHasMore] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [replies, setReplies] = useState<Record<string, string>>({})
   const [replyMedia, setReplyMedia] = useState<Record<string, MediaState>>({})
   const [searchQuery, setSearchQuery] = useState('')
   const [activeQuery, setActiveQuery] = useState('')
 
+  // 互動後重新載入第一頁（回到最新）
+  const loadPosts = useCallback(async () => {
+    const res = await getRants()
+    setPosts(res.data)
+    setHasMore(res.data.length === RANT_PAGE_SIZE)
+  }, [])
+
+  useEffect(() => { void loadPosts() }, [loadPosts])
+
+  async function loadMore() {
+    if (loadingMore || !hasMore || posts.length === 0) return
+    setLoadingMore(true)
+    try {
+      const cursor = posts[posts.length - 1].createdAt
+      const res = await getRants(cursor)
+      setPosts((prev) => [...prev, ...res.data])
+      setHasMore(res.data.length === RANT_PAGE_SIZE)
+    } finally {
+      setLoadingMore(false)
+    }
+  }
+
   const filteredPosts = activeQuery.trim()
-    ? (posts ?? []).filter((post) => {
+    ? posts.filter((post) => {
         const q = activeQuery.trim().toLowerCase()
         return (
           post.content.toLowerCase().includes(q) ||
           post.hashtags?.some((tag) => tag.toLowerCase().includes(q))
         )
       })
-    : (posts ?? [])
+    : posts
 
   function commitSearch() {
     setActiveQuery(searchQuery)
@@ -94,6 +118,12 @@ export default function RantBoardPage() {
               currentUserId={user.userId}
             />
           ))
+        )}
+
+        {!activeQuery.trim() && hasMore && posts.length > 0 && (
+          <button className="rant-load-more" type="button" onClick={loadMore} disabled={loadingMore}>
+            {loadingMore ? '載入中⋯' : '載入更多'}
+          </button>
         )}
       </section>
 

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using SameDaySocialApp.Application.Dto;
 using SameDaySocialApp.Application.Services;
 using SameDaySocialApp.Domain.Entities;
@@ -21,6 +22,7 @@ public sealed class MatchesController(MatchService matchService) : ControllerBas
         return ApiResponse<List<MatchResponse>>.Ok(matchService.GetTodayMatches(userId));
     }
 
+    [EnableRateLimiting("write")]
     [HttpPost("{matchId}/like")]
     public ActionResult<ApiResponse<MatchRecord>> Like(string matchId)
     {

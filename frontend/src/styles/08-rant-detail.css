@@ -823,6 +823,20 @@
   padding: 40px 16px;
 }
 
+.rant-load-more {
+  display: block;
+  margin: 8px auto 16px;
+  padding: 9px 22px;
+  border-radius: 20px;
+  border: 0.5px solid #ddd5c8;
+  background: #ffffff;
+  color: #7a6e62;
+  font-size: 13px;
+  cursor: pointer;
+}
+.rant-load-more:disabled { opacity: 0.5; cursor: default; }
+[data-theme="dark"] .rant-load-more { background: rgba(22, 40, 32, 0.6); border-color: rgba(168, 212, 204, 0.18); color: #c4d6d0; }
+
 /* ── 引用框 ── */
 .quote-box {
   display: flex;

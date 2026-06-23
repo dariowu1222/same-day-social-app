@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using SameDaySocialApp.Application.Dto;
 using SameDaySocialApp.Application.Services;
 using SameDaySocialApp.Domain.Entities;
@@ -12,9 +13,10 @@ namespace SameDaySocialApp.Controllers;
 public sealed class RantsController(RantService rantService) : ControllerBase
 {
     [HttpGet]
-    public ActionResult<ApiResponse<List<RantPost>>> Get()
+    public ActionResult<ApiResponse<List<RantPost>>> Get([FromQuery] string? cursor, [FromQuery] int limit = 20)
     {
-        return ApiResponse<List<RantPost>>.Ok(rantService.GetPublicPosts());
+        DateTimeOffset? c = DateTimeOffset.TryParse(cursor, out var parsed) ? parsed : null;
+        return ApiResponse<List<RantPost>>.Ok(rantService.GetPublicPosts(c, limit));
     }
 
     [HttpGet("{rantId}")]
@@ -27,6 +29,7 @@ public sealed class RantsController(RantService rantService) : ControllerBase
     }
 
     [Authorize]
+    [EnableRateLimiting("write")]
     [HttpPost]
     public ActionResult<ApiResponse<RantPost>> Create([FromBody] CreateRantRequest request)
     {
@@ -39,6 +42,7 @@ public sealed class RantsController(RantService rantService) : ControllerBase
     }
 
     [Authorize]
+    [EnableRateLimiting("write")]
     [HttpPost("{rantId}/understand")]
     public ActionResult<ApiResponse<RantPost>> Understand(string rantId)
     {
@@ -49,6 +53,7 @@ public sealed class RantsController(RantService rantService) : ControllerBase
     }
 
     [Authorize]
+    [EnableRateLimiting("write")]
     [HttpPost("{rantId}/replies")]
     public ActionResult<ApiResponse<RantPost>> Reply(string rantId, [FromBody] CreateReplyRequest request)
     {
@@ -61,6 +66,7 @@ public sealed class RantsController(RantService rantService) : ControllerBase
     }
 
     [Authorize]
+    [EnableRateLimiting("write")]
     [HttpDelete("{rantId}")]
     public ActionResult<ApiResponse<bool>> Delete(string rantId)
     {
@@ -73,6 +79,7 @@ public sealed class RantsController(RantService rantService) : ControllerBase
     }
 
     [Authorize]
+    [EnableRateLimiting("write")]
     [HttpPost("{rantId}/replies/{replyId}/understand")]
     public ActionResult<ApiResponse<RantPost>> LikeReply(string rantId, string replyId)
     {
@@ -83,6 +90,7 @@ public sealed class RantsController(RantService rantService) : ControllerBase
     }
 
     [Authorize]
+    [EnableRateLimiting("write")]
     [HttpPost("{rantId}/report")]
     public ActionResult<ApiResponse<RantPost>> Report(string rantId)
     {

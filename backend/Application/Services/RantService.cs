@@ -55,13 +55,16 @@ public sealed class RantService
         return (post, check);
     }
 
-    public List<RantPost> GetPublicPosts()
+    public List<RantPost> GetPublicPosts(DateTimeOffset? cursor = null, int limit = 20)
     {
+        limit = Math.Clamp(limit, 1, 50);
         if (db != null)
         {
-            var rows = db.RantPosts.AsNoTracking()
-                .Where(x => !x.IsHidden)
+            var query = db.RantPosts.AsNoTracking().Where(x => !x.IsHidden);
+            if (cursor.HasValue) query = query.Where(x => x.CreatedAt < cursor.Value);
+            var rows = query
                 .OrderByDescending(x => x.CreatedAt)
+                .Take(limit)
                 .Select(x => new
                 {
                     Post = x,
@@ -88,8 +91,9 @@ public sealed class RantService
         }
 
         return storage.ReadCollection<RantPost>("rantPosts")
-            .Where(x => !x.IsHidden)
+            .Where(x => !x.IsHidden && (!cursor.HasValue || x.CreatedAt < cursor.Value))
             .OrderByDescending(x => x.CreatedAt)
+            .Take(limit)
             .ToList();
     }
 

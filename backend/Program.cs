@@ -1,6 +1,9 @@
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using SameDaySocialApp.Application.Dto;
 using SameDaySocialApp.Application.Services;
 using SameDaySocialApp.Infrastructure.Email;
 using SameDaySocialApp.Infrastructure.Media;
@@ -82,6 +85,34 @@ builder.Services.AddScoped<SameDaySocialApp.Application.Services.RantService>();
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.TaskService>();
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.ChatService>();
 
+// 速率限制（防暴力登入 / 帳號枚舉 / 互動刷量）；分區鍵：登入者用 userId，否則用來源 IP
+static string RateKey(HttpContext ctx) =>
+    ctx.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+    ?? ctx.Connection.RemoteIpAddress?.ToString()
+    ?? "anon";
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    // 認證類：每 IP 每分鐘 10 次
+    options.AddPolicy("auth", http => RateLimitPartition.GetFixedWindowLimiter(
+        RateKey(http),
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+
+    // 互動寫入類：每使用者每分鐘 60 次
+    options.AddPolicy("write", http => RateLimitPartition.GetFixedWindowLimiter(
+        RateKey(http),
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 60, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+
+    options.OnRejected = async (context, ct) =>
+    {
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        await context.HttpContext.Response.WriteAsJsonAsync(
+            ApiResponse<object>.Fail("RATE_LIMITED", "操作太頻繁，請稍後再試。"), ct);
+    };
+});
+
 var app = builder.Build();
 
 // if (app.Environment.IsDevelopment())
@@ -92,6 +123,7 @@ var app = builder.Build();
 app.UseCors("Frontend");
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 app.MapControllers();
 app.MapGet("/", () => Results.Content(

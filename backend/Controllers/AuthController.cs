@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Hosting;
 using SameDaySocialApp.Application.Dto;
 using SameDaySocialApp.Application.Services;
@@ -7,6 +8,7 @@ namespace SameDaySocialApp.Controllers;
 
 [ApiController]
 [Route("api/auth")]
+[EnableRateLimiting("auth")]
 public sealed class AuthController(AuthService authService, JwtService jwtService, IHostEnvironment env) : ControllerBase
 {
     [HttpPost("demo-login")]

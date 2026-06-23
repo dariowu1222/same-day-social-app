@@ -1,8 +1,12 @@
 import { request } from '../../shared/api/httpClient'
 import type { RantPost } from './types'
 
-export async function getRants() {
-  return request<RantPost[]>('/api/rants')
+export const RANT_PAGE_SIZE = 20
+
+export async function getRants(cursor?: string, limit = RANT_PAGE_SIZE) {
+  const params = new URLSearchParams({ limit: String(limit) })
+  if (cursor) params.set('cursor', cursor)
+  return request<RantPost[]>(`/api/rants?${params.toString()}`)
 }
 
 export async function createRant(payload: { nickname: string; content: string; mode: string; hashtags?: string[]; imageDataUrl?: string | null; audioDataUrl?: string | null }) {
