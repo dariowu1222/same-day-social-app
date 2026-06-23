@@ -7,6 +7,7 @@ import { getProfile, updateProfile } from "./api"
 import { CalendarPicker } from "./CalendarPicker"
 import { ProfileCardFullscreen } from "./ProfileCardFullscreen"
 import { getZodiac, getAge, isAdultBirthday, fileToResizedBase64, ZODIAC_ICON } from "./profileUtils"
+import { uploadMedia } from "../../shared/api/media"
 import {
   GENDER_OPTIONS, RELATIONSHIP_OPTIONS, PERSONALITY_OPTIONS, APPEARANCE_OPTIONS, BLOOD_OPTIONS,
 } from "./profileFields"
@@ -234,8 +235,10 @@ export default function ProfilePage() {
     const remaining = MAX_PHOTOS - photos.length
     if (remaining <= 0) return
     const picked = Array.from(files).slice(0, remaining)
-    const results = await Promise.all(picked.map(fileToResizedBase64))
-    setPhotos(prev => [...prev, ...results])
+    const dataUrls = await Promise.all(picked.map(fileToResizedBase64))
+    // 上傳物件儲存，存 URL（後端未設定時 passthrough 回 data URL）
+    const urls = await Promise.all(dataUrls.map(d => uploadMedia(d, 'avatars')))
+    setPhotos(prev => [...prev, ...urls])
     setPhotosDirty(true)
   }
 

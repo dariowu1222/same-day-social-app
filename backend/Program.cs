@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using SameDaySocialApp.Application.Services;
 using SameDaySocialApp.Infrastructure.Email;
+using SameDaySocialApp.Infrastructure.Media;
 using SameDaySocialApp.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -15,6 +16,10 @@ builder.Services.AddControllers()
 // builder.Services.AddOpenApi(); // requires .NET 9+
 builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection("Smtp"));
 builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+// 媒體物件儲存（provider 無關；目前 adapter 為 Supabase Storage）
+builder.Services.Configure<MediaOptions>(builder.Configuration.GetSection("Media"));
+builder.Services.AddHttpClient();
+builder.Services.AddSingleton<IMediaStorage, SupabaseMediaStorage>();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>

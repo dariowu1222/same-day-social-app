@@ -10,6 +10,7 @@ import type { ChatMessage, ChatRoom as ChatRoomType, ChatMemberSetting } from '.
 import type { QuoteInfo } from './api'
 import type { UserProfile } from '../profile/types'
 import { getAge, getZodiac, ZODIAC_ICON, testAvatarPhoto } from '../../shared/lib/userDisplay'
+import { uploadMedia } from '../../shared/api/media'
 import Avatar from '../../shared/ui/Avatar'
 
 type Props = {
@@ -183,8 +184,8 @@ export default function ChatRoom({
   }
   function quotePreview(content: string) {
     const t = content.trim()
-    if (t.startsWith('data:image/')) return '圖片'
-    if (t.startsWith('data:audio/')) return '語音'
+    if (isImageMedia(t)) return '圖片'
+    if (isAudioMedia(t)) return '語音'
     return content
   }
 
@@ -194,7 +195,8 @@ export default function ChatRoom({
     event.target.value = ''
     if (!file || !onSendContent) return
     const dataUrl = await imageToDataUrl(file)
-    onSendContent(dataUrl)
+    const url = await uploadMedia(dataUrl, 'chats')
+    onSendContent(url)
   }
 
   // 把手被觸/點：網頁版直接 peek↔full 切換；原生版交給拖曳處理（tap 才在 touchend 切換）。
@@ -552,10 +554,18 @@ function dateKeyOf(message: ChatMessage) {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
 }
 
+// 偵測媒體：支援 data URL 與物件儲存的 http(s) 圖片/音訊 URL
+function isImageMedia(s: string) {
+  return /^data:image\//.test(s) || (/^https?:\/\//.test(s) && /\.(jpe?g|png|webp|gif)(\?|$)/i.test(s))
+}
+function isAudioMedia(s: string) {
+  return /^data:audio\//.test(s) || (/^https?:\/\//.test(s) && /\.(mp3|webm|wav|m4a|ogg)(\?|$)/i.test(s))
+}
+
 function renderContent(content: string) {
   const trimmed = content.trim()
-  if (trimmed.startsWith('data:image/')) return <img src={trimmed} className="cr-bubble-img" alt="圖片" />
-  if (trimmed.startsWith('data:audio/')) return <audio controls src={trimmed} className="cr-bubble-audio" />
+  if (isImageMedia(trimmed)) return <img src={trimmed} className="cr-bubble-img" alt="圖片" />
+  if (isAudioMedia(trimmed)) return <audio controls src={trimmed} className="cr-bubble-audio" />
   if (trimmed === '[image]') return '🖼️ 圖片'
   if (trimmed === '[sticker]') return '😊 貼圖'
   return content
