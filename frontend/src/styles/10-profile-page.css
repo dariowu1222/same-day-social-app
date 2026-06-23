@@ -413,6 +413,32 @@
 .account-delete-btn:active { background: rgba(192, 57, 43, 0.06); }
 .account-error { margin-top: 8px; font-size: 13px; color: #c0392b; }
 
+/* 安全中心：封鎖名單 */
+.block-list { list-style: none; margin: 4px 0 0; padding: 0; }
+.block-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 0;
+  border-bottom: 0.5px solid #ece2d4;
+}
+.block-item:last-child { border-bottom: none; }
+.block-name { font-size: 14px; color: var(--theme-text, #2c2620); }
+.block-unblock-btn {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-radius: 14px;
+  border: 0.5px solid #ddd5c8;
+  background: transparent;
+  color: #7a6e62;
+  font-size: 12px;
+  cursor: pointer;
+}
+.block-unblock-btn:disabled { opacity: 0.5; cursor: default; }
+[data-theme="dark"] .block-item { border-bottom-color: rgba(168, 212, 204, 0.12); }
+[data-theme="dark"] .block-name { color: #d4ede8; }
+[data-theme="dark"] .block-unblock-btn { border-color: rgba(168, 212, 204, 0.18); color: #c4d6d0; }
+
 .profile-compact-tag-editor {
   padding-top: 2px;
 }

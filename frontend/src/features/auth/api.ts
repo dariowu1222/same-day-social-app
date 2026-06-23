@@ -46,6 +46,16 @@ export async function deleteAccount() {
   return request<boolean>('/api/account', { method: 'DELETE' })
 }
 
+export type BlockedUser = { userId: string; nickname: string; blockedAt: string }
+
+export async function getBlockedUsers() {
+  return request<BlockedUser[]>('/api/account/blocks')
+}
+
+export async function unblockUser(blockedId: string) {
+  return request<boolean>(`/api/account/blocks/${blockedId}`, { method: 'DELETE' })
+}
+
 export async function requestPasswordReset(email: string) {
   return request<{ email: string; expiresInMinutes: number }>('/api/auth/password-reset/request', {
     method: 'POST',

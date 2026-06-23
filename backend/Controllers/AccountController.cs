@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SameDaySocialApp.Application.Dto;
 using SameDaySocialApp.Application.Services;
+using SameDaySocialApp.Domain.Entities;
 
 namespace SameDaySocialApp.Controllers;
 
@@ -21,5 +22,19 @@ public sealed class AccountController(AuthService authService) : ControllerBase
         return ok
             ? ApiResponse<bool>.Ok(true)
             : NotFound(ApiResponse<bool>.Fail("ACCOUNT_NOT_FOUND", "找不到帳號。"));
+    }
+
+    // 安全中心：封鎖名單
+    [HttpGet("blocks")]
+    public ActionResult<ApiResponse<List<BlockedUser>>> Blocks()
+        => ApiResponse<List<BlockedUser>>.Ok(authService.GetBlockedUsers(CallerId));
+
+    [HttpDelete("blocks/{blockedId}")]
+    public ActionResult<ApiResponse<bool>> Unblock(string blockedId)
+    {
+        var ok = authService.Unblock(CallerId, blockedId);
+        return ok
+            ? ApiResponse<bool>.Ok(true)
+            : NotFound(ApiResponse<bool>.Fail("BLOCK_NOT_FOUND", "找不到封鎖紀錄。"));
     }
 }

@@ -260,6 +260,52 @@ public sealed class AuthService
         return true;
     }
 
+    // 封鎖名單（安全中心）：列出我封鎖的人 + 解除封鎖
+    public List<BlockedUser> GetBlockedUsers(string userId)
+    {
+        if (db != null)
+        {
+            var blocks = db.UserBlocks.AsNoTracking().Where(b => b.BlockerId == userId).ToList();
+            var ids = blocks.Select(b => b.BlockedId).ToList();
+            var names = db.Users.AsNoTracking().Where(u => ids.Contains(u.Id))
+                .ToDictionary(u => u.Id, u => u.Nickname);
+            return blocks
+                .OrderByDescending(b => b.CreatedAt)
+                .Select(b => new BlockedUser
+                {
+                    UserId = b.BlockedId,
+                    Nickname = names.GetValueOrDefault(b.BlockedId, "使用者"),
+                    BlockedAt = b.CreatedAt,
+                })
+                .ToList();
+        }
+
+        return storage.ReadCollection<UserBlockRecord>("userBlocks")
+            .Where(b => b.BlockerId == userId)
+            .OrderByDescending(b => b.CreatedAt)
+            .Select(b => new BlockedUser { UserId = b.BlockedId, Nickname = "使用者", BlockedAt = b.CreatedAt })
+            .ToList();
+    }
+
+    public bool Unblock(string blockerId, string blockedId)
+    {
+        if (db != null)
+        {
+            var rows = db.UserBlocks.Where(b => b.BlockerId == blockerId && b.BlockedId == blockedId).ToList();
+            if (rows.Count == 0) return false;
+            db.UserBlocks.RemoveRange(rows);
+            db.SaveChanges();
+            return true;
+        }
+
+        var blocks = storage.ReadCollection<UserBlockRecord>("userBlocks");
+        var match = blocks.FirstOrDefault(b => b.BlockerId == blockerId && b.BlockedId == blockedId);
+        if (match == null) return false;
+        blocks.Remove(match);
+        storage.WriteCollection("userBlocks", blocks);
+        return true;
+    }
+
     public async Task<AuthServiceResult<PasswordResetRequestResponse>> RequestPasswordResetAsync(string email, CancellationToken cancellationToken)
     {
         if (db == null)

@@ -544,6 +544,14 @@ export default function ProfilePage() {
         </button>
       </section>
 
+      {/* 安全中心 */}
+      <section className="panel">
+        <button className="profile-nav-row" type="button" onClick={() => navigate('/security')}>
+          <span>安全中心</span>
+          <ChevronRight size={18} strokeWidth={1.8} />
+        </button>
+      </section>
+
       {/* 登出 */}
       <section className="panel">
         <button className="profile-logout-btn" type="button" onClick={logout}>
