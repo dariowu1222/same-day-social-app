@@ -33,6 +33,15 @@ export async function loginAccount(payload: { email: string; password: string },
   return response.data
 }
 
+export async function googleLogin(idToken: string, remember: boolean) {
+  const response = await request<{ userId: string; nickname: string; email: string; token?: string }>('/api/auth/google', {
+    method: 'POST',
+    body: JSON.stringify({ idToken }),
+  })
+  if (response.data.token) setAuthToken(response.data.token, remember)
+  return response.data
+}
+
 export async function demoLogin(nickname: string) {
   const response = await request<{ userId: string; nickname: string; token?: string }>('/api/auth/demo-login', {
     method: 'POST',

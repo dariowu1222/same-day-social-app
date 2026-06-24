@@ -226,6 +226,94 @@ public sealed class AuthService
         return AuthServiceResult<AuthUserResponse>.Ok(new AuthUserResponse(user.Id, user.Nickname, account.Username));
     }
 
+    // Google 登入：用 Google 已驗證的 email 找帳號，沒有就建一個（無密碼，不能用密碼登入）。
+    public async Task<AuthServiceResult<AuthUserResponse>> GoogleLoginAsync(GoogleLoginCommand command, CancellationToken cancellationToken)
+    {
+        if (db == null)
+        {
+            return AuthServiceResult<AuthUserResponse>.Fail("DATABASE_NOT_CONFIGURED", "目前尚未設定資料庫連線，無法登入。");
+        }
+
+        var email = NormalizeEmail(command.Email);
+        if (!IsValidEmail(email))
+        {
+            return AuthServiceResult<AuthUserResponse>.Fail("INVALID_GOOGLE_ACCOUNT", "無法取得有效的 Google 帳號 Email。");
+        }
+
+        var now = DateTimeOffset.UtcNow;
+
+        AuthAccountRecord? account;
+        try
+        {
+            account = await db.AuthAccounts.FirstOrDefaultAsync(x => x.Username == email, cancellationToken);
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            return AuthServiceResult<AuthUserResponse>.Fail("DATABASE_UNAVAILABLE", "目前無法連線資料庫，請稍後再試。");
+        }
+
+        // 既有帳號（含原本用 Email 密碼註冊的同 email）→ 直接登入
+        if (account != null)
+        {
+            if (account.IsDisabled)
+            {
+                return AuthServiceResult<AuthUserResponse>.Fail("ACCOUNT_DISABLED", "此帳號目前無法登入，請聯絡客服或稍後再試。");
+            }
+
+            try
+            {
+                var existingUser = await db.Users.FirstAsync(x => x.Id == account.UserId, cancellationToken);
+                account.LastLoginAt = now;
+                account.UpdatedAt = now;
+                await db.SaveChangesAsync(cancellationToken);
+                return AuthServiceResult<AuthUserResponse>.Ok(new AuthUserResponse(existingUser.Id, existingUser.Nickname, account.Username));
+            }
+            catch (Exception) when (!cancellationToken.IsCancellationRequested)
+            {
+                return AuthServiceResult<AuthUserResponse>.Fail("DATABASE_UNAVAILABLE", "目前無法連線資料庫，請稍後再試。");
+            }
+        }
+
+        // 首次用 Google 登入 → 建立新帳號（密碼設成不可用的隨機 hash）
+        var nickname = string.IsNullOrWhiteSpace(command.Name) ? "同頻使用者" : command.Name.Trim();
+        if (nickname.Length > 20)
+        {
+            nickname = nickname[..20];
+        }
+
+        var user = new UserRecord
+        {
+            Id = $"user_{Guid.NewGuid():N}",
+            Nickname = nickname,
+            Bio = "今天開始慢慢認識同頻的人",
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        var newAccount = new AuthAccountRecord
+        {
+            Id = $"auth_{Guid.NewGuid():N}",
+            UserId = user.Id,
+            Username = email,
+            PasswordHash = AuthSecurity.HashPassword(Guid.NewGuid().ToString("N")), // 佔位，無法用於密碼登入
+            LastLoginAt = now,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        try
+        {
+            db.Users.Add(user);
+            db.AuthAccounts.Add(newAccount);
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            return AuthServiceResult<AuthUserResponse>.Fail("DATABASE_UNAVAILABLE", "目前無法連線資料庫，請稍後再試。");
+        }
+
+        return AuthServiceResult<AuthUserResponse>.Ok(new AuthUserResponse(user.Id, user.Nickname, newAccount.Username));
+    }
+
     // 軟刪除帳號：停用登入並清除個資／媒體（保留列；真正硬清除另排）
     public bool DeleteAccount(string userId)
     {
@@ -535,6 +623,8 @@ public sealed record RegisterCommand(
     bool TermsAccepted);
 
 public sealed record LoginCommand(string Email, string Password);
+
+public sealed record GoogleLoginCommand(string Email, string Name);
 
 public sealed record ConfirmRegistrationCommand(string Email, string Code);
 

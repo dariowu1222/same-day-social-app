@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { Mail } from 'lucide-react'
+import { SocialLogin } from '@capgo/capacitor-social-login'
 import {
   confirmRegistration,
   confirmPasswordReset,
   demoLogin,
+  googleLogin,
   loginAccount,
   registerAccount,
   requestPasswordReset,
@@ -48,6 +50,15 @@ function FacebookIcon() {
       <path fill="#fff" d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07c0 6.02 4.39 11.01 10.13 11.93v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.24 2.68.24v2.97h-1.51c-1.49 0-1.95.93-1.95 1.88v2.26h3.32l-.53 3.49h-2.79V24C19.61 23.08 24 18.09 24 12.07z" />
     </svg>
   )
+}
+
+// Google Web Client ID（在 Google Cloud Console 建立 OAuth Web client 後填入 .env：VITE_GOOGLE_WEB_CLIENT_ID）
+const GOOGLE_WEB_CLIENT_ID = import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID as string | undefined
+let socialInitialized = false
+async function ensureGoogleInit() {
+  if (socialInitialized) return
+  await SocialLogin.initialize({ google: { webClientId: GOOGLE_WEB_CLIENT_ID! } })
+  socialInitialized = true
 }
 
 function isAdultBirthYear(birthYear: string) {
@@ -143,12 +154,30 @@ export default function LoginPage({ onAuthenticated }: Props) {
     })
   }
 
-  // TODO: 接 Google / Facebook OAuth（需設定 provider client id + 後端 token 交換 + Capacitor 外掛）。
-  // 目前先做 UI，按下顯示「即將推出」提示，Email 登入則走既有帳密流程。
+  // Facebook 尚未實作；Google 走原生喚起 → 取得 idToken → 後端驗證後簽發 JWT。
   function handleSocialLogin(provider: 'google' | 'facebook') {
-    const label = provider === 'google' ? 'Google' : 'Facebook'
-    setAuthError('')
-    setAuthMessage(`${label} 登入即將推出，目前請先用 Email 登入或快速體驗。`)
+    if (provider === 'facebook') {
+      setAuthError('')
+      setAuthMessage('Facebook 登入即將推出，目前請先用 Google 或 Email 登入。')
+      return
+    }
+
+    if (!GOOGLE_WEB_CLIENT_ID) {
+      setAuthMessage('')
+      setAuthError('Google 登入尚未設定（缺少 Web Client ID），請先用 Email 登入或快速體驗。')
+      return
+    }
+
+    void runAuthAction(async () => {
+      await ensureGoogleInit()
+      const res = await SocialLogin.login({ provider: 'google', options: { scopes: ['email', 'profile'] } })
+      const idToken = (res?.result as { idToken?: string } | undefined)?.idToken
+      if (!idToken) {
+        throw new Error('沒有取得 Google 登入憑證，請再試一次。')
+      }
+      const user = await googleLogin(idToken, rememberMe)
+      onAuthenticated(user, rememberMe)
+    })
   }
 
   // 從歡迎頁的三選項進入 Email 帳密登入畫面
