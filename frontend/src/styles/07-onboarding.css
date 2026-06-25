@@ -210,6 +210,32 @@
   line-height: 1.6;
 }
 
+/* 與 Profile 數字欄位同尺寸，但 onboarding 固定維持亮色介面。 */
+.ob-number-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 0.5px solid #ead3bf;
+  border-radius: 10px;
+  padding: 9px 34px 9px 13px;
+  font-size: 13px;
+  background: rgba(255, 253, 248, 0.9);
+  color: #5a4638;
+  outline: none;
+  font-family: inherit;
+}
+
+.ob-number-input::placeholder {
+  color: #b0a090;
+}
+
+.ob-number-input:focus {
+  border-color: #c8785a;
+}
+
+.onboarding-overlay .profile-unit {
+  color: #9a8574;
+}
+
 .ob-field-count {
   font-size: 12px;
   color: #9a8574;

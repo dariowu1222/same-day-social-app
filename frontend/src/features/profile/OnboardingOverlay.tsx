@@ -1,14 +1,19 @@
 import { useRef, useState } from 'react'
 import type { DemoUser } from '../auth/types'
 import { updateProfile } from './api'
-import { GENDER_OPTIONS, RELATIONSHIP_OPTIONS } from './profileFields'
+import {
+  DATING_GOAL_OPTIONS,
+  GENDER_OPTIONS,
+  LOOKING_FOR_OPTIONS,
+  RELATIONSHIP_OPTIONS,
+} from './profileFields'
 import slide1 from '../../assets/1.webp'
 import slide2 from '../../assets/2.webp'
 import slide3 from '../../assets/3.webp'
 import slide4 from '../../assets/4.webp'
 import slide5 from '../../assets/5.webp'
 
-type Phase = 'slides' | 'setup'
+type Phase = 'slides' | 'setup' | 'intent'
 
 const SLIDES = [
   {
@@ -54,6 +59,13 @@ const INTEREST_OPTIONS = [
   '貓狗', '手作', '冥想', '追劇', '寫作', '展覽',
 ]
 
+function clampOptionalNumber(value: string, min: number, max: number) {
+  if (!value) return null
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) return null
+  return Math.min(max, Math.max(min, parsed))
+}
+
 type Props = {
   user: DemoUser
   onComplete: () => void
@@ -71,7 +83,13 @@ export default function OnboardingOverlay({ user, onComplete }: Props) {
   const [relationship, setRelationship] = useState('')
   const [bio, setBio] = useState('')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [datingGoal, setDatingGoal] = useState('')
+  const [lookingFor, setLookingFor] = useState('')
+  const [ageMin, setAgeMin] = useState('')
+  const [ageMax, setAgeMax] = useState('')
+  const [distanceKm, setDistanceKm] = useState('')
   const [saving, setSaving] = useState(false)
+  const savingRef = useRef(false)
 
   const total = SLIDES.length
 
@@ -108,6 +126,15 @@ export default function OnboardingOverlay({ user, onComplete }: Props) {
   }
 
   async function handleComplete() {
+    if (savingRef.current) return
+    savingRef.current = true
+
+    let normalizedAgeMin = clampOptionalNumber(ageMin, 18, 99)
+    let normalizedAgeMax = clampOptionalNumber(ageMax, 18, 99)
+    if (normalizedAgeMin != null && normalizedAgeMax != null && normalizedAgeMin > normalizedAgeMax) {
+      ;[normalizedAgeMin, normalizedAgeMax] = [normalizedAgeMax, normalizedAgeMin]
+    }
+
     setSaving(true)
     try {
       await updateProfile(user.userId, {
@@ -115,16 +142,140 @@ export default function OnboardingOverlay({ user, onComplete }: Props) {
         relationship: relationship || undefined,
         bio: bio.trim() || undefined,
         interestTags: selectedTags.length > 0 ? selectedTags : undefined,
+        datingGoal: datingGoal || undefined,
+        lookingFor: lookingFor || undefined,
+        ageMin: normalizedAgeMin,
+        ageMax: normalizedAgeMax,
+        distanceKm: clampOptionalNumber(distanceKm, 1, 500),
       })
     } catch {
       // 儲存失敗不阻擋流程
     }
     setSaving(false)
+    savingRef.current = false
     onComplete()
   }
 
   const trackX = -current * 100 + (dragOffset / window.innerWidth) * 100
   const slide = SLIDES[current]
+
+  if (phase === 'intent') {
+    return (
+      <div className="onboarding-overlay">
+        <div className="onboarding-setup">
+          <div className="ob-setup-top">
+            <h1>想認識什麼樣的人？</h1>
+            <p>這些只影響配對推薦，之後都能在「我的」修改</p>
+          </div>
+
+          <div className="ob-setup-body">
+            <div className="ob-field">
+              <span className="ob-field-label">交友目的</span>
+              <div className="ob-tags">
+                {DATING_GOAL_OPTIONS.map(option => (
+                  <button
+                    key={option}
+                    type="button"
+                    className={`ob-tag${datingGoal === option ? ' selected' : ''}`}
+                    onClick={() => setDatingGoal(value => value === option ? '' : option)}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="ob-field">
+              <span className="ob-field-label">想認識的對象</span>
+              <div className="ob-tags">
+                {LOOKING_FOR_OPTIONS.map(option => (
+                  <button
+                    key={option}
+                    type="button"
+                    className={`ob-tag${lookingFor === option ? ' selected' : ''}`}
+                    onClick={() => setLookingFor(value => value === option ? '' : option)}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="ob-field">
+              <span className="ob-field-label">年齡範圍</span>
+              <div className="profile-field-row">
+                <div className="profile-field-unit">
+                  <input
+                    className="ob-number-input"
+                    type="number"
+                    inputMode="numeric"
+                    min={18}
+                    max={99}
+                    placeholder="最小"
+                    aria-label="最小年齡"
+                    value={ageMin}
+                    onChange={event => setAgeMin(event.target.value)}
+                  />
+                  <span className="profile-unit">歲</span>
+                </div>
+                <div className="profile-field-unit">
+                  <input
+                    className="ob-number-input"
+                    type="number"
+                    inputMode="numeric"
+                    min={18}
+                    max={99}
+                    placeholder="最大"
+                    aria-label="最大年齡"
+                    value={ageMax}
+                    onChange={event => setAgeMax(event.target.value)}
+                  />
+                  <span className="profile-unit">歲</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="ob-field">
+              <span className="ob-field-label">距離偏好</span>
+              <div className="profile-field-unit">
+                <input
+                  className="ob-number-input"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={500}
+                  placeholder="距離"
+                  aria-label="距離偏好"
+                  value={distanceKm}
+                  onChange={event => setDistanceKm(event.target.value)}
+                />
+                <span className="profile-unit">km</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="ob-setup-footer">
+            <button
+              className="ob-primary-btn"
+              type="button"
+              disabled={saving}
+              onClick={handleComplete}
+            >
+              {saving ? '儲存中⋯' : '開始同頻 Today'}
+            </button>
+            <button
+              className="ob-text-btn"
+              type="button"
+              disabled={saving}
+              onClick={handleComplete}
+            >
+              先跳過，之後再設定
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (phase === 'setup') {
     return (
@@ -202,9 +353,9 @@ export default function OnboardingOverlay({ user, onComplete }: Props) {
               className="ob-primary-btn"
               type="button"
               disabled={saving || !gender}
-              onClick={handleComplete}
+              onClick={() => setPhase('intent')}
             >
-              {saving ? '儲存中⋯' : !gender ? '請先選生理性別' : '開始同頻 Today'}
+              {!gender ? '請先選生理性別' : '下一步 →'}
             </button>
             <button
               className="ob-text-btn"
