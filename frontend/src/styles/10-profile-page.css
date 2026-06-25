@@ -439,6 +439,49 @@
 [data-theme="dark"] .block-name { color: #d4ede8; }
 [data-theme="dark"] .block-unblock-btn { border-color: rgba(168, 212, 204, 0.18); color: #c4d6d0; }
 
+/* 隱私/通知設定：toggle 列 */
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 0.5px solid #ece2d4;
+}
+.settings-row:last-child { border-bottom: none; }
+.settings-row-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.settings-row-label { font-size: 14px; color: var(--theme-text, #2c2620); }
+.settings-row-hint { font-size: 12px; color: #9a8f82; }
+.settings-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 44px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 13px;
+  background: #d8cebf;
+  cursor: pointer;
+  transition: background 0.18s;
+}
+.settings-switch.on { background: #c8785a; }
+.settings-switch:disabled { opacity: 0.5; cursor: default; }
+.settings-switch-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  transition: transform 0.18s;
+}
+.settings-switch.on .settings-switch-knob { transform: translateX(18px); }
+[data-theme="dark"] .settings-row { border-bottom-color: rgba(168, 212, 204, 0.12); }
+[data-theme="dark"] .settings-row-label { color: #d4ede8; }
+[data-theme="dark"] .settings-switch { background: #2a4035; }
+[data-theme="dark"] .settings-switch.on { background: #c8785a; }
+
 .profile-compact-tag-editor {
   padding-top: 2px;
 }

@@ -21,6 +21,15 @@ export async function updateProfile(userId: string, payload: {
   occupation?: string
   school?: string
   bloodType?: string
+  datingGoal?: string
+  lookingFor?: string
+  ageMin?: number | null
+  ageMax?: number | null
+  distanceKm?: number | null
+  languages?: string[]
+  activeTime?: string
+  voiceFirst?: boolean
+  meetSoon?: boolean
 }) {
   return request<UserProfile>(`/api/profile/${userId}`, {
     method: 'PUT',

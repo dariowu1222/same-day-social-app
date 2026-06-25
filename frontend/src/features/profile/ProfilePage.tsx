@@ -9,7 +9,8 @@ import { ProfileCardFullscreen } from "./ProfileCardFullscreen"
 import { getZodiac, getAge, isAdultBirthday, fileToResizedBase64, ZODIAC_ICON } from "./profileUtils"
 import { uploadMedia } from "../../shared/api/media"
 import {
-  GENDER_OPTIONS, RELATIONSHIP_OPTIONS, PERSONALITY_OPTIONS, APPEARANCE_OPTIONS, BLOOD_OPTIONS,
+  GENDER_OPTIONS, RELATIONSHIP_OPTIONS, DATING_GOAL_OPTIONS, LOOKING_FOR_OPTIONS,
+  PERSONALITY_OPTIONS, APPEARANCE_OPTIONS, BLOOD_OPTIONS,
 } from "./profileFields"
 
 const INTEREST_OPTIONS = [
@@ -17,6 +18,9 @@ const INTEREST_OPTIONS = [
   "旅遊", "攝影", "運動", "遊戲", "動漫", "Podcast",
   "貓狗", "手作", "冥想", "追劇", "寫作", "展覽",
 ]
+
+const ACTIVE_TIME_OPTIONS = ['早上', '下午', '晚上', '深夜'] as const
+const LANGUAGE_OPTIONS = ['中文', '英文', '台語', '日文', '韓文'] as const
 
 // 欄位小標：標題 + 必填*/選填 + ·單選/·可多選 提示
 function FieldLabel({ title, required, optional, mode }: {
@@ -170,6 +174,15 @@ export default function ProfilePage() {
   const [occupation, setOccupation] = useState('')
   const [school, setSchool] = useState('')
   const [bloodType, setBloodType] = useState('')
+  const [datingGoal, setDatingGoal] = useState('')
+  const [lookingFor, setLookingFor] = useState('')
+  const [ageMin, setAgeMin] = useState('')
+  const [ageMax, setAgeMax] = useState('')
+  const [distanceKm, setDistanceKm] = useState('')
+  const [languages, setLanguages] = useState<string[]>([])
+  const [activeTime, setActiveTime] = useState('')
+  const [voiceFirst, setVoiceFirst] = useState(false)
+  const [meetSoon, setMeetSoon] = useState(false)
   const [photos, setPhotos] = useState<string[]>([])
   const [photosDirty, setPhotosDirty] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -206,6 +219,15 @@ export default function ProfilePage() {
         setOccupation(res.data.occupation ?? '')
         setSchool(res.data.school ?? '')
         setBloodType(res.data.bloodType ?? '')
+        setDatingGoal(res.data.datingGoal ?? '')
+        setLookingFor(res.data.lookingFor ?? '')
+        setAgeMin(res.data.ageMin != null ? String(res.data.ageMin) : '')
+        setAgeMax(res.data.ageMax != null ? String(res.data.ageMax) : '')
+        setDistanceKm(res.data.distanceKm != null ? String(res.data.distanceKm) : '')
+        setLanguages(res.data.languages ?? [])
+        setActiveTime(res.data.activeTime ?? '')
+        setVoiceFirst(res.data.voiceFirst ?? false)
+        setMeetSoon(res.data.meetSoon ?? false)
         const loaded = res.data.photoDataUrls ?? []
         setPhotos(loaded.length > 0 ? loaded : TEST_PHOTOS)
       })
@@ -229,6 +251,10 @@ export default function ProfilePage() {
 
   function toggleAppearance(tag: string) {
     setAppearanceTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])
+  }
+
+  function toggleLanguage(tag: string) {
+    setLanguages(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])
   }
 
   async function handleAddPhotos(files: FileList) {
@@ -288,6 +314,15 @@ export default function ProfilePage() {
         occupation: occupation.trim() || undefined,
         school: school.trim() || undefined,
         bloodType: bloodType || undefined,
+        datingGoal: datingGoal || undefined,
+        lookingFor: lookingFor || undefined,
+        ageMin: ageMin ? Number(ageMin) : null,
+        ageMax: ageMax ? Number(ageMax) : null,
+        distanceKm: distanceKm ? Number(distanceKm) : null,
+        languages,
+        activeTime: activeTime || undefined,
+        voiceFirst,
+        meetSoon,
         ...(photosDirty ? { photoDataUrls: photos } : {}),
       })
       setEditingTags(false)
@@ -512,6 +547,59 @@ export default function ProfilePage() {
         <SingleChips options={BLOOD_OPTIONS} value={bloodType} onChange={setBloodType} />
       </section>
 
+      {/* ── 交友意圖（配對用）── */}
+      <p className="profile-settings-divider">交友意圖</p>
+
+      <section className="panel">
+        <FieldLabel title="交友目的" optional mode="single" />
+        <SingleChips options={DATING_GOAL_OPTIONS} value={datingGoal} onChange={setDatingGoal} />
+      </section>
+
+      <section className="panel">
+        <FieldLabel title="想認識的對象" optional mode="single" />
+        <SingleChips options={LOOKING_FOR_OPTIONS} value={lookingFor} onChange={setLookingFor} />
+      </section>
+
+      <section className="panel">
+        <FieldLabel title="年齡偏好" optional />
+        <div className="profile-field-row">
+          <div className="profile-field-unit">
+            <input className="profile-text-input" type="number" inputMode="numeric" min={18} max={99} placeholder="最小" value={ageMin} onChange={e => setAgeMin(e.target.value)} />
+            <span className="profile-unit">歲</span>
+          </div>
+          <div className="profile-field-unit">
+            <input className="profile-text-input" type="number" inputMode="numeric" min={18} max={99} placeholder="最大" value={ageMax} onChange={e => setAgeMax(e.target.value)} />
+            <span className="profile-unit">歲</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="panel">
+        <FieldLabel title="距離偏好" optional />
+        <div className="profile-field-unit">
+          <input className="profile-text-input" type="number" inputMode="numeric" min={1} max={500} placeholder="距離" value={distanceKm} onChange={e => setDistanceKm(e.target.value)} />
+          <span className="profile-unit">km</span>
+        </div>
+      </section>
+
+      <section className="panel">
+        <FieldLabel title="語言" optional mode="multi" />
+        <TagPicker options={LANGUAGE_OPTIONS} values={languages} onToggle={toggleLanguage} />
+      </section>
+
+      <section className="panel">
+        <FieldLabel title="活動時段" optional mode="single" />
+        <SingleChips options={ACTIVE_TIME_OPTIONS} value={activeTime} onChange={setActiveTime} />
+      </section>
+
+      <section className="panel">
+        <FieldLabel title="互動偏好" optional />
+        <div className="ob-tags">
+          <button type="button" className={`ob-tag${voiceFirst ? ' selected' : ''}`} onClick={() => setVoiceFirst(v => !v)}>願意先語音聊</button>
+          <button type="button" className={`ob-tag${meetSoon ? ' selected' : ''}`} onClick={() => setMeetSoon(v => !v)}>願意線下快見</button>
+        </div>
+      </section>
+
       {/* ── 設定（與個人資料分開）── */}
       <p className="profile-settings-divider">設定</p>
 
@@ -548,6 +636,14 @@ export default function ProfilePage() {
       <section className="panel">
         <button className="profile-nav-row" type="button" onClick={() => navigate('/security')}>
           <span>安全中心</span>
+          <ChevronRight size={18} strokeWidth={1.8} />
+        </button>
+      </section>
+
+      {/* 隱私與通知 */}
+      <section className="panel">
+        <button className="profile-nav-row" type="button" onClick={() => navigate('/settings/privacy')}>
+          <span>隱私與通知</span>
           <ChevronRight size={18} strokeWidth={1.8} />
         </button>
       </section>

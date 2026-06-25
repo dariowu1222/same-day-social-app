@@ -65,6 +65,22 @@ export async function unblockUser(blockedId: string) {
   return request<boolean>(`/api/account/blocks/${blockedId}`, { method: 'DELETE' })
 }
 
+export type UserSetting = {
+  profilePublic: boolean
+  pauseMatching: boolean
+  notifyMatch: boolean
+  notifyMessage: boolean
+  notifyRant: boolean
+}
+
+export async function getSettings() {
+  return request<UserSetting>('/api/account/settings')
+}
+
+export async function updateSettings(patch: Partial<UserSetting>) {
+  return request<UserSetting>('/api/account/settings', { method: 'PUT', body: JSON.stringify(patch) })
+}
+
 export async function requestPasswordReset(email: string) {
   return request<{ email: string; expiresInMinutes: number }>('/api/auth/password-reset/request', {
     method: 'POST',

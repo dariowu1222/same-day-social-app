@@ -37,4 +37,19 @@ public sealed class AccountController(AuthService authService) : ControllerBase
             ? ApiResponse<bool>.Ok(true)
             : NotFound(ApiResponse<bool>.Fail("BLOCK_NOT_FOUND", "找不到封鎖紀錄。"));
     }
+
+    // 隱私 / 通知設定
+    [HttpGet("settings")]
+    public ActionResult<ApiResponse<UserSetting>> Settings()
+        => ApiResponse<UserSetting>.Ok(authService.GetSettings(CallerId));
+
+    [HttpPut("settings")]
+    public ActionResult<ApiResponse<UserSetting>> UpdateSettings([FromBody] UpdateUserSettingRequest request)
+        => ApiResponse<UserSetting>.Ok(authService.UpdateSettings(
+            CallerId, request.ProfilePublic, request.PauseMatching,
+            request.NotifyMatch, request.NotifyMessage, request.NotifyRant));
 }
+
+public sealed record UpdateUserSettingRequest(
+    bool? ProfilePublic = null, bool? PauseMatching = null,
+    bool? NotifyMatch = null, bool? NotifyMessage = null, bool? NotifyRant = null);

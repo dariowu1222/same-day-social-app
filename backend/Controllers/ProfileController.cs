@@ -70,6 +70,15 @@ public sealed class ProfileController(JsonStorageService storage, IServiceProvid
                     if (request.Occupation != null) record.Occupation = EmptyToNull(request.Occupation.Trim());
                     if (request.School != null) record.School = EmptyToNull(request.School.Trim());
                     if (request.BloodType != null) record.BloodType = EmptyToNull(request.BloodType);
+                    if (request.DatingGoal != null) record.DatingGoal = EmptyToNull(request.DatingGoal);
+                    if (request.LookingFor != null) record.LookingFor = EmptyToNull(request.LookingFor);
+                    if (request.AgeMin.HasValue) record.AgeMin = request.AgeMin;
+                    if (request.AgeMax.HasValue) record.AgeMax = request.AgeMax;
+                    if (request.DistanceKm.HasValue) record.DistanceKm = request.DistanceKm;
+                    if (request.Languages != null) record.Languages = [.. request.Languages];
+                    if (request.ActiveTime != null) record.ActiveTime = EmptyToNull(request.ActiveTime);
+                    if (request.VoiceFirst.HasValue) record.VoiceFirst = request.VoiceFirst.Value;
+                    if (request.MeetSoon.HasValue) record.MeetSoon = request.MeetSoon.Value;
                     record.UpdatedAt = DateTimeOffset.UtcNow;
                     await db.SaveChangesAsync(cancellationToken);
                     return ApiResponse<User>.Ok(record.ToDomain());
@@ -95,6 +104,15 @@ public sealed class ProfileController(JsonStorageService storage, IServiceProvid
             if (request.Occupation != null) target.Occupation = EmptyToNull(request.Occupation.Trim());
             if (request.School != null) target.School = EmptyToNull(request.School.Trim());
             if (request.BloodType != null) target.BloodType = EmptyToNull(request.BloodType);
+            if (request.DatingGoal != null) target.DatingGoal = EmptyToNull(request.DatingGoal);
+            if (request.LookingFor != null) target.LookingFor = EmptyToNull(request.LookingFor);
+            if (request.AgeMin.HasValue) target.AgeMin = request.AgeMin;
+            if (request.AgeMax.HasValue) target.AgeMax = request.AgeMax;
+            if (request.DistanceKm.HasValue) target.DistanceKm = request.DistanceKm;
+            if (request.Languages != null) target.Languages = [.. request.Languages];
+            if (request.ActiveTime != null) target.ActiveTime = EmptyToNull(request.ActiveTime);
+            if (request.VoiceFirst.HasValue) target.VoiceFirst = request.VoiceFirst.Value;
+            if (request.MeetSoon.HasValue) target.MeetSoon = request.MeetSoon.Value;
         });
 
         return user == null
@@ -117,4 +135,8 @@ public sealed record UpdateProfileRequest(
     string? Gender = null, string? Relationship = null,
     List<string>? PersonalityTags = null, List<string>? AppearanceTags = null,
     int? Height = null, int? Weight = null,
-    string? Occupation = null, string? School = null, string? BloodType = null);
+    string? Occupation = null, string? School = null, string? BloodType = null,
+    string? DatingGoal = null, string? LookingFor = null,
+    int? AgeMin = null, int? AgeMax = null, int? DistanceKm = null,
+    List<string>? Languages = null, string? ActiveTime = null,
+    bool? VoiceFirst = null, bool? MeetSoon = null);

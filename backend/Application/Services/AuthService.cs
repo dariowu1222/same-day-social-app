@@ -394,6 +394,56 @@ public sealed class AuthService
         return true;
     }
 
+    // 隱私 / 通知設定
+    public UserSetting GetSettings(string userId)
+    {
+        if (db != null)
+        {
+            var rec = db.UserSettings.AsNoTracking().FirstOrDefault(x => x.UserId == userId);
+            return rec == null ? new UserSetting() : ToSetting(rec);
+        }
+        var item = storage.ReadCollection<UserSettingRecord>("userSettings").FirstOrDefault(x => x.UserId == userId);
+        return item == null ? new UserSetting() : ToSetting(item);
+    }
+
+    public UserSetting UpdateSettings(string userId, bool? profilePublic, bool? pauseMatching, bool? notifyMatch, bool? notifyMessage, bool? notifyRant)
+    {
+        void Apply(UserSettingRecord r)
+        {
+            if (profilePublic.HasValue) r.ProfilePublic = profilePublic.Value;
+            if (pauseMatching.HasValue) r.PauseMatching = pauseMatching.Value;
+            if (notifyMatch.HasValue) r.NotifyMatch = notifyMatch.Value;
+            if (notifyMessage.HasValue) r.NotifyMessage = notifyMessage.Value;
+            if (notifyRant.HasValue) r.NotifyRant = notifyRant.Value;
+            r.UpdatedAt = DateTimeOffset.UtcNow;
+        }
+
+        if (db != null)
+        {
+            var rec = db.UserSettings.FirstOrDefault(x => x.UserId == userId);
+            if (rec == null) { rec = new UserSettingRecord { UserId = userId }; Apply(rec); db.UserSettings.Add(rec); }
+            else Apply(rec);
+            db.SaveChanges();
+            return ToSetting(rec);
+        }
+
+        var list = storage.ReadCollection<UserSettingRecord>("userSettings");
+        var item = list.FirstOrDefault(x => x.UserId == userId);
+        if (item == null) { item = new UserSettingRecord { UserId = userId }; Apply(item); list.Add(item); }
+        else Apply(item);
+        storage.WriteCollection("userSettings", list);
+        return ToSetting(item);
+    }
+
+    private static UserSetting ToSetting(UserSettingRecord r) => new()
+    {
+        ProfilePublic = r.ProfilePublic,
+        PauseMatching = r.PauseMatching,
+        NotifyMatch = r.NotifyMatch,
+        NotifyMessage = r.NotifyMessage,
+        NotifyRant = r.NotifyRant,
+    };
+
     public async Task<AuthServiceResult<PasswordResetRequestResponse>> RequestPasswordResetAsync(string email, CancellationToken cancellationToken)
     {
         if (db == null)

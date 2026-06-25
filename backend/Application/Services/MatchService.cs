@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SameDaySocialApp.Domain.Entities;
 using SameDaySocialApp.Domain.Enums;
 using SameDaySocialApp.Infrastructure.Persistence;
+using SameDaySocialApp.Infrastructure.Persistence.Models;
 using MatchType = SameDaySocialApp.Domain.Enums.MatchType;
 
 namespace SameDaySocialApp.Application.Services;
@@ -28,8 +29,15 @@ public sealed class MatchService
             return [];
         }
 
+        // 暫停配對：本人暫停則不配對；其他暫停者也不出現在候選
+        var pausedUserIds = LoadPausedUserIds();
+        if (pausedUserIds.Contains(userId))
+        {
+            return [];
+        }
+
         var matches = entries
-            .Where(x => x.UserId != userId)
+            .Where(x => x.UserId != userId && !pausedUserIds.Contains(x.UserId))
             .GroupBy(x => x.UserId)
             .Select(g => g.MaxBy(x => x.CreatedAt)!)
             .Select(entry => BuildMatch(current, entry, users))
@@ -38,6 +46,16 @@ public sealed class MatchService
             .ToList();
 
         return ApplyDisplayScore(matches);
+    }
+
+    private HashSet<string> LoadPausedUserIds()
+    {
+        if (db != null)
+        {
+            return db.UserSettings.AsNoTracking().Where(s => s.PauseMatching).Select(s => s.UserId).ToHashSet();
+        }
+        return storage.ReadCollection<UserSettingRecord>("userSettings")
+            .Where(s => s.PauseMatching).Select(s => s.UserId).ToHashSet();
     }
 
     public MatchRecord? Like(string matchId, string callerId)

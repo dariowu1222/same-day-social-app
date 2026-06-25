@@ -21,6 +21,27 @@ public sealed class UserRecord
     public string? Occupation { get; set; }
     public string? School { get; set; }
     public string? BloodType { get; set; }
+    public string? DatingGoal { get; set; }
+    public string? LookingFor { get; set; }
+    public int? AgeMin { get; set; }
+    public int? AgeMax { get; set; }
+    public int? DistanceKm { get; set; }
+    public string[] Languages { get; set; } = [];
+    public string? ActiveTime { get; set; }
+    public bool VoiceFirst { get; set; }
+    public bool MeetSoon { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+// 隱私 / 通知設定（每使用者一列）
+public sealed class UserSettingRecord
+{
+    public string UserId { get; set; } = "";
+    public bool ProfilePublic { get; set; } = true;
+    public bool PauseMatching { get; set; }
+    public bool NotifyMatch { get; set; } = true;
+    public bool NotifyMessage { get; set; } = true;
+    public bool NotifyRant { get; set; } = true;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

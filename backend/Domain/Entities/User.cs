@@ -24,5 +24,15 @@ public sealed class User
     public string? Occupation { get; set; }
     public string? School { get; set; }
     public string? BloodType { get; set; }
+    // 交友意圖（配對品質用，皆可空）
+    public string? DatingGoal { get; set; }       // 交友/約會/長期關係/先聊聊
+    public string? LookingFor { get; set; }        // 想認識的對象
+    public int? AgeMin { get; set; }
+    public int? AgeMax { get; set; }
+    public int? DistanceKm { get; set; }
+    public List<string> Languages { get; set; } = [];
+    public string? ActiveTime { get; set; }        // 活動時段
+    public bool VoiceFirst { get; set; }           // 可否語音先聊
+    public bool MeetSoon { get; set; }             // 可否線下快見
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

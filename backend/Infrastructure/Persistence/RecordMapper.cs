@@ -30,6 +30,15 @@ public static class RecordMapper
             Occupation = record.Occupation,
             School = record.School,
             BloodType = record.BloodType,
+            DatingGoal = record.DatingGoal,
+            LookingFor = record.LookingFor,
+            AgeMin = record.AgeMin,
+            AgeMax = record.AgeMax,
+            DistanceKm = record.DistanceKm,
+            Languages = record.Languages.ToList(),
+            ActiveTime = record.ActiveTime,
+            VoiceFirst = record.VoiceFirst,
+            MeetSoon = record.MeetSoon,
             CreatedAt = record.CreatedAt
         };
     }
@@ -57,6 +66,15 @@ public static class RecordMapper
             Occupation = user.Occupation,
             School = user.School,
             BloodType = user.BloodType,
+            DatingGoal = user.DatingGoal,
+            LookingFor = user.LookingFor,
+            AgeMin = user.AgeMin,
+            AgeMax = user.AgeMax,
+            DistanceKm = user.DistanceKm,
+            Languages = user.Languages.ToArray(),
+            ActiveTime = user.ActiveTime,
+            VoiceFirst = user.VoiceFirst,
+            MeetSoon = user.MeetSoon,
             CreatedAt = user.CreatedAt,
             UpdatedAt = DateTimeOffset.UtcNow
         };

@@ -19,6 +19,7 @@ import ChatPage from '../features/chat/ChatPage'
 import ProfilePage from '../features/profile/ProfilePage'
 import AccountCenterPage from '../features/profile/AccountCenterPage'
 import SecurityCenterPage from '../features/profile/SecurityCenterPage'
+import PrivacySettingsPage from '../features/profile/PrivacySettingsPage'
 
 function App() {
   const navigate = useNavigate()
@@ -55,6 +56,7 @@ function App() {
     ?? (location.pathname.startsWith('/rant') ? 'rant'
       : location.pathname.startsWith('/account') ? 'profile'
       : location.pathname.startsWith('/security') ? 'profile'
+      : location.pathname.startsWith('/settings') ? 'profile'
       : 'today')
 
   function setActivePage(page: PageKey) {
@@ -103,6 +105,7 @@ function App() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/account" element={<AccountCenterPage />} />
           <Route path="/security" element={<SecurityCenterPage />} />
+          <Route path="/settings/privacy" element={<PrivacySettingsPage />} />
         </Routes>
         {!isDetail && <BottomNav activePage={activePage} onChange={setActivePage} />}
       </main>

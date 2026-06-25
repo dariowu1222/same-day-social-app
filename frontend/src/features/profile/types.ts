@@ -17,4 +17,14 @@ export type UserProfile = {
   occupation?: string
   school?: string
   bloodType?: string
+  // 交友意圖
+  datingGoal?: string
+  lookingFor?: string
+  ageMin?: number | null
+  ageMax?: number | null
+  distanceKm?: number | null
+  languages?: string[]
+  activeTime?: string
+  voiceFirst?: boolean
+  meetSoon?: boolean
 }
