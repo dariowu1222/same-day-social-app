@@ -170,7 +170,8 @@ export default function LoginPage({ onAuthenticated }: Props) {
 
     void runAuthAction(async () => {
       await ensureGoogleInit()
-      const res = await SocialLogin.login({ provider: 'google', options: { scopes: ['email', 'profile'] } })
+      // 不傳 scopes：基本登入已含 email/profile，傳自訂 scopes 需改 MainActivity（外掛限制）
+      const res = await SocialLogin.login({ provider: 'google', options: {} })
       const idToken = (res?.result as { idToken?: string } | undefined)?.idToken
       if (!idToken) {
         throw new Error('沒有取得 Google 登入憑證，請再試一次。')
