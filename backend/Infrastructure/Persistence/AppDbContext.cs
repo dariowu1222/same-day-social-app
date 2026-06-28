@@ -24,6 +24,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<UserBlockRecord> UserBlocks => Set<UserBlockRecord>();
     public DbSet<ChatReportRecord> ChatReports => Set<ChatReportRecord>();
     public DbSet<UserSettingRecord> UserSettings => Set<UserSettingRecord>();
+    public DbSet<NotificationRecord> Notifications => Set<NotificationRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

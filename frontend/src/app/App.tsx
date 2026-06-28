@@ -20,6 +20,7 @@ import ProfilePage from '../features/profile/ProfilePage'
 import AccountCenterPage from '../features/profile/AccountCenterPage'
 import SecurityCenterPage from '../features/profile/SecurityCenterPage'
 import PrivacySettingsPage from '../features/profile/PrivacySettingsPage'
+import NotificationCenterPage from '../features/notifications/NotificationCenterPage'
 
 function App() {
   const navigate = useNavigate()
@@ -57,6 +58,7 @@ function App() {
       : location.pathname.startsWith('/account') ? 'profile'
       : location.pathname.startsWith('/security') ? 'profile'
       : location.pathname.startsWith('/settings') ? 'profile'
+      : location.pathname.startsWith('/notifications') ? 'profile'
       : 'today')
 
   function setActivePage(page: PageKey) {
@@ -106,6 +108,7 @@ function App() {
           <Route path="/account" element={<AccountCenterPage />} />
           <Route path="/security" element={<SecurityCenterPage />} />
           <Route path="/settings/privacy" element={<PrivacySettingsPage />} />
+          <Route path="/notifications" element={<NotificationCenterPage />} />
         </Routes>
         {!isDetail && <BottomNav activePage={activePage} onChange={setActivePage} />}
       </main>

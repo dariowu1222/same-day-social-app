@@ -13,6 +13,7 @@ public sealed class RantService
     private readonly TodayAnalyzerService analyzer;
     private readonly ModerationService moderation;
     private readonly AppDbContext? db;
+    private readonly NotificationService? notifications;
 
     public RantService(JsonStorageService storage, TodayAnalyzerService analyzer, ModerationService moderation, IServiceProvider services)
     {
@@ -20,6 +21,7 @@ public sealed class RantService
         this.analyzer = analyzer;
         this.moderation = moderation;
         db = services.GetService<AppDbContext>();
+        notifications = services.GetService<NotificationService>();
     }
 
     public (RantPost? Post, ModerationResult Moderation) Create(string userId, string nickname, string content, RantMode mode, List<string>? hashTags = null, string? imageDataUrl = null, string? audioDataUrl = null)
@@ -165,10 +167,11 @@ public sealed class RantService
                 AudioDataUrl = audioDataUrl
             });
             db.SaveChanges();
+            NotifyReply(post.UserId, userId, rantId, content);
             return BuildPost(rantId);
         }
 
-        return storage.UpdateOne<RantPost>("rantPosts", rantId, post =>
+        var updated = storage.UpdateOne<RantPost>("rantPosts", rantId, post =>
         {
             post.Replies.Add(new RantReply
             {
@@ -179,6 +182,16 @@ public sealed class RantService
             });
             post.ReplyCount = post.Replies.Count;
         });
+        if (updated != null) NotifyReply(updated.UserId, userId, rantId, content);
+        return updated;
+    }
+
+    private void NotifyReply(string authorId, string replierId, string rantId, string content)
+    {
+        if (string.IsNullOrWhiteSpace(authorId) || authorId == replierId) return;
+        var preview = content.Trim();
+        if (preview.Length > 40) preview = $"{preview[..40]}…";
+        notifications?.Add(authorId, "RANT_REPLY", "你的樹洞有新回應 🌱", preview, "rant", rantId);
     }
 
     public RantPost? LikeReply(string rantId, string replyId)

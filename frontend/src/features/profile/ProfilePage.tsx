@@ -8,6 +8,7 @@ import { CalendarPicker } from "./CalendarPicker"
 import { ProfileCardFullscreen } from "./ProfileCardFullscreen"
 import { getZodiac, getAge, isAdultBirthday, fileToResizedBase64, ZODIAC_ICON } from "./profileUtils"
 import { uploadMedia } from "../../shared/api/media"
+import { getUnreadCount } from "../notifications/api"
 import {
   GENDER_OPTIONS, RELATIONSHIP_OPTIONS, DATING_GOAL_OPTIONS, LOOKING_FOR_OPTIONS,
   PERSONALITY_OPTIONS, APPEARANCE_OPTIONS, BLOOD_OPTIONS,
@@ -186,6 +187,7 @@ export default function ProfilePage() {
   const [photos, setPhotos] = useState<string[]>([])
   const [photosDirty, setPhotosDirty] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [unreadNotif, setUnreadNotif] = useState(0)
   const [saving, setSaving] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [editingTags, setEditingTags] = useState(false)
@@ -200,6 +202,11 @@ export default function ProfilePage() {
     function onReselect() { setShowPreview(false) }
     window.addEventListener('nav-reselect-profile', onReselect)
     return () => window.removeEventListener('nav-reselect-profile', onReselect)
+  }, [])
+
+  // 通知未讀數（顯示在「通知中心」入口）
+  useEffect(() => {
+    getUnreadCount().then(res => setUnreadNotif(res.data)).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -622,6 +629,15 @@ export default function ProfilePage() {
             </button>
           ))}
         </div>
+      </section>
+
+      {/* 通知中心 */}
+      <section className="panel">
+        <button className="profile-nav-row" type="button" onClick={() => navigate('/notifications')}>
+          <span>通知中心</span>
+          {unreadNotif > 0 && <span className="notif-badge">{unreadNotif > 99 ? '99+' : unreadNotif}</span>}
+          <ChevronRight size={18} strokeWidth={1.8} />
+        </button>
       </section>
 
       {/* 帳號中心 */}

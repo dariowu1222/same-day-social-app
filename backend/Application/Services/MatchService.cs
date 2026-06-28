@@ -12,11 +12,13 @@ public sealed class MatchService
 {
     private readonly JsonStorageService storage;
     private readonly AppDbContext? db;
+    private readonly NotificationService? notifications;
 
     public MatchService(JsonStorageService storage, IServiceProvider services)
     {
         this.storage = storage;
         db = services.GetService<AppDbContext>();
+        notifications = services.GetService<NotificationService>();
     }
 
     public List<MatchResponse> GetTodayMatches(string userId)
@@ -71,6 +73,7 @@ public sealed class MatchService
 
             record.UserLiked = true;
             db.SaveChanges();
+            NotifyLiked(record.MatchedUserId, callerId);
             return record.ToDomain();
         }
 
@@ -79,7 +82,20 @@ public sealed class MatchService
         {
             return null;
         }
-        return storage.UpdateOne<MatchRecord>("matches", matchId, match => match.UserLiked = true);
+        var liked = storage.UpdateOne<MatchRecord>("matches", matchId, match => match.UserLiked = true);
+        NotifyLiked(existing.MatchedUserId, callerId);
+        return liked;
+    }
+
+    private void NotifyLiked(string recipientId, string callerId)
+    {
+        if (string.IsNullOrWhiteSpace(recipientId) || recipientId == callerId) return;
+        notifications?.Add(
+            recipientId,
+            "LIKE",
+            "有人對你有共鳴 💞",
+            "有人喜歡了你的今日，去看看你的同頻配對吧。",
+            "match");
     }
 
     private List<User> LoadUsers()

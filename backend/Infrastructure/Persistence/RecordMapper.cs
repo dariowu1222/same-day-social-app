@@ -80,6 +80,38 @@ public static class RecordMapper
         };
     }
 
+    public static Notification ToDomain(this NotificationRecord record)
+    {
+        return new Notification
+        {
+            Id = record.Id,
+            RecipientId = record.RecipientId,
+            Type = record.Type,
+            Title = record.Title,
+            Body = record.Body,
+            LinkType = record.LinkType,
+            LinkId = record.LinkId,
+            IsRead = record.IsRead,
+            CreatedAt = record.CreatedAt
+        };
+    }
+
+    public static NotificationRecord ToRecord(this Notification notification)
+    {
+        return new NotificationRecord
+        {
+            Id = notification.Id,
+            RecipientId = notification.RecipientId,
+            Type = notification.Type,
+            Title = notification.Title,
+            Body = notification.Body,
+            LinkType = notification.LinkType,
+            LinkId = notification.LinkId,
+            IsRead = notification.IsRead,
+            CreatedAt = notification.CreatedAt
+        };
+    }
+
     public static TodayEntry ToDomain(this TodayEntryRecord record)
     {
         return new TodayEntry
