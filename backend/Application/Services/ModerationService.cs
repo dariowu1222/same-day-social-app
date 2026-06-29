@@ -18,17 +18,13 @@ public sealed class ModerationService
             return Blocked();
         }
 
-        if (ContainsAny(text, "地址", "身分證", "車牌", "肉搜", "加密貨幣", "借錢", "投資群"))
+        // 詞庫來自共用單一來源 shared/lexicon/safety-lexicon.json（改詞請改該檔並重新生成）。
+        if (ContainsAny(text, SafetyLexicon.BlockPii) || ContainsAny(text, SafetyLexicon.BlockViolence))
         {
             return Blocked();
         }
 
-        if (ContainsAny(text, "殺了", "打死", "去死", "自殺教學", "割腕", "性騷擾"))
-        {
-            return Blocked();
-        }
-
-        if (ContainsAny(text, "恨死", "爛公司", "垃圾", "氣死", "崩潰"))
+        if (ContainsAny(text, SafetyLexicon.WarnEmotion))
         {
             return new ModerationResult(false, "這篇看起來情緒比較強，建議避免出現可辨識人物或公司資訊。", null, null);
         }
