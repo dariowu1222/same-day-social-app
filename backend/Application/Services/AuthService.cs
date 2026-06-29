@@ -227,17 +227,24 @@ public sealed class AuthService
     }
 
     // Google 登入：用 Google 已驗證的 email 找帳號，沒有就建一個（無密碼，不能用密碼登入）。
-    public async Task<AuthServiceResult<AuthUserResponse>> GoogleLoginAsync(GoogleLoginCommand command, CancellationToken cancellationToken)
+    public Task<AuthServiceResult<AuthUserResponse>> GoogleLoginAsync(GoogleLoginCommand command, CancellationToken cancellationToken)
+        => SocialLoginAsync(command.Email, command.Name, cancellationToken);
+
+    public Task<AuthServiceResult<AuthUserResponse>> FacebookLoginAsync(FacebookLoginCommand command, CancellationToken cancellationToken)
+        => SocialLoginAsync(command.Email, command.Name, cancellationToken);
+
+    // Google / Facebook 共用：以 email 為主鍵建立或登入帳號（provider 無關）。
+    private async Task<AuthServiceResult<AuthUserResponse>> SocialLoginAsync(string emailRaw, string name, CancellationToken cancellationToken)
     {
         if (db == null)
         {
             return AuthServiceResult<AuthUserResponse>.Fail("DATABASE_NOT_CONFIGURED", "目前尚未設定資料庫連線，無法登入。");
         }
 
-        var email = NormalizeEmail(command.Email);
+        var email = NormalizeEmail(emailRaw);
         if (!IsValidEmail(email))
         {
-            return AuthServiceResult<AuthUserResponse>.Fail("INVALID_GOOGLE_ACCOUNT", "無法取得有效的 Google 帳號 Email。");
+            return AuthServiceResult<AuthUserResponse>.Fail("INVALID_SOCIAL_ACCOUNT", "無法取得有效的社群帳號 Email。");
         }
 
         var now = DateTimeOffset.UtcNow;
@@ -274,8 +281,8 @@ public sealed class AuthService
             }
         }
 
-        // 首次用 Google 登入 → 建立新帳號（密碼設成不可用的隨機 hash）
-        var nickname = string.IsNullOrWhiteSpace(command.Name) ? "同頻使用者" : command.Name.Trim();
+        // 首次用社群登入 → 建立新帳號（密碼設成不可用的隨機 hash）
+        var nickname = string.IsNullOrWhiteSpace(name) ? "同頻使用者" : name.Trim();
         if (nickname.Length > 20)
         {
             nickname = nickname[..20];
@@ -675,6 +682,8 @@ public sealed record RegisterCommand(
 public sealed record LoginCommand(string Email, string Password);
 
 public sealed record GoogleLoginCommand(string Email, string Name);
+
+public sealed record FacebookLoginCommand(string Email, string Name);
 
 public sealed record ConfirmRegistrationCommand(string Email, string Code);
 

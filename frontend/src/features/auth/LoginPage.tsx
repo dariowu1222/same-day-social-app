@@ -6,6 +6,7 @@ import {
   confirmPasswordReset,
   demoLogin,
   googleLogin,
+  facebookLogin,
   loginAccount,
   registerAccount,
   requestPasswordReset,
@@ -52,12 +53,18 @@ function FacebookIcon() {
   )
 }
 
-// Google Web Client ID（在 Google Cloud Console 建立 OAuth Web client 後填入 .env：VITE_GOOGLE_WEB_CLIENT_ID）
+// Google Web Client ID（Google Cloud Console 建 OAuth Web client）填入 .env：VITE_GOOGLE_WEB_CLIENT_ID
 const GOOGLE_WEB_CLIENT_ID = import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID as string | undefined
+// Facebook App ID / Client Token（Meta for Developers 建立 App）填入 .env：VITE_FACEBOOK_APP_ID / VITE_FACEBOOK_CLIENT_TOKEN
+const FACEBOOK_APP_ID = import.meta.env.VITE_FACEBOOK_APP_ID as string | undefined
+const FACEBOOK_CLIENT_TOKEN = import.meta.env.VITE_FACEBOOK_CLIENT_TOKEN as string | undefined
 let socialInitialized = false
-async function ensureGoogleInit() {
+async function ensureSocialInit() {
   if (socialInitialized) return
-  await SocialLogin.initialize({ google: { webClientId: GOOGLE_WEB_CLIENT_ID! } })
+  const config: { google?: { webClientId: string }; facebook?: { appId: string; clientToken: string } } = {}
+  if (GOOGLE_WEB_CLIENT_ID) config.google = { webClientId: GOOGLE_WEB_CLIENT_ID }
+  if (FACEBOOK_APP_ID) config.facebook = { appId: FACEBOOK_APP_ID, clientToken: FACEBOOK_CLIENT_TOKEN ?? '' }
+  await SocialLogin.initialize(config)
   socialInitialized = true
 }
 
@@ -154,11 +161,24 @@ export default function LoginPage({ onAuthenticated }: Props) {
     })
   }
 
-  // Facebook 尚未實作；Google 走原生喚起 → 取得 idToken → 後端驗證後簽發 JWT。
+  // 社群登入：原生喚起 → 取得憑證（Google idToken / Facebook accessToken）→ 後端驗證後簽發 JWT。
   function handleSocialLogin(provider: 'google' | 'facebook') {
     if (provider === 'facebook') {
-      setAuthError('')
-      setAuthMessage('Facebook 登入即將推出，目前請先用 Google 或 Email 登入。')
+      if (!FACEBOOK_APP_ID) {
+        setAuthMessage('')
+        setAuthError('Facebook 登入尚未設定（缺少 App ID），請先用 Google 或 Email 登入。')
+        return
+      }
+      void runAuthAction(async () => {
+        await ensureSocialInit()
+        const res = await SocialLogin.login({ provider: 'facebook', options: { permissions: ['email', 'public_profile'] } })
+        const accessToken = (res?.result as { accessToken?: { token?: string } } | undefined)?.accessToken?.token
+        if (!accessToken) {
+          throw new Error('沒有取得 Facebook 登入憑證，請再試一次。')
+        }
+        const user = await facebookLogin(accessToken, rememberMe)
+        onAuthenticated(user, rememberMe)
+      })
       return
     }
 
@@ -169,7 +189,7 @@ export default function LoginPage({ onAuthenticated }: Props) {
     }
 
     void runAuthAction(async () => {
-      await ensureGoogleInit()
+      await ensureSocialInit()
       // 不傳 scopes：基本登入已含 email/profile，傳自訂 scopes 需改 MainActivity（外掛限制）
       const res = await SocialLogin.login({ provider: 'google', options: {} })
       const idToken = (res?.result as { idToken?: string } | undefined)?.idToken

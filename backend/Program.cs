@@ -77,6 +77,7 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddSingleton<JsonStorageService>();
 builder.Services.AddSingleton<SameDaySocialApp.Application.Services.GoogleAuthService>();
+builder.Services.AddSingleton<SameDaySocialApp.Application.Services.FacebookAuthService>();
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.AuthService>();
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.TodayAnalyzerService>();
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.TodayEntryService>();

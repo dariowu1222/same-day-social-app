@@ -77,6 +77,29 @@ public sealed class AuthController(AuthService authService, JwtService jwtServic
         return ApiResponse<AuthUserResponse>.Ok(result.Data with { Token = token });
     }
 
+    [HttpPost("facebook")]
+    public async Task<ActionResult<ApiResponse<AuthUserResponse>>> FacebookLogin(
+        [FromBody] FacebookLoginHttpRequest request,
+        [FromServices] FacebookAuthService facebookAuth,
+        CancellationToken cancellationToken)
+    {
+        if (!facebookAuth.IsConfigured)
+        {
+            return BadRequest(ApiResponse<AuthUserResponse>.Fail("FACEBOOK_NOT_CONFIGURED", "尚未設定 Facebook 登入。"));
+        }
+
+        var info = await facebookAuth.VerifyAccessTokenAsync(request.AccessToken, cancellationToken);
+        if (info == null)
+        {
+            return Unauthorized(ApiResponse<AuthUserResponse>.Fail("INVALID_FACEBOOK_TOKEN", "Facebook 登入驗證失敗，請重新登入。"));
+        }
+
+        var result = await authService.FacebookLoginAsync(new FacebookLoginCommand(info.Email, info.Name), cancellationToken);
+        if (!result.Success) return ToActionResult(result);
+        var token = jwtService.IssueToken(result.Data!.UserId, result.Data.Nickname);
+        return ApiResponse<AuthUserResponse>.Ok(result.Data with { Token = token });
+    }
+
     [HttpPost("password-reset/request")]
     public async Task<ActionResult<ApiResponse<PasswordResetRequestResponse>>> RequestPasswordReset(
         [FromBody] PasswordResetRequest request,
@@ -120,6 +143,7 @@ public sealed record RegisterRequest(string Nickname, string Email, string Passw
 public sealed record RegistrationConfirmRequest(string Email, string Code);
 public sealed record LoginRequest(string Email, string Password);
 public sealed record GoogleLoginHttpRequest(string IdToken);
+public sealed record FacebookLoginHttpRequest(string AccessToken);
 public sealed record PasswordResetRequest(string Email);
 public sealed record PasswordResetVerifyRequest(string Email, string Code);
 public sealed record PasswordResetConfirmRequest(string Email, string Code, string NewPassword, string ConfirmPassword);
