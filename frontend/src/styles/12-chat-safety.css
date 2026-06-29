@@ -1,0 +1,102 @@
+/* 聊天安全：頂部橫幅 + 安全 modal / 風險提示 */
+.cr-safety-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: color-mix(in srgb, var(--theme-btn, #5a9e6a) 12%, var(--theme-card-bg, #fff));
+  border-bottom: 1px solid var(--theme-divider, #e8e0d4);
+  font-size: 12.5px;
+  color: var(--theme-text, #4a3f35);
+}
+.cr-safety-banner-ic { flex: 0 0 auto; color: var(--theme-btn, #5a9e6a); }
+.cr-safety-banner-text { flex: 1; line-height: 1.4; }
+.cr-safety-banner-close {
+  flex: 0 0 auto;
+  border: none;
+  background: transparent;
+  color: var(--theme-btn, #4a7c59);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.cr-safety-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.4);
+}
+.cr-safety-modal {
+  width: min(92vw, 360px);
+  background: var(--theme-card-bg, #fff);
+  border: 1px solid var(--theme-card-border, #e8e0d4);
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
+}
+.cr-safety-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--theme-title, #4a7c59);
+  margin-bottom: 12px;
+}
+.cr-safety-head.warn { color: #d98a3d; }
+
+.cr-safety-list {
+  margin: 0 0 14px;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.cr-safety-list li { font-size: 13.5px; line-height: 1.5; color: var(--theme-text, #4a3f35); }
+
+.cr-safety-desc {
+  margin: 0 0 14px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--theme-text, #4a3f35);
+}
+.cr-safety-desc strong { color: #d98a3d; }
+
+.cr-safety-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: var(--theme-muted, #8a7f72);
+  cursor: pointer;
+}
+.cr-safety-check input { width: 16px; height: 16px; accent-color: var(--theme-btn, #5a9e6a); }
+
+.cr-safety-actions { display: flex; gap: 10px; }
+.cr-safety-primary {
+  flex: 1;
+  padding: 11px;
+  border: none;
+  border-radius: 12px;
+  background: var(--theme-btn, #5a9e6a);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.cr-safety-secondary {
+  flex: 1;
+  padding: 11px;
+  border: 1px solid var(--theme-card-border, #e8e0d4);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--theme-text, #4a3f35);
+  font-size: 14px;
+  cursor: pointer;
+}

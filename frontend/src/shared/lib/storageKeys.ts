@@ -9,6 +9,20 @@ export function onboardingKey(userId: string) {
   return `same-day-onboarding-${userId}`
 }
 
+// 安全提示「不再顯示」旗標（全域，一律 localStorage 持久）。
+export const SAFETY_KEYS = {
+  chatNotice: 'same-day-chat-safety-dismissed',
+  meetup: 'same-day-meetup-safety-dismissed',
+} as const
+
+export function safetyDismissed(key: string): boolean {
+  return localStorage.getItem(key) === '1'
+}
+
+export function dismissSafety(key: string) {
+  localStorage.setItem(key, '1')
+}
+
 // 「記住我」開關：remember 時寫 localStorage（長期），否則寫 sessionStorage（關閉分頁即清）。
 // 同時清掉另一邊，避免兩處殘留不一致。
 export function rememberSet(key: string, value: string, remember: boolean) {

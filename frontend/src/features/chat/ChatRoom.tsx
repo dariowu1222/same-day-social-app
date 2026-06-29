@@ -4,13 +4,15 @@ import { Capacitor } from '@capacitor/core'
 import {
   Image as ImageIcon, Mic, ArrowUp, MoreHorizontal, X, Search,
   User, Flag, Pencil, Pin, BellOff, BellRing, LogOut, Ban,
-  Reply, Copy, RotateCcw,
+  Reply, Copy, RotateCcw, ShieldCheck, AlertTriangle,
 } from 'lucide-react'
 import type { ChatMessage, ChatRoom as ChatRoomType, ChatMemberSetting } from './types'
 import type { QuoteInfo } from './api'
 import type { UserProfile } from '../profile/types'
 import { getAge, getZodiac, ZODIAC_ICON, testAvatarPhoto } from '../../shared/lib/userDisplay'
 import { uploadMedia } from '../../shared/api/media'
+import { SAFETY_KEYS, safetyDismissed, dismissSafety } from '../../shared/lib/storageKeys'
+import { detectRisks, detectMeetupIntent, detectAbuse, MEETUP_SAFETY_TIPS, type RiskCategory } from './safety'
 import Avatar from '../../shared/ui/Avatar'
 
 type Props = {
@@ -66,6 +68,18 @@ export default function ChatRoom({
   const [action, setAction] = useState<{ msg: ChatMessage; isOut: boolean; x: number; y: number } | null>(null)
   // 引用回覆：被引用的訊息
   const [quote, setQuote] = useState<ChatMessage | null>(null)
+  // 安全：頂部提示橫幅（全域「不再顯示」）
+  const [safetyBannerOpen, setSafetyBannerOpen] = useState(() => !safetyDismissed(SAFETY_KEYS.chatNotice))
+  // 安全：約見面提醒 modal（reference=選單點開；pendingSend=送出前自動跳，確認後才送）
+  const [meetupModal, setMeetupModal] = useState<{ pendingSend?: () => void } | null>(null)
+  const [meetupDontRemind, setMeetupDontRemind] = useState(false)
+  const meetupShownThisSession = useRef(false)
+  // 安全：送出前風險提示（Review Before Send，不阻擋）
+  const [riskDialog, setRiskDialog] = useState<{ categories: RiskCategory[]; onProceed: () => void } | null>(null)
+  const [riskMuted, setRiskMuted] = useState(false)
+  // 安全：人身攻擊措辭提醒（送出前，不阻擋）
+  const [wordingDialog, setWordingDialog] = useState<{ onProceed: () => void } | null>(null)
+  const [wordingMuted, setWordingMuted] = useState(false)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
@@ -98,7 +112,7 @@ export default function ChatRoom({
   function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
     if (event.key === 'Enter' && !event.nativeEvent.isComposing && draft.trim()) {
       event.preventDefault()
-      handleSend()
+      attemptSend()
     }
   }
 
@@ -167,8 +181,8 @@ export default function ChatRoom({
     setAction(null)
   }
 
-  // 送出文字（含引用條時帶上引用資訊）
-  function handleSend() {
+  // 實際送出（含引用條時帶上引用資訊）
+  function doSend() {
     const text = draft.trim()
     if (!text) return
     const q: QuoteInfo | undefined = quote
@@ -177,6 +191,51 @@ export default function ChatRoom({
     onSendContent?.(text, q)
     onDraftChange('')
     setQuote(null)
+  }
+
+  // 送出前安全攔截：最多跳一個（風險優先、其次約見），都不阻擋、確認後照送。
+  function attemptSend() {
+    const text = draft.trim()
+    if (!text) return
+
+    if (detectAbuse(text) && !wordingMuted) {
+      setWordingDialog({ onProceed: doSend })
+      return
+    }
+
+    const risks = detectRisks(text)
+    if (risks.length > 0 && !riskMuted) {
+      setRiskDialog({ categories: risks, onProceed: doSend })
+      return
+    }
+
+    if (detectMeetupIntent(text) && !safetyDismissed(SAFETY_KEYS.meetup) && !meetupShownThisSession.current) {
+      meetupShownThisSession.current = true
+      setMeetupDontRemind(false)
+      setMeetupModal({ pendingSend: doSend })
+      return
+    }
+
+    doSend()
+  }
+
+  // 約見面安全提醒：選單點開（純參考）
+  function openMeetupSafety() {
+    setMenuOpen(false)
+    setMeetupDontRemind(false)
+    setMeetupModal({})
+  }
+
+  function closeMeetupModal() {
+    if (meetupDontRemind) dismissSafety(SAFETY_KEYS.meetup)
+    const pending = meetupModal?.pendingSend
+    setMeetupModal(null)
+    pending?.()
+  }
+
+  function dismissSafetyBanner() {
+    dismissSafety(SAFETY_KEYS.chatNotice)
+    setSafetyBannerOpen(false)
   }
 
   function quoteName(msg: ChatMessage) {
@@ -260,6 +319,15 @@ export default function ChatRoom({
           <MoreHorizontal size={19} strokeWidth={2} />
         </button>
       </header>
+
+      {/* 安全提示橫幅：進聊天室提醒，可永久關閉 */}
+      {safetyBannerOpen && (
+        <div className="cr-safety-banner">
+          <ShieldCheck size={16} strokeWidth={2} className="cr-safety-banner-ic" />
+          <span className="cr-safety-banner-text">注意安全：不要匯款或透露金融資訊，個資與聯絡方式等信任後再分享。</span>
+          <button className="cr-safety-banner-close" type="button" onClick={dismissSafetyBanner}>我知道了，不再顯示</button>
+        </div>
+      )}
 
       {/* 站內搜尋對話內容 */}
       {chatSearch !== null && (
@@ -355,7 +423,7 @@ export default function ChatRoom({
           onKeyDown={handleKeyDown}
           placeholder="慢慢說，不急。"
         />
-        <button className="cr-send" type="button" onClick={handleSend} disabled={!draft.trim()} aria-label="送出">
+        <button className="cr-send" type="button" onClick={attemptSend} disabled={!draft.trim()} aria-label="送出">
           <ArrowUp size={18} strokeWidth={2.4} />
         </button>
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={handlePickImage} />
@@ -375,6 +443,9 @@ export default function ChatRoom({
         </button>
         <button className="cr-menu-item" type="button" onClick={openChatSearch}>
           <Search size={19} strokeWidth={1.8} className="cr-menu-ic" /><span>搜尋對話內容</span>
+        </button>
+        <button className="cr-menu-item" type="button" onClick={openMeetupSafety}>
+          <ShieldCheck size={19} strokeWidth={1.8} className="cr-menu-ic" /><span>約見面安全提醒</span>
         </button>
         <button className="cr-menu-item" type="button" onClick={setNote}>
           <Pencil size={19} strokeWidth={1.8} className="cr-menu-ic" /><span>設定備註名稱</span>
@@ -416,6 +487,71 @@ export default function ChatRoom({
       )}
 
       {toast && <div className="cr-toast">{toast}</div>}
+
+      {/* 約見面安全提醒 modal */}
+      {meetupModal && (
+        <div className="cr-safety-mask" onClick={() => { if (!meetupModal.pendingSend) closeMeetupModal() }}>
+          <div className="cr-safety-modal" role="dialog" aria-label="約見面安全提醒" onClick={(e) => e.stopPropagation()}>
+            <div className="cr-safety-head">
+              <ShieldCheck size={20} strokeWidth={2} /><span>約見面安全提醒</span>
+            </div>
+            <ul className="cr-safety-list">
+              {MEETUP_SAFETY_TIPS.map((t) => <li key={t}>{t}</li>)}
+            </ul>
+            <label className="cr-safety-check">
+              <input type="checkbox" checked={meetupDontRemind} onChange={(e) => setMeetupDontRemind(e.target.checked)} />
+              <span>我了解，不要再自動提醒</span>
+            </label>
+            <button className="cr-safety-primary" type="button" onClick={closeMeetupModal}>
+              {meetupModal.pendingSend ? '了解，傳送訊息' : '我知道了'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 送出前風險提示（不阻擋） */}
+      {riskDialog && (
+        <div className="cr-safety-mask" onClick={() => setRiskDialog(null)}>
+          <div className="cr-safety-modal" role="alertdialog" aria-label="傳送前確認" onClick={(e) => e.stopPropagation()}>
+            <div className="cr-safety-head warn">
+              <AlertTriangle size={20} strokeWidth={2} /><span>傳送前確認</span>
+            </div>
+            <p className="cr-safety-desc">
+              這則訊息可能包含<strong>{riskDialog.categories.join('、')}</strong>。為了你的安全，請先確認對方值得信任——你仍然可以選擇傳送。
+            </p>
+            <label className="cr-safety-check">
+              <input type="checkbox" onChange={(e) => setRiskMuted(e.target.checked)} />
+              <span>這次對話不再提醒</span>
+            </label>
+            <div className="cr-safety-actions">
+              <button className="cr-safety-secondary" type="button" onClick={() => setRiskDialog(null)}>再想想</button>
+              <button className="cr-safety-primary" type="button" onClick={() => { const proceed = riskDialog.onProceed; setRiskDialog(null); proceed() }}>仍要傳送</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 送出前措辭提醒（人身攻擊，不阻擋） */}
+      {wordingDialog && (
+        <div className="cr-safety-mask" onClick={() => setWordingDialog(null)}>
+          <div className="cr-safety-modal" role="alertdialog" aria-label="措辭提醒" onClick={(e) => e.stopPropagation()}>
+            <div className="cr-safety-head warn">
+              <AlertTriangle size={20} strokeWidth={2} /><span>換個說法？</span>
+            </div>
+            <p className="cr-safety-desc">
+              這則訊息可能帶有攻擊或辱罵字眼。好好說話更容易被理解——你仍然可以照原樣傳送。
+            </p>
+            <label className="cr-safety-check">
+              <input type="checkbox" onChange={(e) => setWordingMuted(e.target.checked)} />
+              <span>這次對話不再提醒</span>
+            </label>
+            <div className="cr-safety-actions">
+              <button className="cr-safety-secondary" type="button" onClick={() => setWordingDialog(null)}>再想想</button>
+              <button className="cr-safety-primary" type="button" onClick={() => { const proceed = wordingDialog.onProceed; setWordingDialog(null); proceed() }}>仍要傳送</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 長按訊息操作列 */}
       {action && (
