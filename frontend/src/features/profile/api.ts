@@ -26,6 +26,7 @@ export async function updateProfile(userId: string, payload: {
   ageMin?: number | null
   ageMax?: number | null
   distanceKm?: number | null
+  preferredArea?: string | null
   languages?: string[]
   activeTime?: string
   voiceFirst?: boolean

@@ -13,27 +13,6 @@ type SoulNoteGroup = SoulNote & {
 
 const INTRO_KEY = 'today-intro-seen-session'
 
-function playKeyClick() {
-  try {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
-    const buf = ctx.createBuffer(1, ctx.sampleRate * 0.04, ctx.sampleRate)
-    const data = buf.getChannelData(0)
-    for (let i = 0; i < data.length; i++) {
-      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / data.length, 6)
-    }
-    const src = ctx.createBufferSource()
-    src.buffer = buf
-    const gain = ctx.createGain()
-    gain.gain.setValueAtTime(0.18, ctx.currentTime)
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04)
-    src.connect(gain)
-    gain.connect(ctx.destination)
-    src.start()
-  } catch {
-    // 靜默失敗
-  }
-}
-
 const soulNotesByEntry: Record<string, SoulNoteGroup[]> = {
   tired: [
     {
@@ -116,7 +95,6 @@ export default function TodayPage({ onGoToMatches }: Props) {
     if (introPhase !== 'center') return
     if (typedCount < FULL_TEXT.length) {
       const t = setTimeout(() => {
-        playKeyClick()
         setTypedCount((n) => n + 1)
       }, 100)
       return () => clearTimeout(t)

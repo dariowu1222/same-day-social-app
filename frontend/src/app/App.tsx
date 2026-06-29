@@ -6,6 +6,7 @@ import ThemeTransitionOverlay, { GlobalNightEffects } from '../shared/ui/ThemeTr
 import { useTheme } from '../shared/theme/ThemeContext'
 import { onboardingKey } from '../shared/lib/storageKeys'
 import { useAuth } from '../features/auth/AuthContext'
+import { ensureSocialInit } from '../features/auth/googleAuth'
 import type { DemoUser } from '../features/auth/types'
 import LoginPage from '../features/auth/LoginPage'
 import OnboardingOverlay from '../features/profile/OnboardingOverlay'
@@ -49,6 +50,11 @@ function App() {
   useEffect(() => {
     if (user) setOnboardingDone(!!localStorage.getItem(onboardingKey(user.userId)))
   }, [user])
+
+  // 啟動即初始化社群登入：網頁版 Google popup 回到本站時，外掛建構子會自動把結果回傳給主視窗。
+  useEffect(() => {
+    void ensureSocialInit()
+  }, [])
 
   const pathToPage: Record<string, PageKey> = {
     '/': 'today', '/rant': 'rant', '/tasks': 'tasks', '/chat': 'chat', '/profile': 'profile',

@@ -32,13 +32,13 @@ function resolveMode(pref: ThemePreference, systemDark: boolean): ThemeMode {
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [preference, setPreferenceState] = useState<ThemePreference>(
-    () => (localStorage.getItem(PREF_KEY) as ThemePreference | null) ?? 'auto'
+    () => (localStorage.getItem(PREF_KEY) as ThemePreference | null) ?? 'day'
   )
   const [systemDark, setSystemDark] = useState(
     () => window.matchMedia('(prefers-color-scheme: dark)').matches
   )
   const [mode, setMode] = useState<ThemeMode>(
-    () => resolveMode((localStorage.getItem(PREF_KEY) as ThemePreference | null) ?? 'auto',
+    () => resolveMode((localStorage.getItem(PREF_KEY) as ThemePreference | null) ?? 'day',
       window.matchMedia('(prefers-color-scheme: dark)').matches)
   )
   const [isAnimating, setIsAnimating] = useState(false)

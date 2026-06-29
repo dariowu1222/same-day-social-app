@@ -26,6 +26,7 @@ public sealed class UserRecord
     public int? AgeMin { get; set; }
     public int? AgeMax { get; set; }
     public int? DistanceKm { get; set; }
+    public string? PreferredArea { get; set; }
     public string[] Languages { get; set; } = [];
     public string? ActiveTime { get; set; }
     public bool VoiceFirst { get; set; }

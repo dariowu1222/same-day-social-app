@@ -30,6 +30,7 @@ public sealed class User
     public int? AgeMin { get; set; }
     public int? AgeMax { get; set; }
     public int? DistanceKm { get; set; }
+    public string? PreferredArea { get; set; }     // 偏好縣市（與 DistanceKm 二擇一：依距離或依縣市）
     public List<string> Languages { get; set; } = [];
     public string? ActiveTime { get; set; }        // 活動時段
     public bool VoiceFirst { get; set; }           // 可否語音先聊

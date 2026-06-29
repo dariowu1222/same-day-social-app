@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Mail } from 'lucide-react'
 import { SocialLogin } from '@capgo/capacitor-social-login'
+import { ensureSocialInit, GOOGLE_WEB_CLIENT_ID, FACEBOOK_APP_ID } from './googleAuth'
 import {
   confirmRegistration,
   confirmPasswordReset,
@@ -51,21 +52,6 @@ function FacebookIcon() {
       <path fill="#fff" d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07c0 6.02 4.39 11.01 10.13 11.93v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.24 2.68.24v2.97h-1.51c-1.49 0-1.95.93-1.95 1.88v2.26h3.32l-.53 3.49h-2.79V24C19.61 23.08 24 18.09 24 12.07z" />
     </svg>
   )
-}
-
-// Google Web Client ID（Google Cloud Console 建 OAuth Web client）填入 .env：VITE_GOOGLE_WEB_CLIENT_ID
-const GOOGLE_WEB_CLIENT_ID = import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID as string | undefined
-// Facebook App ID / Client Token（Meta for Developers 建立 App）填入 .env：VITE_FACEBOOK_APP_ID / VITE_FACEBOOK_CLIENT_TOKEN
-const FACEBOOK_APP_ID = import.meta.env.VITE_FACEBOOK_APP_ID as string | undefined
-const FACEBOOK_CLIENT_TOKEN = import.meta.env.VITE_FACEBOOK_CLIENT_TOKEN as string | undefined
-let socialInitialized = false
-async function ensureSocialInit() {
-  if (socialInitialized) return
-  const config: { google?: { webClientId: string }; facebook?: { appId: string; clientToken: string } } = {}
-  if (GOOGLE_WEB_CLIENT_ID) config.google = { webClientId: GOOGLE_WEB_CLIENT_ID }
-  if (FACEBOOK_APP_ID) config.facebook = { appId: FACEBOOK_APP_ID, clientToken: FACEBOOK_CLIENT_TOKEN ?? '' }
-  await SocialLogin.initialize(config)
-  socialInitialized = true
 }
 
 function isAdultBirthYear(birthYear: string) {

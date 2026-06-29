@@ -302,7 +302,7 @@ function buildRoomSummary(room: ChatRoomType, messages: ChatMessage[], profiles:
     otherUserId,
     // 正式環境用帳號 photoDataUrls[0]；測試先給寫死照片，失效時 Avatar 退回動物頭像
     avatarPhoto: profile?.photoDataUrls?.[0] ?? testAvatarPhoto(otherUserId),
-    preview: formatMessagePreview(lastMessage),
+    preview: formatMessagePreview(lastMessage, currentUserId, title),
     lastAt,
     timeLabel: formatRelativeTime(lastAt),
     unreadCount: 0,
@@ -323,12 +323,20 @@ function buildRoomTitle(room: ChatRoomType, profile: UserProfile | undefined, cu
   return '同頻對話'
 }
 
-function formatMessagePreview(message?: ChatMessage) {
+function formatMessagePreview(message: ChatMessage | undefined, currentUserId: string, otherName: string) {
   if (!message) return '還沒開始聊天'
   const content = message.content.trim()
-  if (content === '[image]') return '[圖片]'
-  if (content === '[sticker]') return '[貼圖]'
+  const who = message.senderId === currentUserId ? '你' : otherName
+  if (content === '[sticker]') return `${who}傳了一張貼圖`
+  // 圖片訊息內容是 data URL 或圖片網址，預覽不顯示原始字串，改成「XX傳了一張圖片」
+  if (content === '[image]' || isImagePreview(content)) {
+    return `${who}傳了一張圖片`
+  }
   return content || '還沒開始聊天'
+}
+
+function isImagePreview(s: string) {
+  return /^data:image\//.test(s) || (/^https?:\/\//.test(s) && /\.(jpe?g|png|webp|gif)(\?|$)/i.test(s))
 }
 
 function isToday(value: string) {

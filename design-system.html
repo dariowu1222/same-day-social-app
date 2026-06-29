@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>同頻Today · 設計系統總表</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    /* ── 中性底色（帶暖色溫，非純灰）── */
+    --bg:          #f3eee4;
+    --surface:     #faf7f2;
+    --card:        #ffffff;
+    --card-border: #e8e0d4;
+    --divider:     #ece5d8;
+
+    /* ── 主色：森林綠（理性 / 平靜 / 同頻）── */
+    --green-900:   #2f4636;
+    --green-700:   #4a7c59;
+    --green-500:   #5a9e6a;
+    --green-300:   #7aaa88;
+    --green-soft:  #eef7f4;
+
+    /* ── 強調色：陶土橘（情緒 / 行動 / 溫度）── */
+    --coral-900:   #7a3a20;
+    --coral-600:   #d4654a;
+    --coral-500:   #f0856a;
+    --coral-soft:  #fdf0e8;
+
+    /* ── 文字 ── */
+    --text:        #4a3f35;
+    --text-title:  #2f4636;
+    --muted:       #b0a090;
+
+    /* ── 標籤 ── */
+    --tag-bg:      #f0ebe3;
+
+    /* ── 陰影（暖調、柔，非生硬黑）── */
+    --shadow-sm:   0 1px 3px rgba(100,55,30,0.06);
+    --shadow-md:   0 8px 28px rgba(100,55,30,0.08);
+
+    --radius-sm: 12px;
+    --radius-md: 16px;
+    --radius-lg: 20px;
+    --radius-xl: 24px;
+    --radius-pill: 999px;
+
+    --font-title: "Noto Serif TC", serif;
+    --font-body:  "Noto Sans TC", system-ui, sans-serif;
+  }
+
+  [data-theme="dark"] {
+    --bg:          #050208;
+    --surface:     #0c1409;
+    --card:        rgba(20,35,18,0.7);
+    --card-border: rgba(100,200,80,0.14);
+    --divider:     rgba(80,160,60,0.15);
+
+    --green-900:   rgba(200,245,180,0.95);
+    --green-700:   rgba(180,235,150,0.85);
+    --green-500:   rgba(120,210,130,0.7);
+    --green-300:   rgba(150,210,130,0.5);
+    --green-soft:  rgba(60,120,40,0.22);
+
+    --coral-900:   #f3c4ad;
+    --coral-600:   #e8956f;
+    --coral-500:   #f0856a;
+    --coral-soft:  rgba(180,90,50,0.18);
+
+    --text:        rgba(225,240,210,0.88);
+    --text-title:  rgba(210,245,185,0.95);
+    --muted:       rgba(150,200,130,0.5);
+
+    --tag-bg:      rgba(60,120,40,0.28);
+    --shadow-sm:   0 1px 3px rgba(0,0,0,0.4);
+    --shadow-md:   0 8px 28px rgba(0,0,0,0.5);
+  }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+    transition: background 0.4s ease, color 0.4s ease;
+    padding: 0 0 80px;
+  }
+
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 24px; }
+
+  /* ── 頁首 ── */
+  .doc-head {
+    position: sticky; top: 0; z-index: 10;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--divider);
+  }
+  .doc-head-inner {
+    max-width: 880px; margin: 0 auto; padding: 14px 24px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .doc-logo {
+    width: 38px; height: 38px; border-radius: 12px;
+    background: linear-gradient(135deg, var(--green-500), var(--green-700));
+    display: grid; place-items: center; color: #fff; flex-shrink: 0;
+    box-shadow: var(--shadow-sm);
+  }
+  .doc-logo svg { width: 22px; height: 22px; }
+  .doc-head h1 {
+    font-family: var(--font-title); font-weight: 700; font-size: 18px;
+    color: var(--text-title); line-height: 1.2; letter-spacing: 0.02em;
+  }
+  .doc-head p { font-size: 12px; color: var(--muted); }
+  .theme-toggle {
+    margin-left: auto; border: 1px solid var(--card-border);
+    background: var(--card); color: var(--text); cursor: pointer;
+    border-radius: var(--radius-pill); padding: 7px 14px; font-size: 13px;
+    font-family: var(--font-body); display: flex; align-items: center; gap: 6px;
+    box-shadow: var(--shadow-sm); transition: transform 0.15s;
+  }
+  .theme-toggle:active { transform: scale(0.94); }
+  .theme-toggle svg { width: 16px; height: 16px; }
+
+  /* ── 區塊 ── */
+  section { padding: 48px 0 8px; }
+  .sec-label {
+    font-size: 12px; font-weight: 700; letter-spacing: 0.14em;
+    color: var(--green-500); text-transform: uppercase; margin-bottom: 6px;
+  }
+  .sec-title {
+    font-family: var(--font-title); font-weight: 600; font-size: 26px;
+    color: var(--text-title); letter-spacing: 0.01em; margin-bottom: 8px;
+  }
+  .sec-desc { font-size: 14.5px; color: var(--muted); max-width: 560px; margin-bottom: 24px; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--card-border);
+    border-radius: var(--radius-lg); padding: 22px;
+    box-shadow: var(--shadow-md);
+  }
+
+  /* ── 色票 ── */
+  .swatch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap: 14px; }
+  .swatch { border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--card-border); background: var(--card); }
+  .swatch-color { height: 64px; }
+  .swatch-meta { padding: 9px 11px; }
+  .swatch-name { font-size: 13px; font-weight: 700; color: var(--text); }
+  .swatch-token { font-size: 11px; color: var(--muted); font-family: ui-monospace, monospace; }
+  .swatch-hex { font-size: 11px; color: var(--green-500); font-family: ui-monospace, monospace; margin-top: 1px; }
+
+  .color-group-title { font-size: 13px; font-weight: 700; color: var(--text-title); margin: 22px 0 12px; display: flex; align-items: center; gap: 7px; }
+  .color-group-title:first-child { margin-top: 0; }
+  .color-dot { width: 11px; height: 11px; border-radius: 50%; }
+
+  /* ── 字體階層 ── */
+  .type-row { display: flex; align-items: baseline; gap: 18px; padding: 14px 0; border-bottom: 1px solid var(--divider); flex-wrap: wrap; }
+  .type-row:last-child { border-bottom: none; }
+  .type-spec { font-size: 11px; color: var(--muted); font-family: ui-monospace, monospace; min-width: 150px; }
+  .t-display { font-family: var(--font-title); font-weight: 700; font-size: 30px; color: var(--text-title); line-height: 1.3; }
+  .t-h1 { font-family: var(--font-title); font-weight: 600; font-size: 24px; color: var(--text-title); }
+  .t-h2 { font-family: var(--font-title); font-weight: 600; font-size: 19px; color: var(--text-title); }
+  .t-body { font-size: 15px; color: var(--text); }
+  .t-cap { font-size: 13px; color: var(--muted); }
+  .t-micro { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; }
+
+  /* ── icon 系統 ── */
+  .icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px,1fr)); gap: 8px; }
+  .icon-cell {
+    display: flex; flex-direction: column; align-items: center; gap: 7px;
+    padding: 16px 8px; border-radius: var(--radius-md);
+    border: 1px solid var(--divider); transition: background 0.15s;
+  }
+  .icon-cell:hover { background: var(--green-soft); }
+  .icon-cell svg { width: 24px; height: 24px; stroke: var(--green-700); }
+  .icon-cell span { font-size: 12px; color: var(--muted); }
+  .icon-note { display: flex; gap: 12px; margin-top: 16px; padding: 14px 16px; background: var(--coral-soft); border-radius: var(--radius-md); }
+  .icon-note svg { width: 20px; height: 20px; stroke: var(--coral-600); flex-shrink: 0; margin-top: 2px; }
+  .icon-note p { font-size: 13.5px; color: var(--text); }
+  .icon-note b { color: var(--coral-900); }
+
+  /* ── 間距 / 圓角 ── */
+  .spec-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 620px){ .spec-2col { grid-template-columns: 1fr; } }
+  .spacing-row { display: flex; align-items: center; gap: 12px; margin-bottom: 9px; }
+  .spacing-bar { height: 14px; background: var(--green-500); border-radius: 4px; }
+  .spacing-label { font-size: 12px; color: var(--muted); font-family: ui-monospace, monospace; min-width: 64px; }
+  .radius-demo { display: flex; gap: 12px; flex-wrap: wrap; }
+  .radius-box { width: 64px; height: 64px; background: var(--green-soft); border: 1px solid var(--green-300); display: grid; place-items: end center; padding-bottom: 5px; font-size: 10px; color: var(--green-700); font-family: ui-monospace, monospace; }
+
+  /* ── 元件範例 ── */
+  .comp-block { margin-bottom: 26px; }
+  .comp-block > h4 { font-size: 13px; font-weight: 700; color: var(--text-title); margin-bottom: 12px; letter-spacing: 0.02em; }
+  .comp-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+
+  .btn { border: none; cursor: pointer; font-family: var(--font-body); font-weight: 700; border-radius: var(--radius-pill); padding: 13px 26px; font-size: 15px; transition: transform 0.15s, opacity 0.15s; }
+  .btn:active { transform: scale(0.97); }
+  .btn-coral { background: linear-gradient(135deg, var(--coral-500), var(--coral-600)); color: #fff; box-shadow: 0 6px 20px rgba(200,90,60,0.26); }
+  .btn-green { background: var(--green-500); color: #fff; box-shadow: var(--shadow-sm); }
+  .btn-soft  { background: var(--green-soft); color: var(--green-700); }
+  .btn-ghost { background: transparent; color: var(--muted); font-weight: 500; }
+
+  .tag { border-radius: var(--radius-pill); padding: 6px 14px; font-size: 13px; font-weight: 600; }
+  .tag-green { background: var(--green-soft); color: var(--green-700); }
+  .tag-coral { background: var(--coral-soft); color: var(--coral-900); }
+  .tag-mood  { background: var(--tag-bg); color: var(--text); }
+
+  .demo-card { background: var(--card); border: 1px solid var(--card-border); border-radius: var(--radius-lg); padding: 16px; box-shadow: var(--shadow-md); max-width: 320px; }
+  .demo-card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .demo-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg,#ffd9a0,#ffb877); display: grid; place-items: center; font-size: 19px; flex-shrink: 0; }
+  .demo-card-name { font-size: 14px; font-weight: 700; color: var(--text-title); }
+  .demo-card-sub { font-size: 11px; color: var(--muted); }
+  .demo-card-body { font-size: 13.5px; color: var(--text); line-height: 1.7; }
+
+  .demo-input { width: 100%; border: none; border-radius: var(--radius-md); padding: 13px 16px; background: var(--tag-bg); color: var(--text); font-family: var(--font-body); font-size: 14px; outline: none; }
+  .demo-input::placeholder { color: var(--muted); }
+
+  .mood-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 340px; }
+  .mood-btn { border: none; cursor: pointer; text-align: left; border-radius: var(--radius-lg); padding: 14px; display: flex; flex-direction: column; gap: 3px; font-family: var(--font-body); transition: transform 0.15s; }
+  .mood-btn:active { transform: scale(0.96); }
+  .mood-btn .emoji { font-size: 22px; }
+  .mood-btn strong { font-size: 15px; color: #2e4240; }
+  .mood-btn span.s { font-size: 12px; color: #6a6a6a; }
+  .mood-tired { background: #eef4f8; }
+  .mood-wronged { background: #f8eeee; }
+  .mood-talk { background: #faf3e8; }
+  .mood-good { background: #edf5ef; }
+
+  /* ── 動效 ── */
+  .motion-card { display: flex; gap: 12px; align-items: flex-start; padding: 14px 0; border-bottom: 1px solid var(--divider); }
+  .motion-card:last-child { border: none; }
+  .motion-key { font-family: ui-monospace, monospace; font-size: 12px; color: var(--green-500); min-width: 110px; flex-shrink: 0; }
+  .motion-desc { font-size: 13.5px; color: var(--text); }
+
+  /* ── 避免 AI 味檢查表 ── */
+  .check-list { display: grid; gap: 10px; }
+  .check-item { display: flex; gap: 11px; align-items: flex-start; font-size: 14px; color: var(--text); }
+  .check-item svg { width: 19px; height: 19px; flex-shrink: 0; margin-top: 2px; }
+  .check-yes svg { stroke: var(--green-500); }
+  .check-no svg  { stroke: var(--coral-600); }
+
+  footer { text-align: center; margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--divider); font-size: 12px; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<!-- ════════ 頁首 ════════ -->
+<div class="doc-head">
+  <div class="doc-head-inner">
+    <div class="doc-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 0 12 6 6 0 0 1 0 6"/><circle cx="12" cy="9" r="1"/></svg>
+    </div>
+    <div>
+      <h1>同頻Today · 設計系統</h1>
+      <p>溫柔療癒方向 · v0.1 規格總表</p>
+    </div>
+    <button class="theme-toggle" onclick="toggleTheme()">
+      <svg id="tIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <span id="tLabel">夜間預覽</span>
+    </button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ════════ 0 · 定位 ════════ -->
+  <section>
+    <div class="card" style="text-align:center; padding:34px 26px;">
+      <p style="font-family:var(--font-title); font-weight:600; font-size:23px; color:var(--text-title); line-height:1.6;">「慢慢說，不急。」</p>
+      <p style="font-size:14.5px; color:var(--muted); margin-top:10px; max-width:480px; margin-left:auto; margin-right:auto;">
+        同頻Today 不是速配，是陪伴。設計的每個細節都要傳遞<br>
+        <b style="color:var(--coral-600);">放慢、被理解、有溫度</b>，而不是熱鬧、效率、刺激。
+      </p>
+    </div>
+  </section>
+
+  <!-- ════════ 1 · 色彩 ════════ -->
+  <section>
+    <div class="sec-label">01 · Color</div>
+    <h2 class="sec-title">色彩系統</h2>
+    <p class="sec-desc">兩個情感角色：綠＝平靜與同頻，橘＝情緒與行動。中性色全部帶暖色溫（不用純灰），這是避免「AI 模板感」的關鍵。</p>
+
+    <div class="card">
+      <div class="color-group-title"><span class="color-dot" style="background:var(--green-500)"></span>主色 · 森林綠（平靜 / 同頻）</div>
+      <div class="swatch-grid">
+        <div class="swatch"><div class="swatch-color" style="background:#2f4636"></div><div class="swatch-meta"><div class="swatch-name">深綠</div><div class="swatch-token">--green-900</div><div class="swatch-hex">#2f4636</div></div></div>
+        <div class="swatch"><div class="swatch-color" style="background:#4a7c59"></div><div class="swatch-meta"><div class="swatch-name">標題綠</div><div class="swatch-token">--green-700</div><div class="swatch-hex">#4a7c59</div></div></div>
+        <div class="swatch"><div class="swatch-color" style="background:#5a9e6a"></div><div class="swatch-meta"><div class="swatch-name">主綠 / 按鈕</div><div class="swatch-token">--green-500</div><div class="swatch-hex">#5a9e6a</div></div></div>
+        <div class="swatch"><div class="swatch-color" style="background:#eef7f4"></div><div class="swatch-meta"><div class="swatch-name">薄荷底</div><div class="swatch-token">--green-soft</div><div class="swatch-hex">#eef7f4</div></div></div>
+      </div>
+
+      <div class="color-group-title"><span class="color-dot" style="background:var(--coral-500)"></span>強調色 · 陶土橘（情緒 / 行動）</div>
+      <div class="swatch-grid">
+        <div class="swatch"><div class="swatch-color" style="background:#7a3a20"></div><div class="swatch-meta"><div class="swatch-name">深陶土</div><div class="swatch-token">--coral-900</div><div class="swatch-hex">#7a3a20</div></div></div>
+        <div class="swatch"><div class="swatch-color" style="background:#d4654a"></div><div class="swatch-meta"><div class="swatch-name">陶土橘</div><div class="swatch-token">--coral-600</div><div class="swatch-hex">#d4654a</div></div></div>
+        <div class="swatch"><div class="swatch-color" style="background:#f0856a"></div><div class="swatch-meta"><div class="swatch-name">珊瑚橘 / CTA</div><div class="swatch-token">--coral-500</div><div class="swatch-hex">#f0856a</div></div></div>
+        <div class="swatch"><div class="swatch-color" style="background:#fdf0e8"></div><div class="swatch-meta"><div class="swatch-name">暖橘底</div><div class="swatch-token">--coral-soft</div><div class="swatch-hex">#fdf0e8</div></div></div>
+      </div>
+
+      <div class="color-group-title"><span class="color-dot" style="background:#b0a090"></span>中性色 · 帶暖色溫（非純灰）</div>
+      <div class="swatch-grid">
+        <div class="swatch"><div class="swatch-color" style="background:#faf7f2"></div><div class="swatch-meta"><div class="swatch-name">頁面底</div><div class="swatch-token">--surface</div><div class="swatch-hex">#faf7f2</div></div></div>
+        <div class="swatch"><div class="swatch-color" style="background:#ffffff; border-bottom:1px solid #eee"></div><div class="swatch-meta"><div class="swatch-name">卡片底</div><div class="swatch-token">--card</div><div class="swatch-hex">#ffffff</div></div></div>
+        <div class="swatch"><div class="swatch-color" style="background:#e8e0d4"></div><div class="swatch-meta"><div class="swatch-name">邊框</div><div class="swatch-token">--card-border</div><div class="swatch-hex">#e8e0d4</div></div></div>
+        <div class="swatch"><div class="swatch-color" style="background:#4a3f35"></div><div class="swatch-meta"><div class="swatch-name">內文字</div><div class="swatch-token">--text</div><div class="swatch-hex">#4a3f35</div></div></div>
+        <div class="swatch"><div class="swatch-color" style="background:#b0a090"></div><div class="swatch-meta"><div class="swatch-name">輔助字</div><div class="swatch-token">--muted</div><div class="swatch-hex">#b0a090</div></div></div>
+        <div class="swatch"><div class="swatch-color" style="background:#f0ebe3"></div><div class="swatch-meta"><div class="swatch-name">標籤底</div><div class="swatch-token">--tag-bg</div><div class="swatch-hex">#f0ebe3</div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ 2 · 字體 ════════ -->
+  <section>
+    <div class="sec-label">02 · Typography</div>
+    <h2 class="sec-title">字體階層</h2>
+    <p class="sec-desc">標題改用<b>思源宋體（Noto Serif TC）</b>——襯線字立刻拉開與其他 App 的距離，帶來溫度與書信感；內文維持思源黑體，確保易讀。</p>
+
+    <div class="card">
+      <div class="type-row"><div class="type-spec">宋體 700 · 30px<br>Display / 進場標語</div><div class="t-display">今天，想被誰聽見？</div></div>
+      <div class="type-row"><div class="type-spec">宋體 600 · 24px<br>H1 / 頁面標題</div><div class="t-h1">今日的你</div></div>
+      <div class="type-row"><div class="type-spec">宋體 600 · 19px<br>H2 / 區塊標題</div><div class="t-h2">心靈小語</div></div>
+      <div class="type-row"><div class="type-spec">黑體 400 · 15px<br>Body / 內文</div><div class="t-body">白天上班，晚上喜歡一個人散步，聊起來其實有很多話。</div></div>
+      <div class="type-row"><div class="type-spec">黑體 400 · 13px<br>Caption / 輔助</div><div class="t-cap">今日同頻 87% · 配對於 06/13</div></div>
+      <div class="type-row"><div class="type-spec">黑體 500 · 11px · +字距<br>Micro / 標籤</div><div class="t-micro">TODAY · 今日心情</div></div>
+    </div>
+  </section>
+
+  <!-- ════════ 3 · ICON ════════ -->
+  <section>
+    <div class="sec-label">03 · Iconography</div>
+    <h2 class="sec-title">圖示系統</h2>
+    <p class="sec-desc">功能性圖示統一為線性風格：24×24 畫布、2px 線寬、圓角端點。同一套不混填色，確保專業一致。</p>
+
+    <div class="card">
+      <div class="icon-grid">
+        <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></svg><span>今日</span></div>
+        <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/></svg><span>樹洞</span></div>
+        <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span>任務</span></div>
+        <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>聊天</span></div>
+        <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 14 0v1"/></svg><span>個人</span></div>
+        <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 5.6a5.5 5.5 0 0 0-7.8 0L12 6.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 22l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg><span>同頻</span></div>
+        <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>新增</span></div>
+        <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg><span>返回</span></div>
+        <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="8" x2="20" y2="8"/><line x1="4" y1="16" x2="20" y2="16"/><circle cx="9" cy="8" r="2" fill="var(--card)"/><circle cx="15" cy="16" r="2" fill="var(--card)"/></svg><span>設定</span></div>
+        <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg><span>通知</span></div>
+        <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg><span>搜尋</span></div>
+        <div class="icon-cell"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg><span>更多</span></div>
+      </div>
+
+      <div class="icon-note">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        <p><b>Emoji 的分工：</b>功能性圖示（導覽、按鈕、設定）一律用線性 icon；emoji（🦊😌🍱）只保留在「情緒 / 心情 / 頭像」這類有溫度的內容場景。兩者分清楚，就不會顯得廉價。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ 4 · 間距 / 圓角 ════════ -->
+  <section>
+    <div class="sec-label">04 · Spacing & Radius</div>
+    <h2 class="sec-title">間距與圓角</h2>
+    <p class="sec-desc">以 4px 為基本單位；圓角偏大（16–24px）營造柔軟感，是「療癒」氣質的骨架。</p>
+
+    <div class="spec-2col">
+      <div class="card">
+        <h4 style="font-size:13px; font-weight:700; color:var(--text-title); margin-bottom:14px;">間距級距（4px 基準）</h4>
+        <div class="spacing-row"><span class="spacing-label">4 / xs</span><div class="spacing-bar" style="width:4px"></div></div>
+        <div class="spacing-row"><span class="spacing-label">8 / sm</span><div class="spacing-bar" style="width:8px"></div></div>
+        <div class="spacing-row"><span class="spacing-label">12 / md</span><div class="spacing-bar" style="width:12px"></div></div>
+        <div class="spacing-row"><span class="spacing-label">16 / lg</span><div class="spacing-bar" style="width:16px"></div></div>
+        <div class="spacing-row"><span class="spacing-label">24 / xl</span><div class="spacing-bar" style="width:24px"></div></div>
+        <div class="spacing-row"><span class="spacing-label">32 / 2xl</span><div class="spacing-bar" style="width:32px"></div></div>
+      </div>
+      <div class="card">
+        <h4 style="font-size:13px; font-weight:700; color:var(--text-title); margin-bottom:14px;">圓角級距</h4>
+        <div class="radius-demo">
+          <div class="radius-box" style="border-radius:12px">12</div>
+          <div class="radius-box" style="border-radius:16px">16</div>
+          <div class="radius-box" style="border-radius:20px">20</div>
+          <div class="radius-box" style="border-radius:24px">24</div>
+          <div class="radius-box" style="border-radius:999px; width:64px;">pill</div>
+        </div>
+        <p style="font-size:12.5px; color:var(--muted); margin-top:14px; line-height:1.7;">標籤/按鈕用 <b style="color:var(--green-700)">pill</b>；卡片用 <b style="color:var(--green-700)">20</b>；底部彈窗用 <b style="color:var(--green-700)">24</b>。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ 5 · 元件 ════════ -->
+  <section>
+    <div class="sec-label">05 · Components</div>
+    <h2 class="sec-title">元件範例</h2>
+    <p class="sec-desc">以下為實際元件樣式，工程師可直接對照。</p>
+
+    <div class="card">
+      <div class="comp-block">
+        <h4>按鈕</h4>
+        <div class="comp-row">
+          <button class="btn btn-coral">送出今天的心情</button>
+          <button class="btn btn-green">開始同頻</button>
+          <button class="btn btn-soft">跳過</button>
+          <button class="btn btn-ghost">稍後再說</button>
+        </div>
+        <p style="font-size:12.5px; color:var(--muted); margin-top:12px;">橘色漸層＝情緒型主行動（一頁最多一個）；綠色＝一般主行動；淺綠＝次要；幽靈＝無壓力選項。</p>
+      </div>
+
+      <div class="comp-block">
+        <h4>標籤 / 心情籤</h4>
+        <div class="comp-row">
+          <span class="tag tag-mood">😌 想找人靜靜聊</span>
+          <span class="tag tag-green"># 內向</span>
+          <span class="tag tag-green"># 喜歡夜晚</span>
+          <span class="tag tag-coral">今日同頻 87%</span>
+        </div>
+      </div>
+
+      <div class="comp-block">
+        <h4>輸入框</h4>
+        <div style="max-width:340px;">
+          <input class="demo-input" placeholder="慢慢說，不急。">
+        </div>
+      </div>
+
+      <div class="comp-block">
+        <h4>情緒快捷格（今日頁）</h4>
+        <div class="mood-grid">
+          <button class="mood-btn mood-tired"><span class="emoji">😮‍💨</span><strong>有點累</strong><span class="s">想被理解</span></button>
+          <button class="mood-btn mood-wronged"><span class="emoji">😔</span><strong>委屈</strong><span class="s">需要安慰</span></button>
+          <button class="mood-btn mood-talk"><span class="emoji">💬</span><strong>想聊聊</strong><span class="s">隨便說說</span></button>
+          <button class="mood-btn mood-good"><span class="emoji">🌿</span><strong>還不錯</strong><span class="s">分享好事</span></button>
+        </div>
+      </div>
+
+      <div class="comp-block" style="margin-bottom:0;">
+        <h4>對話 / 個人卡片</h4>
+        <div class="demo-card">
+          <div class="demo-card-head">
+            <div class="demo-avatar">🦊</div>
+            <div>
+              <div class="demo-card-name">小狐</div>
+              <div class="demo-card-sub">線上 · 今日同頻 87%</div>
+            </div>
+          </div>
+          <p class="demo-card-body">白天上班，晚上喜歡一個人散步。不太會主動，但聊起來其實有很多話。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ 6 · 動效 ════════ -->
+  <section>
+    <div class="sec-label">06 · Motion</div>
+    <h2 class="sec-title">動效原則</h2>
+    <p class="sec-desc">慢、柔、有呼吸感。一律用緩出曲線，絕不用彈跳/橡皮筋（那是廉價感來源）。</p>
+
+    <div class="card">
+      <div class="motion-card"><span class="motion-key">200–250ms</span><span class="motion-desc">點按回饋（scale 0.96 / 透明度），讓觸控有實感。</span></div>
+      <div class="motion-card"><span class="motion-key">300–400ms</span><span class="motion-desc">展開 / 收合、底部彈窗滑入，曲線 <code style="font-family:ui-monospace,monospace;font-size:12px;color:var(--green-500)">cubic-bezier(.22,1,.36,1)</code>。</span></div>
+      <div class="motion-card"><span class="motion-key">600–900ms</span><span class="motion-desc">進場標語、日夜切換等氛圍轉場，緩慢淡入淡出。</span></div>
+      <div class="motion-card"><span class="motion-key">內容入場</span><span class="motion-desc">輕微上移 + 淡入（translateY 10px → 0），不要從零放大。</span></div>
+    </div>
+  </section>
+
+  <!-- ════════ 7 · 避免 AI 味 ════════ -->
+  <section>
+    <div class="sec-label">07 · Anti-generic</div>
+    <h2 class="sec-title">避免「AI 模板感」自檢表</h2>
+    <p class="sec-desc">每個畫面交付前對照一次。</p>
+
+    <div class="card">
+      <div class="check-list">
+        <div class="check-item check-yes"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span>標題用<b>襯線中文字</b>（思源宋體），不用千篇一律的黑體大標。</span></div>
+        <div class="check-item check-yes"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span>中性色<b>帶暖色溫</b>，不用純黑 #000 / 純灰 #888。</span></div>
+        <div class="check-item check-yes"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span>主色＋強調色<b>各一個</b>就好，分工明確。</span></div>
+        <div class="check-item check-yes"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span>微文案有人味（「慢慢說，不急」），不是「請輸入內容」。</span></div>
+        <div class="check-item check-no"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg><span>不要用 Inter / Roboto 當中文主字體。</span></div>
+        <div class="check-item check-no"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg><span>不要卡片裡再包卡片、每個標題上放一顆大圓 icon。</span></div>
+        <div class="check-item check-no"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg><span>不要功能 icon 與 emoji 混用、線寬不一。</span></div>
+        <div class="check-item check-no"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg><span>不要彈跳/橡皮筋動效。</span></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    同頻Today 設計系統 · 溫柔療癒方向 v0.1 · 確認後即可作為各頁面與工程交付的依據
+  </footer>
+
+</div>
+
+<script>
+  function toggleTheme() {
+    const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    document.documentElement.setAttribute('data-theme', dark ? '' : 'dark');
+    document.getElementById('tLabel').textContent = dark ? '夜間預覽' : '日間預覽';
+    const i = document.getElementById('tIcon');
+    i.innerHTML = dark
+      ? '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>'
+      : '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/>';
+  }
+</script>
+</body>
+</html>

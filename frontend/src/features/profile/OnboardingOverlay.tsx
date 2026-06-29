@@ -59,6 +59,18 @@ const INTEREST_OPTIONS = [
   '貓狗', '手作', '冥想', '追劇', '寫作', '展覽',
 ]
 
+// 年齡範圍雙滑桿的上下限
+const AGE_FLOOR = 18
+const AGE_CEIL = 99
+
+// 距離偏好「依縣市」用的台灣縣市清單
+const AREA_OPTIONS = [
+  '台北市', '新北市', '基隆市', '桃園市', '新竹市', '新竹縣',
+  '苗栗縣', '台中市', '彰化縣', '南投縣', '雲林縣', '嘉義市',
+  '嘉義縣', '台南市', '高雄市', '屏東縣', '宜蘭縣', '花蓮縣',
+  '台東縣', '澎湖縣', '金門縣', '連江縣',
+]
+
 function clampOptionalNumber(value: string, min: number, max: number) {
   if (!value) return null
   const parsed = Number(value)
@@ -85,9 +97,11 @@ export default function OnboardingOverlay({ user, onComplete }: Props) {
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [datingGoal, setDatingGoal] = useState('')
   const [lookingFor, setLookingFor] = useState('')
-  const [ageMin, setAgeMin] = useState('')
-  const [ageMax, setAgeMax] = useState('')
+  const [ageMin, setAgeMin] = useState(AGE_FLOOR)
+  const [ageMax, setAgeMax] = useState(40)
   const [distanceKm, setDistanceKm] = useState('')
+  const [distanceMode, setDistanceMode] = useState<'km' | 'area'>('km')
+  const [preferredArea, setPreferredArea] = useState('')
   const [saving, setSaving] = useState(false)
   const savingRef = useRef(false)
 
@@ -129,12 +143,6 @@ export default function OnboardingOverlay({ user, onComplete }: Props) {
     if (savingRef.current) return
     savingRef.current = true
 
-    let normalizedAgeMin = clampOptionalNumber(ageMin, 18, 99)
-    let normalizedAgeMax = clampOptionalNumber(ageMax, 18, 99)
-    if (normalizedAgeMin != null && normalizedAgeMax != null && normalizedAgeMin > normalizedAgeMax) {
-      ;[normalizedAgeMin, normalizedAgeMax] = [normalizedAgeMax, normalizedAgeMin]
-    }
-
     setSaving(true)
     try {
       await updateProfile(user.userId, {
@@ -144,9 +152,11 @@ export default function OnboardingOverlay({ user, onComplete }: Props) {
         interestTags: selectedTags.length > 0 ? selectedTags : undefined,
         datingGoal: datingGoal || undefined,
         lookingFor: lookingFor || undefined,
-        ageMin: normalizedAgeMin,
-        ageMax: normalizedAgeMax,
-        distanceKm: clampOptionalNumber(distanceKm, 1, 500),
+        ageMin,
+        ageMax,
+        // 依距離或依縣市二擇一：只送目前模式的值
+        distanceKm: distanceMode === 'km' ? clampOptionalNumber(distanceKm, 1, 500) : undefined,
+        preferredArea: distanceMode === 'area' ? (preferredArea.trim() || undefined) : undefined,
       })
     } catch {
       // 儲存失敗不阻擋流程
@@ -202,55 +212,83 @@ export default function OnboardingOverlay({ user, onComplete }: Props) {
             </div>
 
             <div className="ob-field">
-              <span className="ob-field-label">年齡範圍</span>
-              <div className="profile-field-row">
-                <div className="profile-field-unit">
-                  <input
-                    className="ob-number-input"
-                    type="number"
-                    inputMode="numeric"
-                    min={18}
-                    max={99}
-                    placeholder="最小"
-                    aria-label="最小年齡"
-                    value={ageMin}
-                    onChange={event => setAgeMin(event.target.value)}
+              <div className="ob-range-head">
+                <span className="ob-field-label">年齡範圍</span>
+                <span className="ob-range-value">{ageMin} – {ageMax} 歲</span>
+              </div>
+              <div className="ob-range">
+                <div className="ob-range-rail">
+                  <div
+                    className="ob-range-fill"
+                    style={{
+                      left: `${((ageMin - AGE_FLOOR) / (AGE_CEIL - AGE_FLOOR)) * 100}%`,
+                      right: `${100 - ((ageMax - AGE_FLOOR) / (AGE_CEIL - AGE_FLOOR)) * 100}%`,
+                    }}
                   />
-                  <span className="profile-unit">歲</span>
                 </div>
-                <div className="profile-field-unit">
-                  <input
-                    className="ob-number-input"
-                    type="number"
-                    inputMode="numeric"
-                    min={18}
-                    max={99}
-                    placeholder="最大"
-                    aria-label="最大年齡"
-                    value={ageMax}
-                    onChange={event => setAgeMax(event.target.value)}
-                  />
-                  <span className="profile-unit">歲</span>
-                </div>
+                <input
+                  className="ob-range-input"
+                  type="range"
+                  min={AGE_FLOOR}
+                  max={AGE_CEIL}
+                  value={ageMin}
+                  aria-label="最小年齡"
+                  onChange={event => setAgeMin(Math.min(Number(event.target.value), ageMax - 1))}
+                />
+                <input
+                  className="ob-range-input"
+                  type="range"
+                  min={AGE_FLOOR}
+                  max={AGE_CEIL}
+                  value={ageMax}
+                  aria-label="最大年齡"
+                  onChange={event => setAgeMax(Math.max(Number(event.target.value), ageMin + 1))}
+                />
               </div>
             </div>
 
             <div className="ob-field">
               <span className="ob-field-label">距離偏好</span>
-              <div className="profile-field-unit">
-                <input
-                  className="ob-number-input"
-                  type="number"
-                  inputMode="numeric"
-                  min={1}
-                  max={500}
-                  placeholder="距離"
-                  aria-label="距離偏好"
-                  value={distanceKm}
-                  onChange={event => setDistanceKm(event.target.value)}
-                />
-                <span className="profile-unit">km</span>
+              <div className="ob-segment" role="group" aria-label="距離偏好方式">
+                <button
+                  type="button"
+                  className={`ob-segment-btn${distanceMode === 'km' ? ' active' : ''}`}
+                  onClick={() => setDistanceMode('km')}
+                >依距離</button>
+                <button
+                  type="button"
+                  className={`ob-segment-btn${distanceMode === 'area' ? ' active' : ''}`}
+                  onClick={() => setDistanceMode('area')}
+                >依縣市</button>
               </div>
+              {distanceMode === 'km' ? (
+                <div className="profile-field-unit">
+                  <input
+                    className="ob-number-input"
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={500}
+                    placeholder="距離"
+                    aria-label="距離偏好"
+                    value={distanceKm}
+                    onChange={event => setDistanceKm(event.target.value)}
+                  />
+                  <span className="profile-unit">km</span>
+                </div>
+              ) : (
+                <select
+                  className="ob-select"
+                  aria-label="偏好縣市"
+                  value={preferredArea}
+                  onChange={event => setPreferredArea(event.target.value)}
+                >
+                  <option value="">不限縣市</option>
+                  {AREA_OPTIONS.map(area => (
+                    <option key={area} value={area}>{area}</option>
+                  ))}
+                </select>
+              )}
             </div>
           </div>
 

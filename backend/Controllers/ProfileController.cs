@@ -75,6 +75,7 @@ public sealed class ProfileController(JsonStorageService storage, IServiceProvid
                     if (request.AgeMin.HasValue) record.AgeMin = request.AgeMin;
                     if (request.AgeMax.HasValue) record.AgeMax = request.AgeMax;
                     if (request.DistanceKm.HasValue) record.DistanceKm = request.DistanceKm;
+                    if (request.PreferredArea != null) record.PreferredArea = EmptyToNull(request.PreferredArea);
                     if (request.Languages != null) record.Languages = [.. request.Languages];
                     if (request.ActiveTime != null) record.ActiveTime = EmptyToNull(request.ActiveTime);
                     if (request.VoiceFirst.HasValue) record.VoiceFirst = request.VoiceFirst.Value;
@@ -109,6 +110,7 @@ public sealed class ProfileController(JsonStorageService storage, IServiceProvid
             if (request.AgeMin.HasValue) target.AgeMin = request.AgeMin;
             if (request.AgeMax.HasValue) target.AgeMax = request.AgeMax;
             if (request.DistanceKm.HasValue) target.DistanceKm = request.DistanceKm;
+            if (request.PreferredArea != null) target.PreferredArea = EmptyToNull(request.PreferredArea);
             if (request.Languages != null) target.Languages = [.. request.Languages];
             if (request.ActiveTime != null) target.ActiveTime = EmptyToNull(request.ActiveTime);
             if (request.VoiceFirst.HasValue) target.VoiceFirst = request.VoiceFirst.Value;
@@ -138,5 +140,6 @@ public sealed record UpdateProfileRequest(
     string? Occupation = null, string? School = null, string? BloodType = null,
     string? DatingGoal = null, string? LookingFor = null,
     int? AgeMin = null, int? AgeMax = null, int? DistanceKm = null,
+    string? PreferredArea = null,
     List<string>? Languages = null, string? ActiveTime = null,
     bool? VoiceFirst = null, bool? MeetSoon = null);

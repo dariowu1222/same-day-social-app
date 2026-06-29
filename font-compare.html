@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>同頻Today · 標題字體對照</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@500;600;700&family=LXGW+WenKai+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #f3eee4; --card: #fff; --border: #e8e0d4;
+    --green-700: #4a7c59; --green-500: #5a9e6a; --green-soft: #eef7f4;
+    --coral-600: #d4654a; --coral-soft: #fdf0e8;
+    --title: #2f4636; --text: #4a3f35; --muted: #b0a090;
+    --sans: "Noto Sans TC", system-ui, sans-serif;
+  }
+  body { font-family: var(--sans); background: var(--bg); color: var(--text); line-height: 1.7; -webkit-font-smoothing: antialiased; padding: 0 0 80px; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 0 24px; }
+
+  .head { padding: 36px 0 8px; }
+  .head .label { font-size: 12px; font-weight: 700; letter-spacing: 0.14em; color: var(--green-500); }
+  .head h1 { font-family: "Noto Serif TC", serif; font-weight: 600; font-size: 26px; color: var(--title); margin: 6px 0 8px; }
+  .head p { font-size: 14.5px; color: var(--muted); max-width: 560px; }
+
+  .specimen { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 28px 26px; margin-top: 18px; box-shadow: 0 8px 28px rgba(100,55,30,0.07); position: relative; }
+  .specimen.pick { border: 2px solid var(--green-500); }
+
+  .badge { position: absolute; top: -12px; left: 22px; font-size: 12px; font-weight: 700; padding: 5px 14px; border-radius: 999px; }
+  .badge-green { background: var(--green-500); color: #fff; }
+  .badge-gray  { background: var(--border); color: var(--text); }
+
+  .font-meta { display: flex; align-items: baseline; gap: 10px; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid #f0ece3; }
+  .font-name { font-size: 16px; font-weight: 700; color: var(--title); }
+  .font-tag { font-size: 12px; color: var(--muted); }
+  .font-vibe { margin-left: auto; font-size: 12px; color: var(--green-700); background: var(--green-soft); padding: 4px 12px; border-radius: 999px; font-weight: 600; }
+
+  .sample-display { font-size: 30px; line-height: 1.45; color: var(--title); margin-bottom: 16px; }
+  .sample-h1 { font-size: 23px; line-height: 1.4; color: var(--title); margin-bottom: 6px; }
+  .sample-h2 { font-size: 18px; color: var(--green-700); margin-bottom: 16px; }
+  .sample-body { font-family: var(--sans); font-size: 15px; color: var(--text); line-height: 1.8; padding-top: 14px; border-top: 1px dashed #ece5d8; }
+  .sample-body .bsmall { font-size: 12px; color: var(--muted); }
+
+  .f-serif  { font-family: "Noto Serif TC", serif; }
+  .f-sans   { font-family: "Noto Sans TC", sans-serif; }
+  .f-kai    { font-family: "LXGW WenKai TC", "Noto Serif TC", cursive; }
+
+  .verdict { margin-top: 26px; background: var(--coral-soft); border-radius: 16px; padding: 18px 20px; font-size: 14px; color: var(--text); line-height: 1.8; }
+  .verdict b { color: var(--coral-600); }
+  .verdict .q { font-family: "Noto Serif TC", serif; }
+
+  .note { font-size: 12px; color: var(--muted); margin-top: 10px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="head">
+    <div class="label">TYPEFACE · 標題字體對照</div>
+    <h1>同一段文案，三種中文字體</h1>
+    <p>內文一律維持思源黑體（易讀）；差別只在「標題」要用哪種字。請直接看哪種最像「會慢慢聽你說話」的 App。</p>
+  </div>
+
+  <!-- 1 · 宋體（推薦） -->
+  <div class="specimen pick">
+    <span class="badge badge-green">推薦</span>
+    <div class="font-meta">
+      <span class="font-name f-serif">思源宋體</span>
+      <span class="font-tag">Noto Serif TC</span>
+      <span class="font-vibe">溫度・書信・文學感</span>
+    </div>
+    <div class="sample-display f-serif">今天，想被誰聽見？</div>
+    <div class="sample-h1 f-serif">今日的你</div>
+    <div class="sample-h2 f-serif">心靈小語</div>
+    <div class="sample-body">
+      白天上班，晚上喜歡一個人散步。不太會主動，但聊起來其實有很多話。<br>
+      <span class="bsmall">內文用思源黑體，與宋體標題形成「軟硬對比」，層次最清楚。</span>
+    </div>
+  </div>
+
+  <!-- 2 · 文楷（溫潤備選） -->
+  <div class="specimen">
+    <span class="badge badge-gray">備選 A</span>
+    <div class="font-meta">
+      <span class="font-name f-kai">霞鶩文楷</span>
+      <span class="font-tag">LXGW WenKai TC</span>
+      <span class="font-vibe">手寫感・最柔・最溫</span>
+    </div>
+    <div class="sample-display f-kai">今天，想被誰聽見？</div>
+    <div class="sample-h1 f-kai">今日的你</div>
+    <div class="sample-h2 f-kai">心靈小語</div>
+    <div class="sample-body">
+      白天上班，晚上喜歡一個人散步。不太會主動，但聊起來其實有很多話。<br>
+      <span class="bsmall">楷書手寫感，最有「日記/信件」氛圍，但個性很強，整體要克制使用。</span>
+    </div>
+  </div>
+
+  <!-- 3 · 黑體（保守） -->
+  <div class="specimen">
+    <span class="badge badge-gray">備選 B</span>
+    <div class="font-meta">
+      <span class="font-name f-sans">思源黑體</span>
+      <span class="font-tag">Noto Sans TC（現況）</span>
+      <span class="font-vibe">現代・中性・安全</span>
+    </div>
+    <div class="sample-display f-sans" style="font-weight:700;">今天，想被誰聽見？</div>
+    <div class="sample-h1 f-sans" style="font-weight:700;">今日的你</div>
+    <div class="sample-h2 f-sans" style="font-weight:700;">心靈小語</div>
+    <div class="sample-body">
+      白天上班，晚上喜歡一個人散步。不太會主動，但聊起來其實有很多話。<br>
+      <span class="bsmall">這是你目前的樣子。乾淨但個性弱，標題與內文同字體，容易顯得像模板。</span>
+    </div>
+  </div>
+
+  <div class="verdict">
+    我的建議：<b>標題用思源宋體</b>。它在「溫度」與「易讀/專業」之間最平衡，而且不挑場景。<br>
+    <span class="q">霞鶩文楷</span>很美、最柔，但個性太強——適合只放在<b>進場標語、心靈小語</b>這種一兩處的點綴，全站標題都用會太重。<br>
+    所以也可以走<b>混搭</b>：全站標題用宋體，僅進場/心靈小語用文楷。
+  </div>
+  <p class="note">＊若文楷那欄看起來和宋體很像，是字體還在下載或環境未支援；重新整理一次即可。三種都是免費可商用字體，工程端可直接引用。</p>
+
+</div>
+</body>
+</html>

@@ -2,7 +2,7 @@
 
 export const GENDER_OPTIONS = ['男', '女', '其他', '不公開'] as const
 export const RELATIONSHIP_OPTIONS = ['單身', '曖昧中', '穩定交往', '已婚', '不公開'] as const
-export const DATING_GOAL_OPTIONS = ['交友', '約會', '長期關係', '先聊聊'] as const
+export const DATING_GOAL_OPTIONS = ['交友', '約會', '長期關係', '先聊聊', '想抒發'] as const
 export const LOOKING_FOR_OPTIONS = ['男生', '女生', '不限'] as const
 export const PERSONALITY_OPTIONS = [
   '內向', '外向', '慢熟', '健談', '理性', '感性',
