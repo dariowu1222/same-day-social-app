@@ -4,19 +4,13 @@ import { Heart, MessageCircle, ChevronLeft, Flag, HeartHandshake, ArrowUp, X } f
 import { useAuth } from '../auth/AuthContext'
 import { deleteRant, getRants, likeReply, replyRant, reportRant, understandRant } from './api'
 import type { RantPost } from './types'
+import { postImages } from './types'
 import MediaInput, { EMPTY_MEDIA, type MediaState } from '../../shared/ui/MediaInput'
+import PostImageGallery from './PostImageGallery'
 import ReplyItem from './ReplyItem'
 import PostMenu from './PostMenu'
 import { COMPOSE_HINTS, QUICK_REPLIES, getHintSeenSet, markHintSeen, appendQuickReply } from './rantCompose'
-
-const MODE_LABELS: Record<string, string> = {
-  JUST_SAYING: '只是想說',
-  COMFORT_ME: '想被安慰',
-  GIVE_ADVICE: '想聽建議',
-  RANT_TOGETHER: '想一起抱怨',
-  DISTRACT_ME: '想轉移注意力',
-  FIND_SIMILAR: '想找同類',
-}
+import { MODE_LABELS } from './rantModes'
 
 function avatarLetter(nickname: string) {
   return nickname.trim()[0]?.toUpperCase() ?? '?'
@@ -161,7 +155,7 @@ export default function RantDetailPage() {
               </div>
 
               <p className="detail-post-content">{post.content}</p>
-              {post.imageDataUrl && <img src={post.imageDataUrl} className="post-media-img" alt="" />}
+              <PostImageGallery images={postImages(post)} />
               {post.audioDataUrl && <audio controls src={post.audioDataUrl} className="post-media-audio" />}
 
               {post.hashtags?.length > 0 && (

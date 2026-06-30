@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { Heart, MessageCircle, Flag, HeartHandshake, X } from 'lucide-react'
 import { likeReply } from './api'
 import type { RantPost } from './types'
+import { postImages } from './types'
 import MediaInput, { type MediaState } from '../../shared/ui/MediaInput'
+import PostImageGallery from './PostImageGallery'
 import ReplyItem from './ReplyItem'
 import PostMenu from './PostMenu'
 import { COMPOSE_HINTS, QUICK_REPLIES, getHintSeenSet, markHintSeen, appendQuickReply } from './rantCompose'
@@ -113,7 +115,7 @@ export default function RantPostCard({
           {/* 內文（點擊進詳細頁）*/}
           <div onClick={() => navigate(`/rant/${post.id}`)} style={{ cursor: 'pointer' }}>
             <p className="post-content" style={{ marginBottom: 8 }}>{post.content}</p>
-            {post.imageDataUrl && <img src={post.imageDataUrl} className="post-media-img" alt="貼文圖片" />}
+            <PostImageGallery images={postImages(post)} />
             {post.audioDataUrl && <audio controls src={post.audioDataUrl} className="post-media-audio" />}
           </div>
 

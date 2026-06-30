@@ -9,7 +9,7 @@ export async function getRants(cursor?: string, limit = RANT_PAGE_SIZE) {
   return request<RantPost[]>(`/api/rants?${params.toString()}`)
 }
 
-export async function createRant(payload: { nickname: string; content: string; mode: string; hashtags?: string[]; imageDataUrl?: string | null; audioDataUrl?: string | null }) {
+export async function createRant(payload: { nickname: string; content: string; mode: string; hashtags?: string[]; imageDataUrls?: string[]; audioDataUrl?: string | null }) {
   return request<RantPost>('/api/rants', { method: 'POST', body: JSON.stringify(payload) })
 }
 

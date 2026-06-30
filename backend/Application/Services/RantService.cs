@@ -24,13 +24,22 @@ public sealed class RantService
         notifications = services.GetService<NotificationService>();
     }
 
-    public (RantPost? Post, ModerationResult Moderation) Create(string userId, string nickname, string content, RantMode mode, List<string>? hashTags = null, string? imageDataUrl = null, string? audioDataUrl = null)
+    // 單張上限（與前端 PostMediaInput 的 9 張一致）
+    private const int MaxImages = 9;
+
+    public (RantPost? Post, ModerationResult Moderation) Create(string userId, string nickname, string content, RantMode mode, List<string>? hashTags = null, List<string>? imageDataUrls = null, string? audioDataUrl = null)
     {
         var check = moderation.Check(content);
         if (check.IsBlocked)
         {
             return (null, check);
         }
+
+        var images = imageDataUrls?
+            .Where(u => !string.IsNullOrWhiteSpace(u))
+            .Select(u => u.Trim())
+            .Take(MaxImages)
+            .ToList() ?? [];
 
         var analysis = analyzer.Analyze(content, ResponseMode.JUST_LISTEN);
         var post = new RantPost
@@ -42,7 +51,8 @@ public sealed class RantService
             Mode = mode,
             EmotionTags = analysis.EmotionTags,
             HashTags = hashTags?.Select(t => t.Trim()).Where(t => t.Length > 0).Take(5).ToList() ?? [],
-            ImageDataUrl = imageDataUrl,
+            ImageDataUrls = images,
+            ImageDataUrl = images.FirstOrDefault(), // 第一張回填，維持舊前端/單圖顯示相容
             AudioDataUrl = audioDataUrl
         };
 

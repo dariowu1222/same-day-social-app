@@ -4,7 +4,7 @@ import { ArrowLeft } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
 import { createRant } from './api'
 import HashtagInput from '../../shared/ui/HashtagInput'
-import MediaInput, { EMPTY_MEDIA, type MediaState } from '../../shared/ui/MediaInput'
+import PostMediaInput, { EMPTY_POST_MEDIA, type PostMediaState } from './PostMediaInput'
 import ContextSelect from './ContextSelect'
 import { DEFAULT_RANT_MODE } from './rantModes'
 
@@ -14,7 +14,7 @@ export default function RantNewPostPage() {
   const [content, setContent] = useState('')
   const [mode, setMode] = useState(DEFAULT_RANT_MODE)
   const [hashtags, setHashtags] = useState<string[]>([])
-  const [postMedia, setPostMedia] = useState<MediaState>(EMPTY_MEDIA)
+  const [postMedia, setPostMedia] = useState<PostMediaState>(EMPTY_POST_MEDIA)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
@@ -50,7 +50,7 @@ export default function RantNewPostPage() {
             autoFocus
           />
           <div className="post-input-toolbar">
-            <MediaInput value={postMedia} onChange={setPostMedia} />
+            <PostMediaInput value={postMedia} onChange={setPostMedia} />
           </div>
         </div>
 

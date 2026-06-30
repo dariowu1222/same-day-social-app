@@ -35,7 +35,7 @@ public sealed class RantsController(RantService rantService) : ControllerBase
     {
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
                      ?? User.FindFirst("sub")?.Value!;
-        var result = rantService.Create(userId, request.Nickname, request.Content, request.Mode, request.HashTags, request.ImageDataUrl, request.AudioDataUrl);
+        var result = rantService.Create(userId, request.Nickname, request.Content, request.Mode, request.HashTags, request.ImageDataUrls ?? (request.ImageDataUrl is null ? null : [request.ImageDataUrl]), request.AudioDataUrl);
         if (result.Moderation.IsBlocked)
             return BadRequest(ApiResponse<RantPost>.Fail(result.Moderation.Code!, result.Moderation.Message!));
         return ApiResponse<RantPost>.Ok(result.Post!, result.Moderation.Warning);
@@ -101,5 +101,5 @@ public sealed class RantsController(RantService rantService) : ControllerBase
     }
 }
 
-public sealed record CreateRantRequest(string Nickname, string Content, RantMode Mode, List<string>? HashTags = null, string? ImageDataUrl = null, string? AudioDataUrl = null);
+public sealed record CreateRantRequest(string Nickname, string Content, RantMode Mode, List<string>? HashTags = null, List<string>? ImageDataUrls = null, string? ImageDataUrl = null, string? AudioDataUrl = null);
 public sealed record CreateReplyRequest(string Nickname, string Content, string? ImageDataUrl = null, string? AudioDataUrl = null, string? ParentReplyId = null);

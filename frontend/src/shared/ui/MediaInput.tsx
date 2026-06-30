@@ -1,6 +1,8 @@
-import { useRef, useState } from 'react'
+import { useRef } from 'react'
 import { Image, Mic, MicOff, X } from 'lucide-react'
 import { uploadMedia } from '../api/media'
+import { imageToResizedDataUrl } from '../lib/mediaTools'
+import { useAudioRecorder } from '../hooks/useAudioRecorder'
 
 export type MediaState = {
   imageDataUrl: string | null
@@ -15,42 +17,11 @@ type Props = {
 
 export const EMPTY_MEDIA: MediaState = { imageDataUrl: null, audioDataUrl: null }
 
-function readAsDataUrl(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onloadend = () => resolve(reader.result as string)
-    reader.onerror = reject
-    reader.readAsDataURL(blob)
-  })
-}
-
-// 圖片縮圖 → data URL（控制體積，避免超過物件儲存上限）
-function imageToResizedDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new window.Image()
-    const objUrl = URL.createObjectURL(file)
-    img.onload = () => {
-      URL.revokeObjectURL(objUrl)
-      const maxSize = 1280
-      const scale = Math.min(1, maxSize / Math.max(img.width, img.height))
-      const w = Math.round(img.width * scale)
-      const h = Math.round(img.height * scale)
-      const canvas = document.createElement('canvas')
-      canvas.width = w
-      canvas.height = h
-      canvas.getContext('2d')!.drawImage(img, 0, 0, w, h)
-      resolve(canvas.toDataURL('image/jpeg', 0.85))
-    }
-    img.onerror = reject
-    img.src = objUrl
-  })
-}
-
 export default function MediaInput({ value, onChange, folder = 'rants' }: Props) {
-  const [isRecording, setIsRecording] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const recorderRef = useRef<MediaRecorder | null>(null)
-  const chunksRef = useRef<Blob[]>([])
+  const { isRecording, toggle: toggleRecording } = useAudioRecorder(async (dataUrl) => {
+    onChange({ ...value, audioDataUrl: await uploadMedia(dataUrl, folder) })
+  })
 
   async function handleImagePick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -59,32 +30,6 @@ export default function MediaInput({ value, onChange, folder = 'rants' }: Props)
     const dataUrl = await imageToResizedDataUrl(file)
     const url = await uploadMedia(dataUrl, folder)
     onChange({ ...value, imageDataUrl: url })
-  }
-
-  async function toggleRecording() {
-    if (isRecording) {
-      recorderRef.current?.stop()
-      setIsRecording(false)
-      return
-    }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const recorder = new MediaRecorder(stream)
-      chunksRef.current = []
-      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
-      recorder.onstop = async () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
-        const dataUrl = await readAsDataUrl(blob)
-        const url = await uploadMedia(dataUrl, folder)
-        onChange({ ...value, audioDataUrl: url })
-        stream.getTracks().forEach((t) => t.stop())
-      }
-      recorderRef.current = recorder
-      recorder.start()
-      setIsRecording(true)
-    } catch {
-      alert('無法取得麥克風權限')
-    }
   }
 
   return (

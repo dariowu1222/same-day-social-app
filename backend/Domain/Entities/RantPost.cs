@@ -11,6 +11,8 @@ public sealed class RantPost
     public RantMode Mode { get; set; } = RantMode.JUST_SAYING;
     public List<EmotionTag> EmotionTags { get; set; } = [];
     public List<string> HashTags { get; set; } = [];
+    // 多圖：貼文可帶多張圖片（Threads 風）。ImageDataUrl 保留為第一張，維持舊資料/舊前端相容。
+    public List<string> ImageDataUrls { get; set; } = [];
     public string? ImageDataUrl { get; set; }
     public string? AudioDataUrl { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;

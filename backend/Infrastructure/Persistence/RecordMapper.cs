@@ -222,6 +222,10 @@ public static class RecordMapper
             Mode = ParseEnum(record.Mode, RantMode.JUST_SAYING),
             EmotionTags = record.EmotionTags.Select(x => ParseEnum(x, EmotionTag.CALM)).ToList(),
             HashTags = record.HashTags.ToList(),
+            // 多圖：優先用 image_data_urls；舊資料只有單圖時回退成單元素清單。
+            ImageDataUrls = record.ImageDataUrls is { Length: > 0 }
+                ? record.ImageDataUrls.ToList()
+                : (string.IsNullOrEmpty(record.ImageDataUrl) ? [] : [record.ImageDataUrl]),
             ImageDataUrl = record.ImageDataUrl,
             AudioDataUrl = record.AudioDataUrl,
             CreatedAt = record.CreatedAt,
@@ -244,6 +248,7 @@ public static class RecordMapper
             Mode = post.Mode.ToString(),
             EmotionTags = post.EmotionTags.Select(x => x.ToString()).ToArray(),
             HashTags = post.HashTags.ToArray(),
+            ImageDataUrls = post.ImageDataUrls.ToArray(),
             ImageDataUrl = post.ImageDataUrl,
             AudioDataUrl = post.AudioDataUrl,
             IsHidden = post.IsHidden,

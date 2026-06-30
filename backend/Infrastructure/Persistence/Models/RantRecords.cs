@@ -9,6 +9,7 @@ public sealed class RantPostRecord
     public string Mode { get; set; } = "JUST_SAYING";
     public string[] EmotionTags { get; set; } = [];
     public string[] HashTags { get; set; } = [];
+    public string[] ImageDataUrls { get; set; } = [];
     public string? ImageDataUrl { get; set; }
     public string? AudioDataUrl { get; set; }
     public bool IsHidden { get; set; }

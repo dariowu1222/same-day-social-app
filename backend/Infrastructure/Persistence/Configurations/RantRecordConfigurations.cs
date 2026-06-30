@@ -17,6 +17,7 @@ public sealed class RantPostRecordConfiguration : IEntityTypeConfiguration<RantP
         builder.Property(x => x.Mode).HasColumnName("mode").HasMaxLength(40);
         builder.Property(x => x.EmotionTags).HasColumnName("emotion_tags").HasColumnType("text[]");
         builder.Property(x => x.HashTags).HasColumnName("hash_tags").HasColumnType("text[]");
+        builder.Property(x => x.ImageDataUrls).HasColumnName("image_data_urls").HasColumnType("text[]");
         builder.Property(x => x.ImageDataUrl).HasColumnName("image_data_url");
         builder.Property(x => x.AudioDataUrl).HasColumnName("audio_data_url");
         builder.Property(x => x.IsHidden).HasColumnName("is_hidden");
