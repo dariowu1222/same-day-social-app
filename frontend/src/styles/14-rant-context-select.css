@@ -1,0 +1,163 @@
+/* ===== 情境自訂下拉選單（說說看發文頁）=====
+   行為由 Radix Select 處理，這裡只負責外觀。亮色為基準，暗色套樹洞深色色票。 */
+
+.context-select {
+  display: grid;
+  gap: 6px;
+}
+
+/* 14.2 上方小標 */
+.context-select-label {
+  font-size: 12px;
+  color: #9a8f82;
+}
+
+/* 14.2 收合狀態（觸發條） */
+.context-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 11px 14px;
+  background: #fff;
+  border: 0.5px solid #ddd5c8;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+  font: inherit;
+}
+.context-select-trigger[data-state="open"] {
+  border-color: #c8785a;
+}
+
+.context-select-current {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #3a3028;
+}
+.context-select-current-icon {
+  color: #c8785a;
+  flex: 0 0 auto;
+}
+
+/* chevron：展開時旋轉 180° */
+.context-select-chevron {
+  display: inline-flex;
+  color: #b0a090;
+  transition: transform 0.2s ease;
+}
+.context-select-trigger[data-state="open"] .context-select-chevron {
+  transform: rotate(180deg);
+}
+
+/* 14.3 展開面板 */
+.context-select-panel {
+  width: var(--radix-select-trigger-width);
+  padding: 6px;
+  background: #fff;
+  border: 0.5px solid #ece2d4;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(60, 48, 36, 0.16);
+  z-index: 50;
+}
+.context-select-panel[data-state="open"] {
+  animation: contextSelectIn 0.18s ease;
+}
+@keyframes contextSelectIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* 14.4 選項 */
+.context-select-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  font-size: 14px;
+  color: #4a3f35;
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+}
+.context-select-option-icon {
+  display: inline-flex;
+  justify-content: center;
+  width: 18px;
+  flex: 0 0 auto;
+  color: #c8a06a;
+}
+/* ItemText 佔滿、check 推到最右 */
+.context-select-option > span:not(.context-select-option-icon):not(.context-select-check),
+.context-select-option [data-radix-select-item-text] {
+  flex: 1;
+}
+.context-select-check {
+  display: inline-flex;
+  margin-left: auto;
+  color: #c8785a;
+}
+
+/* hover / 鍵盤 highlight */
+.context-select-option:hover,
+.context-select-option[data-highlighted] {
+  background: #f7f1e8;
+}
+
+/* 選中（取代 OS 預設 highlight）*/
+.context-select-option[data-state="checked"] {
+  background: #fbf2ec;
+  color: #b5532f;
+}
+.context-select-option[data-state="checked"] .context-select-option-icon {
+  color: #c8785a;
+}
+
+/* ===== 14.7 暗色（樹洞深色色票）===== */
+[data-theme="dark"] .context-select-label {
+  color: rgba(168, 212, 204, 0.7);
+}
+[data-theme="dark"] .context-select-trigger {
+  background: rgba(22, 40, 32, 0.85);
+  border-color: #2a4035;
+}
+[data-theme="dark"] .context-select-trigger[data-state="open"] {
+  border-color: #8fcaa0;
+}
+[data-theme="dark"] .context-select-current {
+  color: #d4ede8;
+}
+[data-theme="dark"] .context-select-current-icon {
+  color: #e0a070;
+}
+[data-theme="dark"] .context-select-chevron {
+  color: rgba(168, 212, 204, 0.55);
+}
+[data-theme="dark"] .context-select-panel {
+  background: rgba(16, 30, 22, 0.98);
+  border-color: #2a4035;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+[data-theme="dark"] .context-select-option {
+  color: #d4ede8;
+}
+[data-theme="dark"] .context-select-option-icon {
+  color: #8fcaa0;
+}
+[data-theme="dark"] .context-select-option:hover,
+[data-theme="dark"] .context-select-option[data-highlighted] {
+  background: rgba(60, 120, 40, 0.22);
+}
+[data-theme="dark"] .context-select-option[data-state="checked"] {
+  background: rgba(200, 120, 90, 0.18);
+  color: #ffb787;
+}
+[data-theme="dark"] .context-select-option[data-state="checked"] .context-select-option-icon,
+[data-theme="dark"] .context-select-check {
+  color: #e0a070;
+}

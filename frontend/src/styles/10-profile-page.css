@@ -1010,3 +1010,7 @@
 }
 [data-theme="dark"] .cr-bio-muted { color: rgba(168, 212, 204, 0.45); }
 
+
+/* 鎖定的單選欄位（如生理性別）：已選保持高亮、其餘淡化、不可點 */
+.ob-tag:disabled { cursor: default; }
+.ob-tag:disabled:not(.selected) { opacity: 0.45; }

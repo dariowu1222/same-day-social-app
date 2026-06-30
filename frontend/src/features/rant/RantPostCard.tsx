@@ -7,15 +7,7 @@ import MediaInput, { type MediaState } from '../../shared/ui/MediaInput'
 import ReplyItem from './ReplyItem'
 import PostMenu from './PostMenu'
 import { COMPOSE_HINTS, QUICK_REPLIES, getHintSeenSet, markHintSeen, appendQuickReply } from './rantCompose'
-
-const MODE_LABELS: Record<string, string> = {
-  JUST_SAYING: '只是想說',
-  COMFORT_ME: '想被安慰',
-  GIVE_ADVICE: '想聽建議',
-  RANT_TOGETHER: '想一起抱怨',
-  DISTRACT_ME: '想轉移注意力',
-  FIND_SIMILAR: '想找同類',
-}
+import { MODE_LABELS } from './rantModes'
 
 function avatarLetter(nickname: string) {
   return nickname.trim()[0]?.toUpperCase() ?? '?'

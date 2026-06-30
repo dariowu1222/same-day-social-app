@@ -13,11 +13,13 @@ import OnboardingOverlay from '../features/profile/OnboardingOverlay'
 import TodayPage from '../features/today/TodayPage'
 import MatchResultPage from '../features/match/MatchResultPage'
 import RantBoardPage from '../features/rant/RantBoardPage'
+import RantSearchPage from '../features/rant/RantSearchPage'
 import RantDetailPage from '../features/rant/RantDetailPage'
 import RantNewPostPage from '../features/rant/RantNewPostPage'
-import TasksPage from '../features/tasks/TasksPage'
+// import TasksPage from '../features/tasks/TasksPage' // 任務功能暫時下架（後端保留）
 import ChatPage from '../features/chat/ChatPage'
 import ProfilePage from '../features/profile/ProfilePage'
+import SettingsPage from '../features/profile/SettingsPage'
 import AccountCenterPage from '../features/profile/AccountCenterPage'
 import SecurityCenterPage from '../features/profile/SecurityCenterPage'
 import PrivacySettingsPage from '../features/profile/PrivacySettingsPage'
@@ -57,19 +59,19 @@ function App() {
   }, [])
 
   const pathToPage: Record<string, PageKey> = {
-    '/': 'today', '/rant': 'rant', '/tasks': 'tasks', '/chat': 'chat', '/profile': 'profile',
+    '/': 'today', '/rant': 'rant', '/chat': 'chat', '/profile': 'profile', '/settings': 'settings',
   }
   const activePage: PageKey = pathToPage[location.pathname]
     ?? (location.pathname.startsWith('/rant') ? 'rant'
-      : location.pathname.startsWith('/account') ? 'profile'
-      : location.pathname.startsWith('/security') ? 'profile'
-      : location.pathname.startsWith('/settings') ? 'profile'
-      : location.pathname.startsWith('/notifications') ? 'profile'
+      : location.pathname.startsWith('/account') ? 'settings'
+      : location.pathname.startsWith('/security') ? 'settings'
+      : location.pathname.startsWith('/settings') ? 'settings'
+      : location.pathname.startsWith('/notifications') ? 'settings'
       : 'today')
 
   function setActivePage(page: PageKey) {
     const pageToPath: Record<PageKey, string> = {
-      today: '/', rant: '/rant', tasks: '/tasks', chat: '/chat', profile: '/profile',
+      today: '/', rant: '/rant', chat: '/chat', profile: '/profile', settings: '/settings',
     }
     // 重選目前所在的 tab：發事件讓該頁自行處理（例如關閉「我的」的預覽覆蓋層）
     if (page === activePage) {
@@ -93,8 +95,8 @@ function App() {
     return <LoginPage onAuthenticated={handleAuthenticated} />
   }
 
-  // 只有發文頁隱藏底部導覽列，貼文詳細頁照常顯示
-  const isDetail = location.pathname === '/rant/new'
+  // 發文頁與搜尋頁隱藏底部導覽列（全螢幕沉浸），貼文詳細頁照常顯示
+  const isDetail = location.pathname === '/rant/new' || location.pathname === '/rant/search'
 
   return (
     <>
@@ -106,11 +108,13 @@ function App() {
               : <MatchResultPage moodLabel={selectedMoodLabel} onBack={() => setShowMatchResult(false)} onGoToRant={() => { setShowMatchResult(false); navigate('/rant') }} />
           } />
           <Route path="/rant" element={<RantBoardPage />} />
+          <Route path="/rant/search" element={<RantSearchPage />} />
           <Route path="/rant/new" element={<RantNewPostPage />} />
           <Route path="/rant/:rantId" element={<RantDetailPage />} />
-          <Route path="/tasks" element={<TasksPage />} />
+          {/* <Route path="/tasks" element={<TasksPage />} /> 任務功能暫時下架（後端保留） */}
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/settings" element={<SettingsPage />} />
           <Route path="/account" element={<AccountCenterPage />} />
           <Route path="/security" element={<SecurityCenterPage />} />
           <Route path="/settings/privacy" element={<PrivacySettingsPage />} />

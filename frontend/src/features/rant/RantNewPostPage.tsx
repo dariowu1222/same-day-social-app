@@ -5,12 +5,14 @@ import { useAuth } from '../auth/AuthContext'
 import { createRant } from './api'
 import HashtagInput from '../../shared/ui/HashtagInput'
 import MediaInput, { EMPTY_MEDIA, type MediaState } from '../../shared/ui/MediaInput'
+import ContextSelect from './ContextSelect'
+import { DEFAULT_RANT_MODE } from './rantModes'
 
 export default function RantNewPostPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [content, setContent] = useState('')
-  const [mode, setMode] = useState('JUST_SAYING')
+  const [mode, setMode] = useState(DEFAULT_RANT_MODE)
   const [hashtags, setHashtags] = useState<string[]>([])
   const [postMedia, setPostMedia] = useState<MediaState>(EMPTY_MEDIA)
   const [submitting, setSubmitting] = useState(false)
@@ -54,14 +56,7 @@ export default function RantNewPostPage() {
 
         <HashtagInput value={hashtags} onChange={setHashtags} />
 
-        <select value={mode} onChange={(e) => setMode(e.target.value)}>
-          <option value="JUST_SAYING">只是想說</option>
-          <option value="COMFORT_ME">想被安慰</option>
-          <option value="GIVE_ADVICE">想聽建議</option>
-          <option value="RANT_TOGETHER">想一起抱怨</option>
-          <option value="DISTRACT_ME">想轉移注意力</option>
-          <option value="FIND_SIMILAR">想找同類</option>
-        </select>
+        <ContextSelect value={mode} onChange={setMode} />
 
         <button
           className="new-post-submit"

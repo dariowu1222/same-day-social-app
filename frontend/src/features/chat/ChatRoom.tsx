@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+// import { useNavigate } from 'react-router-dom' // 任務功能暫時下架（後端保留）
 import { Capacitor } from '@capacitor/core'
 import {
   Image as ImageIcon, Mic, ArrowUp, MoreHorizontal, X, Search,
@@ -56,7 +56,7 @@ export default function ChatRoom({
   messages, draft, onDraftChange, onSendContent, onRecall,
   setting, onUpdateSetting, onLeave, onBlock, onReport, onBack,
 }: Props) {
-  const navigate = useNavigate()
+  // const navigate = useNavigate() // 任務功能暫時下架（後端保留）
   const [sheet, setSheet] = useState<SheetState>('closed')
   const [menuOpen, setMenuOpen] = useState(false)
   const [confirm, setConfirm] = useState<{ title: string; desc: string; danger?: boolean; onYes: () => void } | null>(null)
@@ -124,7 +124,7 @@ export default function ChatRoom({
 
   // ── 更多選單動作 ──
   function openProfile() { setMenuOpen(false); setSheet('peek') }
-  function goTask() { setMenuOpen(false); navigate('/tasks') }
+  // function goTask() { setMenuOpen(false); navigate('/tasks') } // 任務功能暫時下架（後端保留）
   function openChatSearch() { setMenuOpen(false); setChatSearch('') }
   function togglePin() { setMenuOpen(false); onUpdateSetting?.({ pinned: !pinned }); showToast(pinned ? '已取消釘選' : '已釘選對話') }
   function toggleMute() { setMenuOpen(false); onUpdateSetting?.({ muted: !muted }); showToast(muted ? '已開啟通知' : '已靜音通知') }
@@ -437,10 +437,12 @@ export default function ChatRoom({
         <button className="cr-menu-item" type="button" onClick={openProfile}>
           <User size={19} strokeWidth={1.8} className="cr-menu-ic" /><span>查看資料</span>
         </button>
+        {/* 任務功能暫時下架（後端保留）
         <button className="cr-menu-item" type="button" onClick={goTask}>
           <Flag size={19} strokeWidth={1.8} className="cr-menu-ic" /><span>一起做任務</span>
           <span className="cr-menu-badge">招牌</span>
         </button>
+        */}
         <button className="cr-menu-item" type="button" onClick={openChatSearch}>
           <Search size={19} strokeWidth={1.8} className="cr-menu-ic" /><span>搜尋對話內容</span>
         </button>

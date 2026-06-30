@@ -1,14 +1,11 @@
 import { useState, useEffect, useRef } from "react"
-import { useNavigate } from "react-router-dom"
-import { Sun, Moon, Plus, X, Eye, Check, ChevronRight } from "lucide-react"
+import { Plus, X, Eye, Check } from "lucide-react"
 import { useAuth } from "../auth/AuthContext"
-import { useTheme, type ThemePreference } from "../../shared/theme/ThemeContext"
 import { getProfile, updateProfile } from "./api"
 import { CalendarPicker } from "./CalendarPicker"
 import { ProfileCardFullscreen } from "./ProfileCardFullscreen"
 import { getZodiac, getAge, isAdultBirthday, fileToResizedBase64, ZODIAC_ICON } from "./profileUtils"
 import { uploadMedia } from "../../shared/api/media"
-import { getUnreadCount } from "../notifications/api"
 import {
   GENDER_OPTIONS, RELATIONSHIP_OPTIONS, DATING_GOAL_OPTIONS, LOOKING_FOR_OPTIONS,
   PERSONALITY_OPTIONS, APPEARANCE_OPTIONS, BLOOD_OPTIONS,
@@ -23,24 +20,21 @@ const INTEREST_OPTIONS = [
 const ACTIVE_TIME_OPTIONS = ['早上', '下午', '晚上', '深夜'] as const
 const LANGUAGE_OPTIONS = ['中文', '英文', '台語', '日文', '韓文'] as const
 
-// 欄位小標：標題 + 必填*/選填 + ·單選/·可多選 提示
-function FieldLabel({ title, required, optional, mode }: {
+// 欄位小標：只顯示標題 +（必填時）*；optional/mode 仍保留於型別供呼叫端沿用，但不再顯示提示文字
+function FieldLabel({ title, required }: {
   title: string; required?: boolean; optional?: boolean; mode?: 'single' | 'multi'
 }) {
   return (
     <p className="setting-section-title profile-field-label">
       {title}
       {required && <span className="profile-required"> *</span>}
-      {optional && <span className="profile-optional"> 選填</span>}
-      {mode === 'single' && <span className="profile-hint"> · 單選</span>}
-      {mode === 'multi' && <span className="profile-hint"> · 可多選</span>}
     </p>
   )
 }
 
 // 單選 chip 群（再點一次可取消，性別在存檔時驗證必填）
-function SingleChips({ options, value, onChange, allowClear = true }: {
-  options: readonly string[]; value: string; onChange: (v: string) => void; allowClear?: boolean
+function SingleChips({ options, value, onChange, allowClear = true, disabled = false }: {
+  options: readonly string[]; value: string; onChange: (v: string) => void; allowClear?: boolean; disabled?: boolean
 }) {
   return (
     <div className="ob-tags">
@@ -48,8 +42,9 @@ function SingleChips({ options, value, onChange, allowClear = true }: {
         <button
           key={o}
           type="button"
+          disabled={disabled}
           className={`ob-tag${value === o ? ' selected' : ''}`}
-          onClick={() => onChange(allowClear && value === o ? '' : o)}
+          onClick={() => { if (!disabled) onChange(allowClear && value === o ? '' : o) }}
         >{o}</button>
       ))}
     </div>
@@ -144,12 +139,6 @@ function CompactTagPicker({ options, values, onToggle, editing }: {
   )
 }
 
-const PREFS: { value: ThemePreference; icon?: "sun" | "moon"; label?: string }[] = [
-  { value: "day",   icon: "sun" },
-  { value: "night", icon: "moon" },
-  { value: "auto",  label: "自動" },
-]
-
 const MAX_PHOTOS = 6
 
 // 測試用假照片，無自上傳照片時顯示（之後刪除）
@@ -160,7 +149,6 @@ const TEST_PHOTOS = [
 ]
 
 export default function ProfilePage() {
-  const navigate = useNavigate()
   const { user, logout } = useAuth()
   const [bio, setBio] = useState('')
   const [birthday, setBirthday] = useState('')
@@ -187,7 +175,6 @@ export default function ProfilePage() {
   const [photos, setPhotos] = useState<string[]>([])
   const [photosDirty, setPhotosDirty] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [unreadNotif, setUnreadNotif] = useState(0)
   const [saving, setSaving] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [editingTags, setEditingTags] = useState(false)
@@ -195,18 +182,12 @@ export default function ProfilePage() {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dragIndex = useRef<number | null>(null)
-  const { preference, isAnimating, setPreference } = useTheme()
 
   // 預覽中再點底部「我的」→ 關閉預覽，回到自我介紹編輯頁
   useEffect(() => {
     function onReselect() { setShowPreview(false) }
     window.addEventListener('nav-reselect-profile', onReselect)
     return () => window.removeEventListener('nav-reselect-profile', onReselect)
-  }, [])
-
-  // 通知未讀數（顯示在「通知中心」入口）
-  useEffect(() => {
-    getUnreadCount().then(res => setUnreadNotif(res.data)).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -427,10 +408,10 @@ export default function ProfilePage() {
         />
       </section>
 
-      {/* 生理性別（必填）*/}
+      {/* 生理性別（必填，鎖定不可改）*/}
       <section className="panel">
-        <FieldLabel title="生理性別" required mode="single" />
-        <SingleChips options={GENDER_OPTIONS} value={gender} onChange={setGender} allowClear={false} />
+        <FieldLabel title="生理性別" required />
+        <SingleChips options={GENDER_OPTIONS} value={gender} onChange={setGender} allowClear={false} disabled />
       </section>
 
       {/* Birthday */}
@@ -605,63 +586,6 @@ export default function ProfilePage() {
           <button type="button" className={`ob-tag${voiceFirst ? ' selected' : ''}`} onClick={() => setVoiceFirst(v => !v)}>願意先語音聊</button>
           <button type="button" className={`ob-tag${meetSoon ? ' selected' : ''}`} onClick={() => setMeetSoon(v => !v)}>願意線下快見</button>
         </div>
-      </section>
-
-      {/* ── 設定（與個人資料分開）── */}
-      <p className="profile-settings-divider">設定</p>
-
-      {/* 外觀 */}
-      <section className="panel">
-        <p className="setting-section-title">外觀</p>
-        <div className="theme-segmented" role="radiogroup" aria-label="外觀主題" aria-disabled={isAnimating}>
-          {PREFS.map(({ value, icon, label }) => (
-            <button
-              key={value}
-              role="radio"
-              aria-checked={preference === value}
-              className={`theme-seg-option${preference === value ? ' selected' : ''}`}
-              onClick={() => setPreference(value)}
-              disabled={isAnimating}
-            >
-              {icon === 'sun'  && <Sun  size={18} strokeWidth={1.8} />}
-              {icon === 'moon' && <Moon size={18} strokeWidth={1.8} />}
-              {label && <span className="theme-seg-label">{label}</span>}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* 通知中心 */}
-      <section className="panel">
-        <button className="profile-nav-row" type="button" onClick={() => navigate('/notifications')}>
-          <span>通知中心</span>
-          {unreadNotif > 0 && <span className="notif-badge">{unreadNotif > 99 ? '99+' : unreadNotif}</span>}
-          <ChevronRight size={18} strokeWidth={1.8} />
-        </button>
-      </section>
-
-      {/* 帳號中心 */}
-      <section className="panel">
-        <button className="profile-nav-row" type="button" onClick={() => navigate('/account')}>
-          <span>帳號中心</span>
-          <ChevronRight size={18} strokeWidth={1.8} />
-        </button>
-      </section>
-
-      {/* 安全中心 */}
-      <section className="panel">
-        <button className="profile-nav-row" type="button" onClick={() => navigate('/security')}>
-          <span>安全中心</span>
-          <ChevronRight size={18} strokeWidth={1.8} />
-        </button>
-      </section>
-
-      {/* 隱私與通知 */}
-      <section className="panel">
-        <button className="profile-nav-row" type="button" onClick={() => navigate('/settings/privacy')}>
-          <span>隱私與通知</span>
-          <ChevronRight size={18} strokeWidth={1.8} />
-        </button>
       </section>
 
       {/* 登出 */}
