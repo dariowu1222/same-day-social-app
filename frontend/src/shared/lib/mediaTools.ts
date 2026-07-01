@@ -9,8 +9,8 @@ export function blobToDataUrl(blob: Blob): Promise<string> {
   })
 }
 
-// 圖片縮圖 → JPEG data URL（控制體積，避免超過物件儲存上限）
-export function imageToResizedDataUrl(file: File, maxSize = 1280, quality = 0.85): Promise<string> {
+// 圖片縮圖 → JPEG data URL。長邊上限 2048、品質 0.9：兼顧全螢幕清晰度與檔案大小。
+export function imageToResizedDataUrl(file: File, maxSize = 2048, quality = 0.9): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new window.Image()
     const objUrl = URL.createObjectURL(file)
