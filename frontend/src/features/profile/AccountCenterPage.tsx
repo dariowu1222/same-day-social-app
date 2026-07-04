@@ -28,10 +28,10 @@ export default function AccountCenterPage() {
   return (
     <div className="page account-page">
       <div className="detail-topbar">
-        <button className="detail-back-btn" type="button" onClick={() => navigate('/profile')} aria-label="返回">
+        <button className="detail-back-btn" type="button" onClick={() => navigate('/settings')} aria-label="返回">
           <ChevronLeft size={22} />
         </button>
-        <span className="detail-topbar-title">帳號中心</span>
+        <span className="detail-topbar-title">帳號</span>
       </div>
 
       <section className="panel" style={{ marginTop: 12 }}>

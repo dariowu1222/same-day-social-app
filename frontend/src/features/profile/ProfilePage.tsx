@@ -93,7 +93,7 @@ function TagPicker({ options, values, onToggle, maxLen = 8 }: {
           className="ob-tag-input"
           autoFocus
           maxLength={maxLen}
-          placeholder="輸入後按 Enter"
+          placeholder="輸入後點空白處完成"
           value={draft}
           onChange={e => setDraft(e.target.value)}
           onKeyDown={e => {
@@ -149,7 +149,7 @@ const TEST_PHOTOS = [
 ]
 
 export default function ProfilePage() {
-  const { user, logout } = useAuth()
+  const { user } = useAuth()
   const [bio, setBio] = useState('')
   const [birthday, setBirthday] = useState('')
   const [interestTags, setInterestTags] = useState<string[]>([])
@@ -588,12 +588,6 @@ export default function ProfilePage() {
         </div>
       </section>
 
-      {/* 登出 */}
-      <section className="panel">
-        <button className="profile-logout-btn" type="button" onClick={logout}>
-          登出
-        </button>
-      </section>
 
       {/* 儲存：吸附底部 */}
       <div className="profile-save-bar">

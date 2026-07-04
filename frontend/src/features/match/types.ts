@@ -8,4 +8,11 @@ export type MatchResult = {
   reason: string
   icebreaker: string
   todaySummary: string
+  // 後端豐富化欄位（可能為空，前端做優雅退場）
+  age?: number | null
+  city?: string | null
+  bio?: string | null
+  interests?: string[] | null
+  photos?: string[] | null
+  birthday?: string | null
 }

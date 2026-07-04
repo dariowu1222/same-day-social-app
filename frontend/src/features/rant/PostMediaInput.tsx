@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react'
 import { Image as ImageIcon, Mic, MicOff, X } from 'lucide-react'
 import { uploadMedia } from '../../shared/api/media'
-import { imageToResizedDataUrl } from '../../shared/lib/mediaTools'
+import { imageToResizedDataUrl, thumbUrl } from '../../shared/lib/mediaTools'
 import { useAudioRecorder } from '../../shared/hooks/useAudioRecorder'
 
 export const MAX_POST_IMAGES = 9
@@ -37,12 +37,10 @@ export default function PostMediaInput({ value, onChange, folder = 'rants' }: Pr
     if (files.length === 0) return
     setUploading(true)
     try {
-      // 逐張縮圖 → 上傳，依選取順序加入
-      const urls: string[] = []
-      for (const file of files) {
-        const dataUrl = await imageToResizedDataUrl(file)
-        urls.push(await uploadMedia(dataUrl, folder))
-      }
+      // 平行縮圖 + 上傳（Promise.all 保留選取順序），多圖大幅加速
+      const urls = await Promise.all(
+        files.map(async (file) => uploadMedia(await imageToResizedDataUrl(file), folder)),
+      )
       onChange({ ...value, imageDataUrls: [...value.imageDataUrls, ...urls].slice(0, MAX_POST_IMAGES) })
     } finally {
       setUploading(false)
@@ -60,7 +58,7 @@ export default function PostMediaInput({ value, onChange, folder = 'rants' }: Pr
         <div className="post-media-thumbs">
           {value.imageDataUrls.map((url, i) => (
             <div key={`${url}-${i}`} className="post-media-thumb">
-              <img src={url} alt={`圖片 ${i + 1}`} />
+              <img src={thumbUrl(url, 240)} alt={`圖片 ${i + 1}`} />
               <button type="button" className="post-media-thumb-remove" onClick={() => removeImage(i)} aria-label="移除這張圖片">
                 <X size={12} strokeWidth={2.4} />
               </button>

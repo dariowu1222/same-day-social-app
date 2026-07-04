@@ -28,11 +28,11 @@ export default function PrivacySettingsPage() {
   async function toggle(key: keyof UserSetting) {
     const prev = s
     const next = { ...s, [key]: !s[key] }
-    setS(next) // 樂觀更新
+    setS(next)
     try {
       await updateSettings({ [key]: next[key] })
     } catch {
-      setS(prev) // 失敗還原
+      setS(prev)
     }
   }
 
@@ -41,23 +41,23 @@ export default function PrivacySettingsPage() {
   return (
     <div className="page account-page">
       <div className="detail-topbar">
-        <button className="detail-back-btn" type="button" onClick={() => navigate('/profile')} aria-label="返回">
+        <button className="detail-back-btn" type="button" onClick={() => navigate('/settings')} aria-label="返回">
           <ChevronLeft size={22} />
         </button>
-        <span className="detail-topbar-title">隱私與通知</span>
+        <span className="detail-topbar-title">隱私</span>
       </div>
 
       <section className="panel" style={{ marginTop: 12 }}>
-        <p className="setting-section-title">隱私</p>
+        <p className="setting-section-title">誰能看到我</p>
         <ToggleRow label="公開個人檔案" hint="關閉後僅配對成功的人能看到" on={s.profilePublic} disabled={loading} onToggle={() => toggle('profilePublic')} />
         <ToggleRow label="暫停配對" hint="開啟後不會出現在別人的配對中" on={s.pauseMatching} disabled={loading} onToggle={() => toggle('pauseMatching')} />
       </section>
 
       <section className="panel">
-        <p className="setting-section-title">通知 <span className="profile-hint">· 推播上線後生效</span></p>
-        <ToggleRow label="配對通知" on={s.notifyMatch} disabled={loading} onToggle={() => toggle('notifyMatch')} />
-        <ToggleRow label="訊息通知" on={s.notifyMessage} disabled={loading} onToggle={() => toggle('notifyMessage')} />
-        <ToggleRow label="樹洞通知" on={s.notifyRant} disabled={loading} onToggle={() => toggle('notifyRant')} />
+        <p className="setting-section-title">資料使用</p>
+        <p className="account-danger-note">
+          你的資料僅用於配對與服務運作，不會販售給第三方。刪除帳號可在「帳號」頁操作。
+        </p>
       </section>
     </div>
   )

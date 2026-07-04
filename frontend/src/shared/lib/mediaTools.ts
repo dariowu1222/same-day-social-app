@@ -1,5 +1,16 @@
 // 媒體共用工具：圖片縮圖、Blob → data URL。發文/留言/聊天的圖片與語音都走這裡。
 
+// 把 Supabase 公開物件 URL 改寫成「即時縮圖」（render/image transform），
+// 列表/預覽只載小圖大幅省流量；點開再用原圖。
+// 非 Supabase 公開 URL（data URL、passthrough、其他來源）原樣回傳。
+export function thumbUrl(url: string, width: number, quality = 70): string {
+  if (!url || !url.includes('/storage/v1/object/public/')) return url
+  const transformed = url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/')
+  const sep = transformed.includes('?') ? '&' : '?'
+  return `${transformed}${sep}width=${width}&quality=${quality}`
+}
+
+
 export function blobToDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()

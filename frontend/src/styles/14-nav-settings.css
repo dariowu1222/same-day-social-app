@@ -1,0 +1,179 @@
+/* ===== 底部導覽列（icon + 膠囊 + 徽章 + focus 修正）===== */
+.bottom-nav {
+  background: #faf7f2;
+  border-top: 0.5px solid #e8e0d4;
+  padding: 8px 6px calc(14px + env(safe-area-inset-bottom));
+}
+.bottom-nav .bn-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.bottom-nav .bn-tab:focus,
+.bottom-nav .bn-tab:focus-visible { outline: none; }
+.bottom-nav .bn-tab.active { background: transparent; } /* 覆蓋舊的整顆底色，改用內層膠囊 */
+
+.bn-capsule {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 5px 14px;
+  border-radius: 16px;
+  color: #b0a090;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.bn-icon { position: relative; display: grid; place-items: center; transition: transform 0.2s ease; }
+.bn-label { font-size: 10.5px; line-height: 1; }
+
+.bottom-nav .bn-tab.active .bn-capsule { background: #fce8e0; color: #c8785a; }
+.bottom-nav .bn-tab.active .bn-label { font-weight: 500; }
+.bottom-nav .bn-tab.active .bn-icon { transform: translateY(-1px); }
+/* Web 鍵盤導航：自訂 focus，不用瀏覽器預設黑框 */
+.bottom-nav .bn-tab:focus-visible .bn-capsule { box-shadow: 0 0 0 1.5px rgba(200, 120, 78, 0.5); }
+
+/* 未讀徽章（聊天 tab）*/
+.bn-badge {
+  position: absolute;
+  top: -5px;
+  right: -8px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  box-sizing: border-box;
+  border-radius: 8px;
+  background: #d4785a;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 500;
+  line-height: 12px;
+  text-align: center;
+  border: 1.5px solid #faf7f2;
+}
+
+/* 暗色 */
+[data-theme="dark"] .bottom-nav { background: #0d1a14; border-top-color: #1e2e24; }
+[data-theme="dark"] .bottom-nav .bn-tab .bn-capsule { color: #4a6e55; background: transparent; }
+[data-theme="dark"] .bottom-nav .bn-tab.active .bn-capsule { color: #4caf7d; background: rgba(76, 175, 125, 0.15); }
+[data-theme="dark"] .bottom-nav .nav-today.active::before { display: none; } /* 移除舊的夜間圓點 */
+[data-theme="dark"] .bn-badge { border-color: #0d1a14; }
+
+/* ===== 設定頁 ===== */
+.settings-page { padding-bottom: 24px; }
+.set-group-title { font-size: 12px; font-weight: 500; color: #a89a88; padding: 14px 6px 7px; margin: 0; }
+
+.set-card {
+  background: #fbf8f3;
+  border: 0.5px solid #ece2d4;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.set-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+}
+.set-row + .set-row::before {
+  content: '';
+  position: absolute;
+  left: 46px;
+  right: 0;
+  top: 0;
+  border-top: 0.5px solid #f0e8db;
+}
+.set-row:active { background: #f3ede4; }
+
+.set-row-seat {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+}
+.set-row-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.set-row-title { font-size: 14px; color: #3a3028; }
+.set-row-desc { font-size: 11px; color: #b0a090; }
+.set-row-chevron { color: #c5b8a6; flex: 0 0 auto; }
+.set-row.danger .set-row-title { color: #c0392b; }
+
+/* 外觀切換器 */
+.set-appearance { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; }
+.set-appearance-seat { flex: 0 0 auto; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; }
+.set-appearance-body { flex: 1; display: flex; flex-direction: column; gap: 9px; min-width: 0; }
+.set-appearance-body .set-row-title { margin-top: 4px; }
+
+/* 手機：三顆並排按鈕卡（未選中自帶可按感）*/
+.appearance-switch { display: flex; gap: 8px; }
+.appearance-opt {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 10px 6px;
+  background: #fff;
+  border: 0.5px solid #ddd5c8;
+  border-radius: 12px;
+  color: #6a5e52;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+.appearance-opt svg { color: #8a7e70; }
+.appearance-opt.selected { border: 1.5px solid #c8785a; background: #fce8e0; }
+.appearance-opt.selected svg { color: #c8785a; }
+.appearance-opt:disabled { opacity: 0.7; cursor: default; }
+
+/* 桌面 / 平板：分段控制器 */
+@media (min-width: 768px) {
+  .appearance-switch { background: #f0ebe3; border-radius: 12px; padding: 4px; gap: 0; }
+  .appearance-opt { flex-direction: row; justify-content: center; min-height: 0; padding: 8px 6px; background: transparent; border: none; border-radius: 9px; }
+  .appearance-opt.selected { background: #fff; border: none; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06); }
+}
+
+.set-version { text-align: center; font-size: 11px; color: #c5b8a6; padding: 20px 0 8px; }
+
+/* 登出確認 */
+.set-confirm-mask { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 24px; background: rgba(0, 0, 0, 0.4); }
+.set-confirm { width: min(90vw, 320px); background: #fff; border-radius: 16px; padding: 20px; text-align: center; }
+.set-confirm-title { font-size: 16px; font-weight: 800; color: #3a3028; margin-bottom: 6px; }
+.set-confirm-desc { font-size: 13px; color: #8a7f72; margin-bottom: 16px; }
+.set-confirm-actions { display: flex; gap: 10px; }
+.set-confirm-cancel { flex: 1; padding: 11px; border-radius: 12px; border: 1px solid #e8e0d4; background: transparent; color: #4a3f35; font-size: 14px; cursor: pointer; }
+.set-confirm-ok { flex: 1; padding: 11px; border-radius: 12px; border: none; background: #c0392b; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; }
+
+/* 設定頁暗色 */
+[data-theme="dark"] .set-group-title { color: rgba(168, 212, 204, 0.6); }
+[data-theme="dark"] .set-card { background: rgba(22, 40, 32, 0.9); border-color: #2a4035; }
+[data-theme="dark"] .set-row + .set-row::before { border-top-color: #2a4035; }
+[data-theme="dark"] .set-row-title { color: #d4ede8; }
+[data-theme="dark"] .set-row:active { background: rgba(76, 175, 125, 0.1); }
+[data-theme="dark"] .set-row-seat, [data-theme="dark"] .set-appearance-seat { filter: saturate(0.7) brightness(0.9); }
+[data-theme="dark"] .appearance-opt { background: rgba(22, 40, 32, 0.6); border-color: #2a4035; color: #d4ede8; }
+[data-theme="dark"] .appearance-opt.selected { border-color: #4caf7d; background: rgba(76, 175, 125, 0.15); }
+[data-theme="dark"] .appearance-opt.selected svg { color: #4caf7d; }
+[data-theme="dark"] .set-version { color: rgba(168, 212, 204, 0.4); }
+[data-theme="dark"] .set-confirm { background: #16281e; }
+[data-theme="dark"] .set-confirm-title { color: #d4ede8; }
+[data-theme="dark"] .set-confirm-cancel { border-color: #2a4035; color: #d4ede8; }
+@media (min-width: 768px) {
+  [data-theme="dark"] .appearance-switch { background: rgba(22, 40, 32, 0.6); }
+  [data-theme="dark"] .appearance-opt.selected { background: rgba(76, 175, 125, 0.2); }
+}

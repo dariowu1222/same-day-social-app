@@ -37,14 +37,14 @@ export default function SecurityCenterPage() {
   return (
     <div className="page account-page">
       <div className="detail-topbar">
-        <button className="detail-back-btn" type="button" onClick={() => navigate('/profile')} aria-label="返回">
+        <button className="detail-back-btn" type="button" onClick={() => navigate('/settings')} aria-label="返回">
           <ChevronLeft size={22} />
         </button>
-        <span className="detail-topbar-title">安全中心</span>
+        <span className="detail-topbar-title">封鎖名單</span>
       </div>
 
       <section className="panel" style={{ marginTop: 12 }}>
-        <p className="setting-section-title">封鎖名單</p>
+        <p className="setting-section-title">已封鎖的人</p>
         {loading ? (
           <p className="account-danger-note">載入中⋯</p>
         ) : blocked.length === 0 ? (

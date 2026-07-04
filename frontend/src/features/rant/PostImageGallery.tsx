@@ -3,6 +3,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { thumbUrl } from '../../shared/lib/mediaTools'
+
+// feed 縮圖寬度（點開 lightbox 才載原圖）
+const FEED_THUMB_W = 640
 
 type Props = { images: string[] }
 
@@ -18,13 +22,13 @@ export default function PostImageGallery({ images }: Props) {
     <div className={`post-gallery${single ? ' post-gallery-single' : ''}`} onClick={stop}>
       {single ? (
         <button type="button" className="post-gallery-item" onClick={() => setLightboxIndex(0)}>
-          <img src={images[0]} alt="圖片 1" loading="lazy" />
+          <img src={thumbUrl(images[0], FEED_THUMB_W)} alt="圖片 1" loading="lazy" />
         </button>
       ) : (
         <HScroller className="post-gallery-scroller" navClassName="gallery-nav">
           {images.map((url, i) => (
             <button key={`${url}-${i}`} type="button" className="post-gallery-item" onClick={() => setLightboxIndex(i)}>
-              <img src={url} alt={`圖片 ${i + 1}`} loading="lazy" />
+              <img src={thumbUrl(url, FEED_THUMB_W)} alt={`圖片 ${i + 1}`} loading="lazy" />
             </button>
           ))}
         </HScroller>

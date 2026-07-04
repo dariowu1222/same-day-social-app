@@ -23,6 +23,8 @@ import SettingsPage from '../features/profile/SettingsPage'
 import AccountCenterPage from '../features/profile/AccountCenterPage'
 import SecurityCenterPage from '../features/profile/SecurityCenterPage'
 import PrivacySettingsPage from '../features/profile/PrivacySettingsPage'
+import NotificationSettingsPage from '../features/profile/NotificationSettingsPage'
+import FeedbackPage from '../features/profile/FeedbackPage'
 import NotificationCenterPage from '../features/notifications/NotificationCenterPage'
 
 function App() {
@@ -118,6 +120,8 @@ function App() {
           <Route path="/account" element={<AccountCenterPage />} />
           <Route path="/security" element={<SecurityCenterPage />} />
           <Route path="/settings/privacy" element={<PrivacySettingsPage />} />
+          <Route path="/settings/notifications" element={<NotificationSettingsPage />} />
+          <Route path="/settings/feedback" element={<FeedbackPage />} />
           <Route path="/notifications" element={<NotificationCenterPage />} />
         </Routes>
         {!isDetail && <BottomNav activePage={activePage} onChange={setActivePage} />}

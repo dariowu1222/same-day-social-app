@@ -4,6 +4,10 @@
    ========================================================================== */
 
 /* ─── Profile Page ─────────────────────────────────────────────────────────── */
+.profile-page {
+  padding-bottom: calc(96px + env(safe-area-inset-bottom));
+}
+
 .profile-photos-panel .profile-photo-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
