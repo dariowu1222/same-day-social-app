@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Search, X } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
 import {
@@ -12,6 +12,7 @@ import type { UserProfile } from '../profile/types'
 import ChatRoom from './ChatRoom'
 import Avatar from '../../shared/ui/Avatar'
 import { testAvatarPhoto } from '../../shared/lib/userDisplay'
+import { createChatConnection, joinChatRooms } from './realtime'
 
 export default function ChatPage() {
   const { user } = useAuth()
@@ -24,10 +25,56 @@ export default function ChatPage() {
   const [draft, setDraft] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   const [search, setSearch] = useState('')
+  const connectionRef = useRef<ReturnType<typeof createChatConnection> | null>(null)
+  const roomsRef = useRef<ChatRoomType[]>([])
+  const activeRoomIdRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    activeRoomIdRef.current = activeRoomId
+  }, [activeRoomId])
+
+  useEffect(() => {
+    roomsRef.current = rooms
+  }, [rooms])
 
   useEffect(() => {
     loadRooms()
   }, [])
+
+  useEffect(() => {
+    if (!user) return
+
+    const connection = createChatConnection({
+      onMessageReceived: (message) => {
+        applyIncomingMessage(message)
+      },
+      onMessageRecalled: (message) => {
+        applyIncomingMessage(message)
+      },
+    })
+    connectionRef.current = connection
+
+    connection
+      .start()
+      .then(() => joinChatRooms(connection, roomsRef.current.map((room) => room.id)))
+      .catch(() => {
+        connectionRef.current = null
+      })
+
+    connection.onreconnected(() => {
+      joinChatRooms(connection, roomsRef.current.map((room) => room.id)).catch(() => {})
+    })
+
+    return () => {
+      connectionRef.current = null
+      connection.stop().catch(() => {})
+    }
+  }, [user?.userId])
+
+  useEffect(() => {
+    if (!connectionRef.current) return
+    joinChatRooms(connectionRef.current, rooms.map((room) => room.id)).catch(() => {})
+  }, [rooms])
 
   useEffect(() => {
     if (activeRoomId) {
@@ -79,16 +126,33 @@ export default function ChatPage() {
 
   async function submitContent(content: string, quote?: QuoteInfo) {
     if (!activeRoomId || !content.trim()) return
-    await sendMessage(activeRoomId, content, quote)
-    await loadMessages(activeRoomId)
+    const response = await sendMessage(activeRoomId, content, quote)
+    applyIncomingMessage(response.data)
     await loadRooms()
   }
 
   async function recallMsg(messageId: string) {
     if (!activeRoomId) return
-    await recallMessage(activeRoomId, messageId)
-    await loadMessages(activeRoomId)
+    const response = await recallMessage(activeRoomId, messageId)
+    applyIncomingMessage(response.data)
     await loadRooms()
+  }
+
+  function applyIncomingMessage(message: ChatMessage) {
+    const roomExists = roomsRef.current.some((room) => room.id === message.chatRoomId)
+    if (!roomExists) {
+      loadRooms()
+      return
+    }
+
+    setRoomMessages((prev) => ({
+      ...prev,
+      [message.chatRoomId]: upsertMessage(prev[message.chatRoomId] ?? [], message),
+    }))
+
+    if (activeRoomIdRef.current === message.chatRoomId) {
+      setMessages((prev) => upsertMessage(prev, message))
+    }
   }
 
   async function updateSetting(patch: { noteName?: string | null; pinned?: boolean; muted?: boolean }) {
@@ -321,6 +385,14 @@ function buildRoomTitle(room: ChatRoomType, profile: UserProfile | undefined, cu
   if (room.sourceType === 'TASK') return '任務對話'
   if (room.sourceType === 'RANT') return '樹洞對話'
   return '同頻對話'
+}
+
+function upsertMessage(messages: ChatMessage[], message: ChatMessage) {
+  const exists = messages.some((item) => item.id === message.id)
+  const next = exists
+    ? messages.map((item) => item.id === message.id ? message : item)
+    : [...messages, message]
+  return next.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
 }
 
 function formatMessagePreview(message: ChatMessage | undefined, currentUserId: string, otherName: string) {

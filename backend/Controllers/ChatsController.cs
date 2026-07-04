@@ -1,15 +1,17 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using SameDaySocialApp.Application.Dto;
 using SameDaySocialApp.Application.Services;
 using SameDaySocialApp.Domain.Entities;
+using SameDaySocialApp.Hubs;
 
 namespace SameDaySocialApp.Controllers;
 
 [ApiController]
 [Route("api/chats")]
 [Authorize]
-public sealed class ChatsController(ChatService chatService) : ControllerBase
+public sealed class ChatsController(ChatService chatService, IHubContext<ChatHub> chatHub) : ControllerBase
 {
     private string CallerId => User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
                                ?? User.FindFirst("sub")?.Value!;
@@ -37,22 +39,25 @@ public sealed class ChatsController(ChatService chatService) : ControllerBase
     }
 
     [HttpPost("{chatRoomId}/messages")]
-    public ActionResult<ApiResponse<ChatMessage>> SendMessage(string chatRoomId, [FromBody] SendMessageRequest request)
+    public async Task<ActionResult<ApiResponse<ChatMessage>>> SendMessage(string chatRoomId, [FromBody] SendMessageRequest request)
     {
         var rooms = chatService.GetRoomsByUser(CallerId);
         if (rooms.All(r => r.Id != chatRoomId)) return Forbid();
-        return ApiResponse<ChatMessage>.Ok(chatService.SendMessage(
+        var message = chatService.SendMessage(
             chatRoomId, CallerId, request.Content,
-            request.QuotedMessageId, request.QuotedSenderName, request.QuotedContent));
+            request.QuotedMessageId, request.QuotedSenderName, request.QuotedContent);
+        await chatHub.Clients.Group(ChatHub.RoomGroup(chatRoomId)).SendAsync("messageReceived", message);
+        return ApiResponse<ChatMessage>.Ok(message);
     }
 
     [HttpPost("{chatRoomId}/messages/{messageId}/recall")]
-    public ActionResult<ApiResponse<ChatMessage>> RecallMessage(string chatRoomId, string messageId)
+    public async Task<ActionResult<ApiResponse<ChatMessage>>> RecallMessage(string chatRoomId, string messageId)
     {
         var rooms = chatService.GetRoomsByUser(CallerId);
         if (rooms.All(r => r.Id != chatRoomId)) return Forbid();
         var recalled = chatService.RecallMessage(messageId, CallerId);
         if (recalled == null) return BadRequest(ApiResponse<ChatMessage>.Fail("MESSAGE_RECALL_DENIED", "訊息無法收回（僅限本人發出後 2 分鐘內）。"));
+        await chatHub.Clients.Group(ChatHub.RoomGroup(chatRoomId)).SendAsync("messageRecalled", recalled);
         return ApiResponse<ChatMessage>.Ok(recalled);
     }
 

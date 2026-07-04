@@ -1,10 +1,12 @@
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using SameDaySocialApp.Application.Dto;
 using SameDaySocialApp.Application.Services;
+using SameDaySocialApp.Hubs;
 using SameDaySocialApp.Infrastructure.Email;
 using SameDaySocialApp.Infrastructure.Media;
 using SameDaySocialApp.Infrastructure.Persistence;
@@ -36,7 +38,8 @@ builder.Services.AddCors(options =>
                 "https://localhost", "http://localhost", "capacitor://localhost"
             )
             .AllowAnyHeader()
-            .AllowAnyMethod();
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
 
@@ -66,12 +69,26 @@ if (!string.IsNullOrWhiteSpace(databaseConnectionString))
 }
 
 builder.Services.AddSingleton<JwtService>();
+builder.Services.AddSignalR();
 
 var jwtService = new JwtService(builder.Configuration, builder.Environment);
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         options.TokenValidationParameters = jwtService.ValidationParameters;
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrWhiteSpace(accessToken) && path.StartsWithSegments("/hubs/chat"))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            }
+        };
     });
 builder.Services.AddAuthorization();
 
@@ -129,6 +146,10 @@ app.UseAuthorization();
 app.UseRateLimiter();
 
 app.MapControllers();
+app.MapHub<ChatHub>("/hubs/chat", options =>
+{
+    options.Transports = HttpTransportType.WebSockets | HttpTransportType.ServerSentEvents | HttpTransportType.LongPolling;
+});
 app.MapGet("/", () => Results.Content(
     """
     <!doctype html>
