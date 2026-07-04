@@ -36,6 +36,7 @@ public sealed class UserRecordConfiguration : IEntityTypeConfiguration<UserRecor
         builder.Property(x => x.AgeMin).HasColumnName("age_min");
         builder.Property(x => x.AgeMax).HasColumnName("age_max");
         builder.Property(x => x.DistanceKm).HasColumnName("distance_km");
+        builder.Property(x => x.PreferredArea).HasColumnName("preferred_area").HasMaxLength(40);
         builder.Property(x => x.Languages).HasColumnName("languages").HasColumnType("text[]");
         builder.Property(x => x.ActiveTime).HasColumnName("active_time").HasMaxLength(40);
         builder.Property(x => x.VoiceFirst).HasColumnName("voice_first").HasDefaultValue(false);

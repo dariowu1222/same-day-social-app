@@ -38,16 +38,50 @@ public sealed class MatchService
             return [];
         }
 
+        // 登入者的交友意圖（想認識的對象、年齡範圍）→ 用來篩選候選
+        var me = users.FirstOrDefault(x => x.Id == userId);
+
         var matches = entries
             .Where(x => x.UserId != userId && !pausedUserIds.Contains(x.UserId))
             .GroupBy(x => x.UserId)
             .Select(g => g.MaxBy(x => x.CreatedAt)!)
+            .Where(entry => MatchesPreferences(me, users.FirstOrDefault(u => u.Id == entry.UserId)))
             .Select(entry => BuildMatch(current, entry, users))
             .OrderByDescending(x => x.MatchScore)
             .Take(5)
             .ToList();
 
         return ApplyDisplayScore(matches);
+    }
+
+    // 依登入者交友意圖篩選候選：想認識的對象（性別）+ 年齡範圍。
+    // 資料缺漏（候選沒填性別/生日、或本人沒設偏好）一律不排除，避免真實用戶被濾光。
+    private static bool MatchesPreferences(User? me, User? candidate)
+    {
+        if (me == null || candidate == null) return true;
+
+        if (!string.IsNullOrWhiteSpace(me.LookingFor) && me.LookingFor != "不限" && !string.IsNullOrWhiteSpace(candidate.Gender))
+        {
+            var wantGender = me.LookingFor == "男生" ? "男" : me.LookingFor == "女生" ? "女" : null;
+            if (wantGender != null && candidate.Gender != wantGender) return false;
+        }
+
+        var age = AgeOf(candidate.Birthday);
+        if (age != null)
+        {
+            if (me.AgeMin != null && age < me.AgeMin) return false;
+            if (me.AgeMax != null && age > me.AgeMax) return false;
+        }
+        return true;
+    }
+
+    private static int? AgeOf(DateOnly? birthday)
+    {
+        if (birthday == null) return null;
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var age = today.Year - birthday.Value.Year;
+        if (birthday.Value > today.AddYears(-age)) age--;
+        return age;
     }
 
     private HashSet<string> LoadPausedUserIds()
@@ -182,7 +216,13 @@ public sealed class MatchService
             match.SharedTags,
             match.Reason,
             match.Icebreaker,
-            Summarize(other.Content));
+            Summarize(other.Content),
+            AgeOf(user?.Birthday),
+            user?.LocationArea,
+            user?.Bio,
+            user?.InterestTags ?? [],
+            user?.PhotoDataUrls ?? [],
+            user?.Birthday?.ToString("yyyy-MM-dd"));
     }
 
     private void PersistOrReuseMatch(MatchRecord match)
@@ -300,4 +340,10 @@ public sealed record MatchResponse(
     List<string> SharedTags,
     string Reason,
     string Icebreaker,
-    string TodaySummary);
+    string TodaySummary,
+    int? Age = null,
+    string? City = null,
+    string? Bio = null,
+    List<string>? Interests = null,
+    List<string>? Photos = null,
+    string? Birthday = null);
