@@ -9,9 +9,13 @@ using SameDaySocialApp.Application.Services;
 using SameDaySocialApp.Hubs;
 using SameDaySocialApp.Infrastructure.Email;
 using SameDaySocialApp.Infrastructure.Media;
+using SameDaySocialApp.Infrastructure.Observability;
 using SameDaySocialApp.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// 觀測性：Serilog 結構化日誌 + OpenTelemetry 追蹤/指標（OTLP 匯出，後端可換）
+builder.AddAppObservability();
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -134,6 +138,9 @@ builder.Services.AddRateLimiter(options =>
 });
 
 var app = builder.Build();
+
+// 每個請求記結構化計時日誌（耗時 ms、狀態碼、UserId、TraceId）→ 送 OTLP
+app.UseAppObservability();
 
 // if (app.Environment.IsDevelopment())
 // {
