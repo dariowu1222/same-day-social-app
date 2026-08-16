@@ -13,21 +13,28 @@ import ChatRoom from './ChatRoom'
 import Avatar from '../../shared/ui/Avatar'
 import { testAvatarPhoto } from '../../shared/lib/userDisplay'
 import { createChatConnection, joinChatRooms } from './realtime'
+import { readChatCache, writeChatCache } from './chatCache'
 
 export default function ChatPage() {
   const { user } = useAuth()
-  const [rooms, setRooms] = useState<ChatRoomType[]>([])
+  // 切分頁會讓本元件被 Router 銷毀，state 全歸零。用模組層級快取當初始值，
+  // 切回來先把上次的內容放上畫面，再於背景刷新（見 chatCache.ts）。
+  const restored = readChatCache(user?.userId)
+  const [rooms, setRooms] = useState<ChatRoomType[]>(restored?.rooms ?? [])
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null)
-  const [roomMessages, setRoomMessages] = useState<Record<string, ChatMessage[]>>({})
-  const [profiles, setProfiles] = useState<Record<string, UserProfile>>({})
-  const [settings, setSettings] = useState<Record<string, ChatMemberSetting>>({})
+  const [roomMessages, setRoomMessages] = useState<Record<string, ChatMessage[]>>(restored?.roomMessages ?? {})
+  const [profiles, setProfiles] = useState<Record<string, UserProfile>>(restored?.profiles ?? {})
+  const [settings, setSettings] = useState<Record<string, ChatMemberSetting>>(restored?.settings ?? {})
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [draft, setDraft] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   const [search, setSearch] = useState('')
   const connectionRef = useRef<ReturnType<typeof createChatConnection> | null>(null)
-  const roomsRef = useRef<ChatRoomType[]>([])
+  const roomsRef = useRef<ChatRoomType[]>(restored?.rooms ?? [])
   const activeRoomIdRef = useRef<string | null>(null)
+  // 開房時要立即讀到已快取的訊息，但不能把 roomMessages 放進 effect deps（會無限重跑）。
+  // 初始值同樣取還原資料，否則切回分頁後第一次開房仍會落空。
+  const roomMessagesRef = useRef<Record<string, ChatMessage[]>>(restored?.roomMessages ?? {})
 
   useEffect(() => {
     activeRoomIdRef.current = activeRoomId
@@ -36,6 +43,15 @@ export default function ChatPage() {
   useEffect(() => {
     roomsRef.current = rooms
   }, [rooms])
+
+  useEffect(() => {
+    roomMessagesRef.current = roomMessages
+  }, [roomMessages])
+
+  // 把最新內容留在模組層級，切走再切回時可以直接接上
+  useEffect(() => {
+    writeChatCache(user?.userId, { rooms, roomMessages, profiles, settings })
+  }, [user?.userId, rooms, roomMessages, profiles, settings])
 
   useEffect(() => {
     loadRooms()
@@ -54,11 +70,19 @@ export default function ChatPage() {
     })
     connectionRef.current = connection
 
-    connection
+    // StrictMode 開發模式會 mount → unmount → mount。若在 start() 還在 negotiate 時就 stop()，
+    // 連線會以「The connection was stopped during negotiation」失敗且不會重連 → 收不到即時訊息。
+    // 因此 cleanup 不直接 stop，而是等 start() 這輪走完再收，並用 cancelled 擋掉過期的後續動作。
+    let cancelled = false
+
+    const startPromise = connection
       .start()
-      .then(() => joinChatRooms(connection, roomsRef.current.map((room) => room.id)))
+      .then(() => {
+        if (cancelled) return
+        return joinChatRooms(connection, roomsRef.current.map((room) => room.id))
+      })
       .catch(() => {
-        connectionRef.current = null
+        if (!cancelled) connectionRef.current = null
       })
 
     connection.onreconnected(() => {
@@ -66,8 +90,9 @@ export default function ChatPage() {
     })
 
     return () => {
+      cancelled = true
       connectionRef.current = null
-      connection.stop().catch(() => {})
+      startPromise.finally(() => connection.stop().catch(() => {}))
     }
   }, [user?.userId])
 
@@ -77,22 +102,25 @@ export default function ChatPage() {
   }, [rooms])
 
   useEffect(() => {
-    if (activeRoomId) {
-      loadMessages(activeRoomId)
-    }
+    if (!activeRoomId) return
+    // 秒開：先用 loadRooms already 抓好的快取立即上畫面，再背景抓最新覆蓋。
+    setMessages(roomMessagesRef.current[activeRoomId] ?? [])
+    loadMessages(activeRoomId)
   }, [activeRoomId])
 
   async function loadRooms() {
     if (!user) return
-    const response = await getChatRooms(user.userId)
+
+    // 第一段：房間清單與個人設定互不依賴，同時發。
+    // 設定端點未就緒時不影響聊天列表，故單獨吞掉錯誤。
+    const [response, settingsRes] = await Promise.all([
+      getChatRooms(user.userId),
+      getMemberSettings(user.userId).catch(() => null),
+    ])
     setRooms(response.data)
-    const messagePairs = await Promise.all(
-      response.data.map(async (room) => {
-        const messageResponse = await getMessages(room.id)
-        return [room.id, messageResponse.data] as const
-      }),
-    )
-    setRoomMessages(Object.fromEntries(messagePairs))
+    if (settingsRes) {
+      setSettings(Object.fromEntries(settingsRes.data.map((s) => [s.chatRoomId, s])))
+    }
 
     // 載入每個對話中「對方」的個人資料，供頭像與自介使用
     const otherIds = Array.from(new Set(
@@ -100,42 +128,86 @@ export default function ChatPage() {
         .map((room) => room.userIds.find((id) => id !== user.userId))
         .filter((id): id is string => !!id),
     ))
-    const profileEntries = await Promise.all(
-      otherIds.map(async (id) => {
-        try {
-          const res = await getProfile(id)
-          return [id, res.data] as const
-        } catch {
-          return null
-        }
-      }),
-    )
-    setProfiles(Object.fromEntries(profileEntries.filter((entry): entry is readonly [string, UserProfile] => !!entry)))
 
-    // 設定端點未就緒（後端尚未重啟）時不影響聊天列表
-    try {
-      const settingsRes = await getMemberSettings(user.userId)
-      setSettings(Object.fromEntries(settingsRes.data.map((s) => [s.chatRoomId, s])))
-    } catch { /* ignore */ }
+    // 第二段：各房訊息與對方 profile 也互不依賴，一起抓，不要互等。
+    const [messagePairs, profileEntries] = await Promise.all([
+      Promise.all(
+        response.data.map(async (room) => {
+          const messageResponse = await getMessages(room.id)
+          return [room.id, messageResponse.data] as const
+        }),
+      ),
+      Promise.all(
+        otherIds.map(async (id) => {
+          try {
+            const res = await getProfile(id)
+            return [id, res.data] as const
+          } catch {
+            return null
+          }
+        }),
+      ),
+    ])
+    setRoomMessages(Object.fromEntries(messagePairs))
+    setProfiles(Object.fromEntries(profileEntries.filter((entry): entry is readonly [string, UserProfile] => !!entry)))
   }
 
   async function loadMessages(roomId: string) {
     const response = await getMessages(roomId)
-    setMessages(response.data)
+    setRoomMessages((prev) => ({ ...prev, [roomId]: response.data }))
+    // 抓取期間使用者可能已切走，別把別房的訊息蓋到當前畫面
+    if (activeRoomIdRef.current !== roomId) return
+    setMessages((prev) => {
+      // 伺服器不知道本地還在送出/送失敗的訊息，覆蓋前要留下來
+      const pending = prev.filter((m) => m.status === 'sending' || m.status === 'failed')
+      return [...response.data, ...pending]
+    })
   }
 
   async function submitContent(content: string, quote?: QuoteInfo) {
-    if (!activeRoomId || !content.trim()) return
-    const response = await sendMessage(activeRoomId, content, quote)
-    applyIncomingMessage(response.data)
-    await loadRooms()
+    if (!activeRoomId || !content.trim() || !user) return
+    const roomId = activeRoomId
+    const tempId = `temp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+
+    // 秒傳：先把訊息放上畫面，不等伺服器往返。
+    applyIncomingMessage({
+      id: tempId,
+      chatRoomId: roomId,
+      senderId: user.userId,
+      content: content.trim(),
+      createdAt: new Date().toISOString(),
+      status: 'sending',
+      ...quote,
+    })
+
+    try {
+      const response = await sendMessage(roomId, content, quote)
+      // 換成伺服器版本（拿到真 id / 時間）。SignalR 廣播若先到也無妨，upsert 依 id 收斂。
+      replaceMessage(roomId, tempId, response.data)
+    } catch {
+      markMessageFailed(roomId, tempId)
+    }
   }
 
   async function recallMsg(messageId: string) {
     if (!activeRoomId) return
     const response = await recallMessage(activeRoomId, messageId)
     applyIncomingMessage(response.data)
-    await loadRooms()
+  }
+
+  // 用伺服器回來的正式訊息取代樂觀訊息
+  function replaceMessage(roomId: string, tempId: string, real: ChatMessage) {
+    const swap = (list: ChatMessage[]) => upsertMessage(list.filter((m) => m.id !== tempId), real)
+    setRoomMessages((prev) => ({ ...prev, [roomId]: swap(prev[roomId] ?? []) }))
+    if (activeRoomIdRef.current === roomId) setMessages((prev) => swap(prev))
+  }
+
+  // 送出失敗：保留訊息內容並標記，讓使用者知道沒送出去
+  function markMessageFailed(roomId: string, tempId: string) {
+    const mark = (list: ChatMessage[]) =>
+      list.map((m) => (m.id === tempId ? { ...m, status: 'failed' as const } : m))
+    setRoomMessages((prev) => ({ ...prev, [roomId]: mark(prev[roomId] ?? []) }))
+    if (activeRoomIdRef.current === roomId) setMessages((prev) => mark(prev))
   }
 
   function applyIncomingMessage(message: ChatMessage) {

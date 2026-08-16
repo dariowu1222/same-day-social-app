@@ -17,6 +17,28 @@ public sealed class ChatService
         db = services.GetService<AppDbContext>();
     }
 
+    /// <summary>
+    /// 房間成員檢查：單一 EXISTS 查詢。
+    /// 用於各端點的權限守門，取代原本呼叫 GetRoomsByUser（3 次查詢＋組裝整份房間清單），
+    /// 每個請求省下 2 次 DB 往返——遠端 DB 下這是聊天延遲的主因之一。
+    /// </summary>
+    public bool IsRoomMember(string userId, string chatRoomId)
+    {
+        if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(chatRoomId))
+        {
+            return false;
+        }
+
+        if (db != null)
+        {
+            return db.ChatRoomUsers.AsNoTracking()
+                .Any(x => x.ChatRoomId == chatRoomId && x.UserId == userId);
+        }
+
+        return storage.ReadCollection<ChatRoom>("chatRooms")
+            .Any(x => x.Id == chatRoomId && x.UserIds.Contains(userId));
+    }
+
     public List<ChatRoom> GetRoomsByUser(string userId)
     {
         if (db != null)
@@ -105,20 +127,34 @@ public sealed class ChatService
         return storage.InsertOne("chatRooms", fileRoom);
     }
 
-    public List<ChatMessage> GetMessages(string chatRoomId)
+    // 一次最多回傳的訊息數：只取最近這批，避免老房間把整段歷史全撈出來。
+    private const int DefaultMessageLimit = 50;
+    private const int MaxMessageLimit = 200;
+
+    /// <summary>
+    /// 取聊天室訊息：預設只回最近 <see cref="DefaultMessageLimit"/> 則。
+    /// 先以時間倒序取最新一批，再正序回傳給前端顯示。
+    /// </summary>
+    public List<ChatMessage> GetMessages(string chatRoomId, int limit = DefaultMessageLimit)
     {
+        limit = Math.Clamp(limit, 1, MaxMessageLimit);
+
         if (db != null)
         {
             return db.ChatMessages.AsNoTracking()
                 .Where(x => x.ChatRoomId == chatRoomId)
-                .OrderBy(x => x.CreatedAt)
+                .OrderByDescending(x => x.CreatedAt)
+                .Take(limit)
                 .ToList()
+                .OrderBy(x => x.CreatedAt)
                 .Select(x => x.ToDomain())
                 .ToList();
         }
 
         return storage.ReadCollection<ChatMessage>("chatMessages")
             .Where(x => x.ChatRoomId == chatRoomId)
+            .OrderByDescending(x => x.CreatedAt)
+            .Take(limit)
             .OrderBy(x => x.CreatedAt)
             .ToList();
     }

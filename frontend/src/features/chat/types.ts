@@ -24,4 +24,6 @@ export type ChatMessage = {
   quotedSenderName?: string | null
   quotedContent?: string | null
   isRecalled?: boolean
+  // 僅存在於本地：樂觀更新的送出狀態。送達後由伺服器版本取代，此欄位即消失。
+  status?: 'sending' | 'failed'
 }

@@ -31,18 +31,17 @@ public sealed class ChatsController(ChatService chatService, IHubContext<ChatHub
     }
 
     [HttpGet("{chatRoomId}/messages")]
-    public ActionResult<ApiResponse<List<ChatMessage>>> GetMessages(string chatRoomId)
+    public ActionResult<ApiResponse<List<ChatMessage>>> GetMessages(string chatRoomId, [FromQuery] int? limit = null)
     {
-        var rooms = chatService.GetRoomsByUser(CallerId);
-        if (rooms.All(r => r.Id != chatRoomId)) return Forbid();
-        return ApiResponse<List<ChatMessage>>.Ok(chatService.GetMessages(chatRoomId));
+        if (!IsMember(chatRoomId)) return Forbid();
+        return ApiResponse<List<ChatMessage>>.Ok(
+            limit.HasValue ? chatService.GetMessages(chatRoomId, limit.Value) : chatService.GetMessages(chatRoomId));
     }
 
     [HttpPost("{chatRoomId}/messages")]
     public async Task<ActionResult<ApiResponse<ChatMessage>>> SendMessage(string chatRoomId, [FromBody] SendMessageRequest request)
     {
-        var rooms = chatService.GetRoomsByUser(CallerId);
-        if (rooms.All(r => r.Id != chatRoomId)) return Forbid();
+        if (!IsMember(chatRoomId)) return Forbid();
         var message = chatService.SendMessage(
             chatRoomId, CallerId, request.Content,
             request.QuotedMessageId, request.QuotedSenderName, request.QuotedContent);
@@ -53,8 +52,7 @@ public sealed class ChatsController(ChatService chatService, IHubContext<ChatHub
     [HttpPost("{chatRoomId}/messages/{messageId}/recall")]
     public async Task<ActionResult<ApiResponse<ChatMessage>>> RecallMessage(string chatRoomId, string messageId)
     {
-        var rooms = chatService.GetRoomsByUser(CallerId);
-        if (rooms.All(r => r.Id != chatRoomId)) return Forbid();
+        if (!IsMember(chatRoomId)) return Forbid();
         var recalled = chatService.RecallMessage(messageId, CallerId);
         if (recalled == null) return BadRequest(ApiResponse<ChatMessage>.Fail("MESSAGE_RECALL_DENIED", "訊息無法收回（僅限本人發出後 2 分鐘內）。"));
         await chatHub.Clients.Group(ChatHub.RoomGroup(chatRoomId)).SendAsync("messageRecalled", recalled);
@@ -109,7 +107,7 @@ public sealed class ChatsController(ChatService chatService, IHubContext<ChatHub
     }
 
     private bool IsMember(string chatRoomId)
-        => chatService.GetRoomsByUser(CallerId).Any(r => r.Id == chatRoomId);
+        => chatService.IsRoomMember(CallerId, chatRoomId);
 
     private string? OtherUserId(string chatRoomId)
         => chatService.GetRoomsByUser(CallerId)

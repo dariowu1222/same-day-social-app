@@ -23,7 +23,8 @@ type Props = {
   messages: ChatMessage[]
   draft: string
   onDraftChange: (value: string) => void
-  onSendContent: (content: string, quote?: QuoteInfo) => void
+  // 實際接的是 async 的 submitContent；宣告回傳 Promise 才能在多圖時依序送出、保住順序
+  onSendContent: (content: string, quote?: QuoteInfo) => void | Promise<void>
   onRecall?: (messageId: string) => void
   setting?: ChatMemberSetting
   onUpdateSetting?: (patch: { noteName?: string | null; pinned?: boolean; muted?: boolean }) => void
@@ -39,6 +40,9 @@ const GROUP_GAP_MS = 5 * 60 * 1000
 // 自介 sheet 的三段狀態與各自的 translateY 比例（佔 sheet 自身高度，sheet 高度 = 一個螢幕）。
 type SheetState = 'closed' | 'peek' | 'full'
 const SHEET_TRANSLATE: Record<SheetState, number> = { closed: 1.06, peek: 0.42, full: 0 }
+
+// 一次最多挑幾張圖（與樹洞發文的 MAX_POST_IMAGES 一致）
+const MAX_CHAT_IMAGES = 9
 
 type RenderRow =
   | { kind: 'date'; key: string; label: string }
@@ -64,6 +68,8 @@ export default function ChatRoom({
   const muted = !!setting?.muted
   const pinned = !!setting?.pinned
   const [toast, setToast] = useState('')
+  // 多圖上傳中的張數（0 = 沒有在上傳）
+  const [uploadingCount, setUploadingCount] = useState(0)
   // 長按訊息操作列：紀錄目標訊息、歸屬、浮層座標
   const [action, setAction] = useState<{ msg: ChatMessage; isOut: boolean; x: number; y: number } | null>(null)
   // 引用回覆：被引用的訊息
@@ -248,14 +254,24 @@ export default function ChatRoom({
     return content
   }
 
-  // 圖片訊息：縮圖後以 data URL 直接當訊息內容送出（泡泡會偵測 data:image 並渲染圖片）
+  // 圖片訊息：縮圖並上傳後，以圖片網址當訊息內容送出（泡泡會偵測圖片網址並渲染）
+  // 多張時＝多則訊息（與 LINE 一致）：上傳平行加速，送出依序以保住選取順序。
   async function handlePickImage(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
+    const files = Array.from(event.target.files ?? []).slice(0, MAX_CHAT_IMAGES)
     event.target.value = ''
-    if (!file || !onSendContent) return
-    const dataUrl = await imageToDataUrl(file)
-    const url = await uploadMedia(dataUrl, 'chats')
-    onSendContent(url)
+    if (files.length === 0 || !onSendContent) return
+
+    setUploadingCount(files.length)
+    try {
+      const urls = await Promise.all(
+        files.map(async (file) => uploadMedia(await imageToDataUrl(file), 'chats')),
+      )
+      for (const url of urls) {
+        await onSendContent(url)
+      }
+    } finally {
+      setUploadingCount(0)
+    }
   }
 
   // 把手被觸/點：網頁版直接 peek↔full 切換；原生版交給拖曳處理（tap 才在 touchend 切換）。
@@ -386,7 +402,10 @@ export default function ChatRoom({
                     ? <span className="cr-recalled">訊息已收回</span>
                     : renderContent(row.message.content)}
                 </div>
-                {row.isGroupEnd && (
+                {/* 樂觀更新的送出狀態：送達後伺服器版本沒有 status，標記自動消失 */}
+                {row.message.status === 'sending' && <span className="cr-msg-status">傳送中…</span>}
+                {row.message.status === 'failed' && <span className="cr-msg-status failed">傳送失敗</span>}
+                {row.isGroupEnd && row.message.status == null && (
                   <span className="cr-time">{formatTime(row.message.createdAt)}</span>
                 )}
               </div>
@@ -408,9 +427,22 @@ export default function ChatRoom({
         </div>
       )}
 
+      {/* 多圖上傳中的提示：張數多時要讓使用者知道還在處理 */}
+      {uploadingCount > 0 && (
+        <div className="cr-upload-hint">
+          正在傳送 {uploadingCount} 張圖片…
+        </div>
+      )}
+
       {/* 輸入列：圖片 / 語音 / 輸入框 / 送出 */}
       <div className="cr-input">
-        <button className="cr-input-icon cr-img" type="button" onClick={() => fileRef.current?.click()} aria-label="傳送圖片">
+        <button
+          className="cr-input-icon cr-img"
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          disabled={uploadingCount > 0}
+          aria-label="傳送圖片"
+        >
           <ImageIcon size={20} strokeWidth={1.9} />
         </button>
         <button className="cr-input-icon cr-voice" type="button" aria-label="語音訊息">
@@ -426,7 +458,7 @@ export default function ChatRoom({
         <button className="cr-send" type="button" onClick={attemptSend} disabled={!draft.trim()} aria-label="送出">
           <ArrowUp size={18} strokeWidth={2.4} />
         </button>
-        <input ref={fileRef} type="file" accept="image/*" hidden onChange={handlePickImage} />
+        <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={handlePickImage} />
       </div>
 
       {/* 更多選單 action sheet */}

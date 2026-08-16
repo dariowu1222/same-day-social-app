@@ -471,6 +471,28 @@
   white-space: nowrap;
 }
 
+/* 多圖上傳中的提示條，貼在輸入列上方 */
+.cr-upload-hint {
+  padding: 6px 14px;
+  color: #7c8a7e;
+  font-size: 12px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+/* 樂觀更新的送出狀態，佔位與 .cr-time 一致，避免送達時畫面跳動 */
+.cr-msg-status {
+  flex-shrink: 0;
+  margin-bottom: 2px;
+  color: #9aa89c;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.cr-msg-status.failed {
+  color: #c0574b;
+}
+
 /* 輸入列 */
 .cr-input {
   display: flex;

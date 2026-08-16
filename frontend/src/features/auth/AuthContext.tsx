@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { STORAGE_KEYS, rememberSet, rememberGet, rememberClear } from '../../shared/lib/storageKeys'
 import { clearAuthToken } from '../../shared/api/httpClient'
+import { clearChatCache } from '../chat/chatCache'
 import type { DemoUser } from './types'
 
 type AuthContextValue = {
@@ -55,6 +56,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   function logout() {
     clearAuthToken()
     rememberClear(STORAGE_KEYS.user)
+    // 聊天快取留在模組層級（不隨元件卸載清空），登出時要一併清掉，
+    // 免得下一個人在同一個瀏覽器分頁看到上一個帳號的對話。
+    clearChatCache()
     setUserState(null)
   }
 
