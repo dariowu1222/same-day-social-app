@@ -329,7 +329,7 @@ export default function OnboardingOverlay({ user, onComplete }: Props) {
 
           <div className="ob-setup-body">
             <div className="ob-field">
-              <span className="ob-field-label">生理性別 <span className="profile-required">*</span></span>
+              <span className="ob-field-label">性別 <span className="profile-required">*</span></span>
               <div className="ob-tags">
                 {GENDER_OPTIONS.map(o => (
                   <button
@@ -393,7 +393,7 @@ export default function OnboardingOverlay({ user, onComplete }: Props) {
               disabled={saving || !gender}
               onClick={() => setPhase('intent')}
             >
-              {!gender ? '請先選生理性別' : '下一步 →'}
+              {!gender ? '請先選性別' : '下一步 →'}
             </button>
             <button
               className="ob-text-btn"

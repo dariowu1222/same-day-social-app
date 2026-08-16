@@ -277,7 +277,7 @@ export default function ProfilePage() {
 
   async function save() {
     if (!gender) {
-      showToast('請選擇生理性別（必填）。')
+      showToast('請選擇性別（必填）。')
       return
     }
     if (birthday && !isAdultBirthday(birthday)) {
@@ -408,9 +408,9 @@ export default function ProfilePage() {
         />
       </section>
 
-      {/* 生理性別（必填，鎖定不可改）*/}
+      {/* 性別（必填，鎖定不可改）*/}
       <section className="panel">
-        <FieldLabel title="生理性別" required />
+        <FieldLabel title="性別" required />
         <SingleChips options={GENDER_OPTIONS} value={gender} onChange={setGender} allowClear={false} disabled />
       </section>
 
