@@ -41,7 +41,7 @@ export default function RantPostCard({
   const [replyTarget, setReplyTarget] = useState<{ id: string; nickname: string } | null>(null)
   const [showHint, setShowHint] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
-  const canReply = replyText.trim() || replyMedia.imageDataUrl || replyMedia.audioDataUrl
+  const canReply = replyText.trim() || replyMedia.imageUrl || replyMedia.audioUrl
 
   const hintText = COMPOSE_HINTS[post.mode]
   const quickReplies = QUICK_REPLIES[post.mode] ?? []
@@ -116,7 +116,7 @@ export default function RantPostCard({
           <div onClick={() => navigate(`/rant/${post.id}`)} style={{ cursor: 'pointer' }}>
             <p className="post-content" style={{ marginBottom: 8 }}>{post.content}</p>
             <PostImageGallery images={postImages(post)} />
-            {post.audioDataUrl && <audio controls src={post.audioDataUrl} className="post-media-audio" />}
+            {post.audioUrl && <audio controls src={post.audioUrl} className="post-media-audio" />}
           </div>
 
           {/* Tags */}

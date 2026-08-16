@@ -1,13 +1,16 @@
 // 媒體共用工具：圖片縮圖、Blob → data URL。發文/留言/聊天的圖片與語音都走這裡。
 
-// 把 Supabase 公開物件 URL 改寫成「即時縮圖」（render/image transform），
-// 列表/預覽只載小圖大幅省流量；點開再用原圖。
-// 非 Supabase 公開 URL（data URL、passthrough、其他來源）原樣回傳。
-export function thumbUrl(url: string, width: number, quality = 70): string {
-  if (!url || !url.includes('/storage/v1/object/public/')) return url
-  const transformed = url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/')
-  const sep = transformed.includes('?') ? '&' : '?'
-  return `${transformed}${sep}width=${width}&quality=${quality}`
+// 圖片尺寸策略：上傳時就產兩張，列表載縮圖、點開才載原圖。
+// 註：Supabase 即時縮圖（/storage/v1/render/image/）是 Pro 方案功能，
+// 免費方案會回 404 導致列表破圖，所以不依賴即時轉檔，改為上傳時另存縮圖。
+export const FULL_MAX_SIZE = 2048
+export const FULL_QUALITY = 0.9
+export const THUMB_MAX_SIZE = 640
+export const THUMB_QUALITY = 0.7
+
+// 顯示用：優先縮圖，沒有縮圖的舊資料回退原圖，確保永遠有圖可顯示。
+export function displayUrl(url: string, thumb?: string | null): string {
+  return thumb && thumb.length > 0 ? thumb : url
 }
 
 

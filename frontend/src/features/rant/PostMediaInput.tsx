@@ -2,18 +2,19 @@
 // 留言仍用 shared/ui/MediaInput（單圖）；此元件只給說說看發文頁。
 import { useRef, useState } from 'react'
 import { Image as ImageIcon, Mic, MicOff, X } from 'lucide-react'
-import { uploadMedia } from '../../shared/api/media'
-import { imageToResizedDataUrl, thumbUrl } from '../../shared/lib/mediaTools'
+import { uploadImageWithThumb, uploadMedia } from '../../shared/api/media'
 import { useAudioRecorder } from '../../shared/hooks/useAudioRecorder'
 
 export const MAX_POST_IMAGES = 9
 
 export type PostMediaState = {
-  imageDataUrls: string[]
-  audioDataUrl: string | null
+  imageUrls: string[]
+  // 與 imageUrls 同索引對齊；移除圖片時兩邊要一起移，不然會錯位。
+  thumbUrls: string[]
+  audioUrl: string | null
 }
 
-export const EMPTY_POST_MEDIA: PostMediaState = { imageDataUrls: [], audioDataUrl: null }
+export const EMPTY_POST_MEDIA: PostMediaState = { imageUrls: [], thumbUrls: [], audioUrl: null }
 
 type Props = {
   value: PostMediaState
@@ -25,10 +26,10 @@ export default function PostMediaInput({ value, onChange, folder = 'rants' }: Pr
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const { isRecording, toggle: toggleRecording } = useAudioRecorder(async (dataUrl) => {
-    onChange({ ...value, audioDataUrl: await uploadMedia(dataUrl, folder) })
+    onChange({ ...value, audioUrl: await uploadMedia(dataUrl, folder) })
   })
 
-  const remaining = MAX_POST_IMAGES - value.imageDataUrls.length
+  const remaining = MAX_POST_IMAGES - value.imageUrls.length
   const atLimit = remaining <= 0
 
   async function handleImagePick(e: React.ChangeEvent<HTMLInputElement>) {
@@ -38,27 +39,33 @@ export default function PostMediaInput({ value, onChange, folder = 'rants' }: Pr
     setUploading(true)
     try {
       // 平行縮圖 + 上傳（Promise.all 保留選取順序），多圖大幅加速
-      const urls = await Promise.all(
-        files.map(async (file) => uploadMedia(await imageToResizedDataUrl(file), folder)),
-      )
-      onChange({ ...value, imageDataUrls: [...value.imageDataUrls, ...urls].slice(0, MAX_POST_IMAGES) })
+      const uploaded = await Promise.all(files.map((file) => uploadImageWithThumb(file, folder)))
+      onChange({
+        ...value,
+        imageUrls: [...value.imageUrls, ...uploaded.map((u) => u.url)].slice(0, MAX_POST_IMAGES),
+        thumbUrls: [...value.thumbUrls, ...uploaded.map((u) => u.thumbUrl)].slice(0, MAX_POST_IMAGES),
+      })
     } finally {
       setUploading(false)
     }
   }
 
   function removeImage(index: number) {
-    onChange({ ...value, imageDataUrls: value.imageDataUrls.filter((_, i) => i !== index) })
+    onChange({
+      ...value,
+      imageUrls: value.imageUrls.filter((_, i) => i !== index),
+      thumbUrls: value.thumbUrls.filter((_, i) => i !== index),
+    })
   }
 
   return (
     <div className="post-media-input">
       {/* 圖片縮圖列 */}
-      {value.imageDataUrls.length > 0 && (
+      {value.imageUrls.length > 0 && (
         <div className="post-media-thumbs">
-          {value.imageDataUrls.map((url, i) => (
+          {value.imageUrls.map((url, i) => (
             <div key={`${url}-${i}`} className="post-media-thumb">
-              <img src={thumbUrl(url, 240)} alt={`圖片 ${i + 1}`} />
+              <img src={value.thumbUrls[i] ?? url} alt={`圖片 ${i + 1}`} />
               <button type="button" className="post-media-thumb-remove" onClick={() => removeImage(i)} aria-label="移除這張圖片">
                 <X size={12} strokeWidth={2.4} />
               </button>
@@ -68,10 +75,10 @@ export default function PostMediaInput({ value, onChange, folder = 'rants' }: Pr
       )}
 
       {/* 語音預覽 */}
-      {value.audioDataUrl && (
+      {value.audioUrl && (
         <div className="post-media-audio">
-          <audio controls src={value.audioDataUrl} />
-          <button type="button" className="post-media-thumb-remove" onClick={() => onChange({ ...value, audioDataUrl: null })} aria-label="移除語音">
+          <audio controls src={value.audioUrl} />
+          <button type="button" className="post-media-thumb-remove" onClick={() => onChange({ ...value, audioUrl: null })} aria-label="移除語音">
             <X size={12} strokeWidth={2.4} />
           </button>
         </div>
@@ -105,8 +112,8 @@ export default function PostMediaInput({ value, onChange, folder = 'rants' }: Pr
           {isRecording ? <MicOff size={20} /> : <Mic size={20} />}
         </button>
         {uploading && <span className="recording-hint">上傳中…</span>}
-        {!uploading && value.imageDataUrls.length > 0 && (
-          <span className="post-media-count">{value.imageDataUrls.length}/{MAX_POST_IMAGES}</span>
+        {!uploading && value.imageUrls.length > 0 && (
+          <span className="post-media-count">{value.imageUrls.length}/{MAX_POST_IMAGES}</span>
         )}
         {isRecording && <span className="recording-hint">錄音中…再按停止</span>}
       </div>

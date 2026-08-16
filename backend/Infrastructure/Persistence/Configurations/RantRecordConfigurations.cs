@@ -17,9 +17,11 @@ public sealed class RantPostRecordConfiguration : IEntityTypeConfiguration<RantP
         builder.Property(x => x.Mode).HasColumnName("mode").HasMaxLength(40);
         builder.Property(x => x.EmotionTags).HasColumnName("emotion_tags").HasColumnType("text[]");
         builder.Property(x => x.HashTags).HasColumnName("hash_tags").HasColumnType("text[]");
-        builder.Property(x => x.ImageDataUrls).HasColumnName("image_data_urls").HasColumnType("text[]");
-        builder.Property(x => x.ImageDataUrl).HasColumnName("image_data_url");
-        builder.Property(x => x.AudioDataUrl).HasColumnName("audio_data_url");
+        // DB 欄位沿用歷史名稱 image_data_*（實際存的是物件儲存 URL），程式端已正名為 ImageUrl*。
+        builder.Property(x => x.ImageUrls).HasColumnName("image_data_urls").HasColumnType("text[]");
+        builder.Property(x => x.ThumbUrls).HasColumnName("thumb_urls").HasColumnType("text[]");
+        builder.Property(x => x.ImageUrl).HasColumnName("image_data_url");
+        builder.Property(x => x.AudioUrl).HasColumnName("audio_data_url");
         builder.Property(x => x.IsHidden).HasColumnName("is_hidden");
         builder.Property(x => x.ReportCount).HasColumnName("report_count");
         builder.Property(x => x.CreatedAt).HasColumnName("created_at");
@@ -39,8 +41,9 @@ public sealed class RantReplyRecordConfiguration : IEntityTypeConfiguration<Rant
         builder.Property(x => x.UserId).HasColumnName("user_id").HasMaxLength(64).IsRequired();
         builder.Property(x => x.Nickname).HasColumnName("nickname").HasMaxLength(80).IsRequired();
         builder.Property(x => x.Content).HasColumnName("content").HasMaxLength(1000).IsRequired();
-        builder.Property(x => x.ImageDataUrl).HasColumnName("image_data_url");
-        builder.Property(x => x.AudioDataUrl).HasColumnName("audio_data_url");
+        builder.Property(x => x.ImageUrl).HasColumnName("image_data_url");
+        builder.Property(x => x.ThumbUrl).HasColumnName("thumb_url");
+        builder.Property(x => x.AudioUrl).HasColumnName("audio_data_url");
         builder.Property(x => x.LikeCount).HasColumnName("like_count");
         builder.Property(x => x.CreatedAt).HasColumnName("created_at");
         builder.HasIndex(x => new { x.RantPostId, x.CreatedAt });

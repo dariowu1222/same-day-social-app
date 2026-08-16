@@ -654,6 +654,15 @@ blockquote {
   height: 36px;
 }
 
+/* 回應圖片外層按鈕：只負責可點擊，外觀完全交給內層的 .reply-media-img */
+.reply-media-btn {
+  display: block;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: zoom-in;
+}
+
 .reply-media-img {
   max-width: 120px;
   border-radius: 6px;

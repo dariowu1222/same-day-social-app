@@ -1,9 +1,26 @@
 import { useState } from 'react'
 import { Heart } from 'lucide-react'
+import ImageLightbox from '../../shared/ui/ImageLightbox'
 import { flattenReplies, type RantReply } from './types'
 
 function avatarLetter(nickname: string) {
   return nickname.trim()[0]?.toUpperCase() ?? '?'
+}
+
+// 回應圖片：列表顯示縮圖（沒有縮圖的舊資料回退原圖），點擊開全螢幕檢視原圖。
+function ReplyImage({ reply }: { reply: RantReply }) {
+  const [open, setOpen] = useState(false)
+  if (!reply.imageUrl) return null
+  return (
+    <>
+      <button type="button" className="reply-media-btn" onClick={() => setOpen(true)}>
+        <img src={reply.thumbUrl || reply.imageUrl} className="reply-media-img" alt="" loading="lazy" />
+      </button>
+      {open && (
+        <ImageLightbox images={[reply.imageUrl]} startIndex={0} onClose={() => setOpen(false)} />
+      )}
+    </>
+  )
 }
 
 type Props = {
@@ -42,8 +59,8 @@ export default function ReplyItem({ reply, onReply, onLike }: Props) {
         </div>
 
         <p className="flat-reply-content">{reply.content}</p>
-        {reply.imageDataUrl && <img src={reply.imageDataUrl} className="reply-media-img" alt="" />}
-        {reply.audioDataUrl && <audio controls src={reply.audioDataUrl} className="post-media-audio" />}
+        <ReplyImage reply={reply} />
+        {reply.audioUrl && <audio controls src={reply.audioUrl} className="post-media-audio" />}
 
         <div className="thread-action-bar">
           <button className="reply-like-btn" onClick={() => onLike(reply.id)}>
@@ -90,8 +107,8 @@ export default function ReplyItem({ reply, onReply, onLike }: Props) {
                     )}
 
                     <p className="flat-reply-content">{sub.content}</p>
-                    {sub.imageDataUrl && <img src={sub.imageDataUrl} className="reply-media-img" alt="" />}
-                    {sub.audioDataUrl && <audio controls src={sub.audioDataUrl} className="post-media-audio" />}
+                    <ReplyImage reply={sub} />
+                    {sub.audioUrl && <audio controls src={sub.audioUrl} className="post-media-audio" />}
                     <div className="thread-action-bar">
                       <button className="reply-like-btn" onClick={() => onLike(sub.id)}>
                         <Heart size={13} /> {sub.likeCount > 0 ? sub.likeCount : ''}

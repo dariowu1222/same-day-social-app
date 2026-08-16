@@ -9,7 +9,7 @@ export async function getRants(cursor?: string, limit = RANT_PAGE_SIZE) {
   return request<RantPost[]>(`/api/rants?${params.toString()}`)
 }
 
-export async function createRant(payload: { nickname: string; content: string; mode: string; hashtags?: string[]; imageDataUrls?: string[]; audioDataUrl?: string | null }) {
+export async function createRant(payload: { nickname: string; content: string; mode: string; hashtags?: string[]; imageUrls?: string[]; thumbUrls?: string[]; audioUrl?: string | null }) {
   return request<RantPost>('/api/rants', { method: 'POST', body: JSON.stringify(payload) })
 }
 
@@ -17,7 +17,7 @@ export async function understandRant(rantId: string) {
   return request<RantPost>(`/api/rants/${rantId}/understand`, { method: 'POST' })
 }
 
-export async function replyRant(rantId: string, payload: { nickname: string; content: string; imageDataUrl?: string | null; audioDataUrl?: string | null; parentReplyId?: string | null }) {
+export async function replyRant(rantId: string, payload: { nickname: string; content: string; imageUrl?: string | null; thumbUrl?: string | null; audioUrl?: string | null; parentReplyId?: string | null }) {
   return request<RantPost>(`/api/rants/${rantId}/replies`, { method: 'POST', body: JSON.stringify(payload) })
 }
 

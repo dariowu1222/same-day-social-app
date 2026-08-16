@@ -104,7 +104,7 @@ export default function RantDetailPage() {
     setTimeout(() => inputRef.current?.focus(), 50)
   }
 
-  const canReply = replyText.trim() || replyMedia.imageDataUrl || replyMedia.audioDataUrl
+  const canReply = replyText.trim() || replyMedia.imageUrl || replyMedia.audioUrl
 
   if (!user) return null
 
@@ -156,7 +156,7 @@ export default function RantDetailPage() {
 
               <p className="detail-post-content">{post.content}</p>
               <PostImageGallery images={postImages(post)} />
-              {post.audioDataUrl && <audio controls src={post.audioDataUrl} className="post-media-audio" />}
+              {post.audioUrl && <audio controls src={post.audioUrl} className="post-media-audio" />}
 
               {post.hashtags?.length > 0 && (
                 <div className="hashtag-row">

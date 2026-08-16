@@ -9,9 +9,10 @@ public sealed class RantPostRecord
     public string Mode { get; set; } = "JUST_SAYING";
     public string[] EmotionTags { get; set; } = [];
     public string[] HashTags { get; set; } = [];
-    public string[] ImageDataUrls { get; set; } = [];
-    public string? ImageDataUrl { get; set; }
-    public string? AudioDataUrl { get; set; }
+    public string[] ImageUrls { get; set; } = [];
+    public string[] ThumbUrls { get; set; } = [];
+    public string? ImageUrl { get; set; }
+    public string? AudioUrl { get; set; }
     public bool IsHidden { get; set; }
     public int ReportCount { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
@@ -25,8 +26,9 @@ public sealed class RantReplyRecord
     public string UserId { get; set; } = "";
     public string Nickname { get; set; } = "";
     public string Content { get; set; } = "";
-    public string? ImageDataUrl { get; set; }
-    public string? AudioDataUrl { get; set; }
+    public string? ImageUrl { get; set; }
+    public string? ThumbUrl { get; set; }
+    public string? AudioUrl { get; set; }
     public int LikeCount { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

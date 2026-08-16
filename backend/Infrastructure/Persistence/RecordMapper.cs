@@ -200,8 +200,9 @@ public static class RecordMapper
             UserId = r.UserId,
             Nickname = r.Nickname,
             Content = r.Content,
-            ImageDataUrl = r.ImageDataUrl,
-            AudioDataUrl = r.AudioDataUrl,
+            ImageUrl = r.ImageUrl,
+            ThumbUrl = r.ThumbUrl,
+            AudioUrl = r.AudioUrl,
             ParentReplyId = r.ParentReplyId,
             LikeCount = r.LikeCount,
             CreatedAt = r.CreatedAt,
@@ -223,11 +224,12 @@ public static class RecordMapper
             EmotionTags = record.EmotionTags.Select(x => ParseEnum(x, EmotionTag.CALM)).ToList(),
             HashTags = record.HashTags.ToList(),
             // 多圖：優先用 image_data_urls；舊資料只有單圖時回退成單元素清單。
-            ImageDataUrls = record.ImageDataUrls is { Length: > 0 }
-                ? record.ImageDataUrls.ToList()
-                : (string.IsNullOrEmpty(record.ImageDataUrl) ? [] : [record.ImageDataUrl]),
-            ImageDataUrl = record.ImageDataUrl,
-            AudioDataUrl = record.AudioDataUrl,
+            ImageUrls = record.ImageUrls is { Length: > 0 }
+                ? record.ImageUrls.ToList()
+                : (string.IsNullOrEmpty(record.ImageUrl) ? [] : [record.ImageUrl]),
+            ThumbUrls = record.ThumbUrls.ToList(),
+            ImageUrl = record.ImageUrl,
+            AudioUrl = record.AudioUrl,
             CreatedAt = record.CreatedAt,
             LikeCount = likeCount,
             ReplyCount = allReplies.Count,
@@ -248,9 +250,10 @@ public static class RecordMapper
             Mode = post.Mode.ToString(),
             EmotionTags = post.EmotionTags.Select(x => x.ToString()).ToArray(),
             HashTags = post.HashTags.ToArray(),
-            ImageDataUrls = post.ImageDataUrls.ToArray(),
-            ImageDataUrl = post.ImageDataUrl,
-            AudioDataUrl = post.AudioDataUrl,
+            ImageUrls = post.ImageUrls.ToArray(),
+            ThumbUrls = post.ThumbUrls.ToArray(),
+            ImageUrl = post.ImageUrl,
+            AudioUrl = post.AudioUrl,
             IsHidden = post.IsHidden,
             ReportCount = post.ReportCount,
             CreatedAt = post.CreatedAt

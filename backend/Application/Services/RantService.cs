@@ -27,7 +27,7 @@ public sealed class RantService
     // 單張上限（與前端 PostMediaInput 的 9 張一致）
     private const int MaxImages = 9;
 
-    public (RantPost? Post, ModerationResult Moderation) Create(string userId, string nickname, string content, RantMode mode, List<string>? hashTags = null, List<string>? imageDataUrls = null, string? audioDataUrl = null)
+    public (RantPost? Post, ModerationResult Moderation) Create(string userId, string nickname, string content, RantMode mode, List<string>? hashTags = null, List<string>? imageUrls = null, string? audioUrl = null, List<string>? thumbUrls = null)
     {
         var check = moderation.Check(content);
         if (check.IsBlocked)
@@ -35,11 +35,16 @@ public sealed class RantService
             return (null, check);
         }
 
-        var images = imageDataUrls?
-            .Where(u => !string.IsNullOrWhiteSpace(u))
-            .Select(u => u.Trim())
+        // 原圖與縮圖必須同索引對齊，因此先配對再一起過濾，避免任一邊被濾掉造成錯位。
+        var pairs = (imageUrls ?? [])
+            .Select((url, i) => (
+                Url: url?.Trim() ?? "",
+                Thumb: thumbUrls != null && i < thumbUrls.Count ? thumbUrls[i]?.Trim() ?? "" : ""))
+            .Where(p => p.Url.Length > 0)
             .Take(MaxImages)
-            .ToList() ?? [];
+            .ToList();
+        var images = pairs.Select(p => p.Url).ToList();
+        var thumbs = pairs.Select(p => p.Thumb).ToList();
 
         var analysis = analyzer.Analyze(content, ResponseMode.JUST_LISTEN);
         var post = new RantPost
@@ -51,9 +56,10 @@ public sealed class RantService
             Mode = mode,
             EmotionTags = analysis.EmotionTags,
             HashTags = hashTags?.Select(t => t.Trim()).Where(t => t.Length > 0).Take(5).ToList() ?? [],
-            ImageDataUrls = images,
-            ImageDataUrl = images.FirstOrDefault(), // 第一張回填，維持舊前端/單圖顯示相容
-            AudioDataUrl = audioDataUrl
+            ImageUrls = images,
+            ThumbUrls = thumbs,
+            ImageUrl = images.FirstOrDefault(), // 第一張回填，維持舊前端/單圖顯示相容
+            AudioUrl = audioUrl
         };
 
         if (db != null)
@@ -155,7 +161,7 @@ public sealed class RantService
         return storage.UpdateOne<RantPost>("rantPosts", rantId, post => post.LikeCount += 1);
     }
 
-    public RantPost? Reply(string rantId, string userId, string nickname, string content, string? imageDataUrl = null, string? audioDataUrl = null, string? parentReplyId = null)
+    public RantPost? Reply(string rantId, string userId, string nickname, string content, string? imageUrl = null, string? audioUrl = null, string? parentReplyId = null, string? thumbUrl = null)
     {
         if (db != null)
         {
@@ -173,8 +179,9 @@ public sealed class RantService
                 UserId = userId,
                 Nickname = string.IsNullOrWhiteSpace(nickname) ? "同頻使用者" : nickname.Trim(),
                 Content = content.Trim(),
-                ImageDataUrl = imageDataUrl,
-                AudioDataUrl = audioDataUrl
+                ImageUrl = imageUrl,
+                ThumbUrl = thumbUrl,
+                AudioUrl = audioUrl
             });
             db.SaveChanges();
             NotifyReply(post.UserId, userId, rantId, content);

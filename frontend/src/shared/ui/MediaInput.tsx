@@ -1,12 +1,12 @@
 import { useRef } from 'react'
 import { Image, Mic, MicOff, X } from 'lucide-react'
-import { uploadMedia } from '../api/media'
-import { imageToResizedDataUrl } from '../lib/mediaTools'
+import { uploadImageWithThumb, uploadMedia } from '../api/media'
 import { useAudioRecorder } from '../hooks/useAudioRecorder'
 
 export type MediaState = {
-  imageDataUrl: string | null
-  audioDataUrl: string | null
+  imageUrl: string | null
+  thumbUrl: string | null
+  audioUrl: string | null
 }
 
 type Props = {
@@ -15,40 +15,39 @@ type Props = {
   folder?: string
 }
 
-export const EMPTY_MEDIA: MediaState = { imageDataUrl: null, audioDataUrl: null }
+export const EMPTY_MEDIA: MediaState = { imageUrl: null, thumbUrl: null, audioUrl: null }
 
 export default function MediaInput({ value, onChange, folder = 'rants' }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { isRecording, toggle: toggleRecording } = useAudioRecorder(async (dataUrl) => {
-    onChange({ ...value, audioDataUrl: await uploadMedia(dataUrl, folder) })
+    onChange({ ...value, audioUrl: await uploadMedia(dataUrl, folder) })
   })
 
   async function handleImagePick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
-    const dataUrl = await imageToResizedDataUrl(file)
-    const url = await uploadMedia(dataUrl, folder)
-    onChange({ ...value, imageDataUrl: url })
+    const { url, thumbUrl } = await uploadImageWithThumb(file, folder)
+    onChange({ ...value, imageUrl: url, thumbUrl })
   }
 
   return (
     <div className="media-input-wrap">
       {/* 預覽區 */}
-      {(value.imageDataUrl || value.audioDataUrl) && (
+      {(value.imageUrl || value.audioUrl) && (
         <div className="media-preview-row">
-          {value.imageDataUrl && (
+          {value.imageUrl && (
             <div className="media-preview-item">
-              <img src={value.imageDataUrl} className="media-preview-img" alt="預覽" />
-              <button type="button" className="media-remove-btn" onClick={() => onChange({ ...value, imageDataUrl: null })}>
+              <img src={value.thumbUrl ?? value.imageUrl} className="media-preview-img" alt="預覽" />
+              <button type="button" className="media-remove-btn" onClick={() => onChange({ ...value, imageUrl: null, thumbUrl: null })}>
                 <X size={11} />
               </button>
             </div>
           )}
-          {value.audioDataUrl && (
+          {value.audioUrl && (
             <div className="media-preview-item media-preview-audio-wrap">
-              <audio controls src={value.audioDataUrl} className="media-preview-audio" />
-              <button type="button" className="media-remove-btn" onClick={() => onChange({ ...value, audioDataUrl: null })}>
+              <audio controls src={value.audioUrl} className="media-preview-audio" />
+              <button type="button" className="media-remove-btn" onClick={() => onChange({ ...value, audioUrl: null })}>
                 <X size={11} />
               </button>
             </div>
