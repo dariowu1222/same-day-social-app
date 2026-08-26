@@ -35,5 +35,16 @@ public sealed class User
     public string? ActiveTime { get; set; }        // 活動時段
     public bool VoiceFirst { get; set; }           // 可否語音先聊
     public bool MeetSoon { get; set; }             // 可否線下快見
+    // ── 管理端狀態 ──
+    public AccountStatus Status { get; set; } = AccountStatus.ACTIVE;
+    public DateTimeOffset? SuspendedUntil { get; set; }
+    public string? StatusReason { get; set; }
+    public MembershipTier MembershipTier { get; set; } = MembershipTier.FREE;
+    public DateTimeOffset? MembershipExpiresAt { get; set; }
+    public bool EmailVerified { get; set; }
+    public bool PhoneVerified { get; set; }
+    public bool IdentityVerified { get; set; }
+    public DateTimeOffset? LastActiveAt { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

@@ -108,6 +108,9 @@ builder.Services.AddScoped<SameDaySocialApp.Application.Services.RantService>();
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.TaskService>();
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.ChatService>();
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.NotificationService>();
+builder.Services.AddScoped<SameDaySocialApp.Application.Services.ReportService>();
+builder.Services.AddScoped<SameDaySocialApp.Application.Services.AdminUserService>();
+builder.Services.AddSingleton<SameDaySocialApp.Application.Services.AdminAccessService>();
 
 // 速率限制（防暴力登入 / 帳號枚舉 / 互動刷量）；分區鍵：登入者用 userId，否則用來源 IP
 static string RateKey(HttpContext ctx) =>

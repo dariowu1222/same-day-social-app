@@ -31,6 +31,18 @@ public sealed class UserRecord
     public string? ActiveTime { get; set; }
     public bool VoiceFirst { get; set; }
     public bool MeetSoon { get; set; }
+    // ── 管理端欄位 ──
+    public string Status { get; set; } = "ACTIVE";
+    public DateTimeOffset? SuspendedUntil { get; set; }
+    public string? StatusReason { get; set; }
+    // 付費機制尚未開發：欄位先備妥，目前一律為 FREE
+    public string MembershipTier { get; set; } = "FREE";
+    public DateTimeOffset? MembershipExpiresAt { get; set; }
+    public bool EmailVerified { get; set; }
+    public bool PhoneVerified { get; set; }
+    public bool IdentityVerified { get; set; }
+    public DateTimeOffset? LastActiveAt { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

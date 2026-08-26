@@ -40,6 +40,15 @@ public static class RecordMapper
             ActiveTime = record.ActiveTime,
             VoiceFirst = record.VoiceFirst,
             MeetSoon = record.MeetSoon,
+            Status = ParseEnum(record.Status, AccountStatus.ACTIVE),
+            SuspendedUntil = record.SuspendedUntil,
+            StatusReason = record.StatusReason,
+            MembershipTier = ParseEnum(record.MembershipTier, MembershipTier.FREE),
+            MembershipExpiresAt = record.MembershipExpiresAt,
+            EmailVerified = record.EmailVerified,
+            PhoneVerified = record.PhoneVerified,
+            IdentityVerified = record.IdentityVerified,
+            LastActiveAt = record.LastActiveAt,
             CreatedAt = record.CreatedAt
         };
     }
@@ -77,6 +86,15 @@ public static class RecordMapper
             ActiveTime = user.ActiveTime,
             VoiceFirst = user.VoiceFirst,
             MeetSoon = user.MeetSoon,
+            Status = user.Status.ToString(),
+            SuspendedUntil = user.SuspendedUntil,
+            StatusReason = user.StatusReason,
+            MembershipTier = user.MembershipTier.ToString(),
+            MembershipExpiresAt = user.MembershipExpiresAt,
+            EmailVerified = user.EmailVerified,
+            PhoneVerified = user.PhoneVerified,
+            IdentityVerified = user.IdentityVerified,
+            LastActiveAt = user.LastActiveAt,
             CreatedAt = user.CreatedAt,
             UpdatedAt = DateTimeOffset.UtcNow
         };
@@ -316,6 +334,48 @@ public static class RecordMapper
             QuotedSenderName = record.QuotedSenderName,
             QuotedContent = record.QuotedContent,
             IsRecalled = record.IsRecalled
+        };
+    }
+
+    public static Report ToDomain(this ReportRecord record)
+    {
+        return new Report
+        {
+            Id = record.Id,
+            TargetType = ParseEnum(record.TargetType, ReportTargetType.RANT_POST),
+            TargetId = record.TargetId,
+            ReporterId = record.ReporterId,
+            ReportedUserId = record.ReportedUserId,
+            Category = ParseEnum(record.Category, ReportCategory.OTHER),
+            Detail = record.Detail,
+            Status = ParseEnum(record.Status, ReportStatus.PENDING),
+            Severity = record.Severity,
+            ContextSnapshot = record.ContextSnapshot,
+            ReviewedBy = record.ReviewedBy,
+            ReviewedAt = record.ReviewedAt,
+            Resolution = record.Resolution,
+            CreatedAt = record.CreatedAt
+        };
+    }
+
+    public static ReportRecord ToRecord(this Report report)
+    {
+        return new ReportRecord
+        {
+            Id = report.Id,
+            TargetType = report.TargetType.ToString(),
+            TargetId = report.TargetId,
+            ReporterId = report.ReporterId,
+            ReportedUserId = report.ReportedUserId,
+            Category = report.Category.ToString(),
+            Detail = report.Detail,
+            Status = report.Status.ToString(),
+            Severity = report.Severity,
+            ContextSnapshot = report.ContextSnapshot,
+            ReviewedBy = report.ReviewedBy,
+            ReviewedAt = report.ReviewedAt,
+            Resolution = report.Resolution,
+            CreatedAt = report.CreatedAt
         };
     }
 

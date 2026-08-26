@@ -19,6 +19,16 @@ public sealed class UserRecordConfiguration : IEntityTypeConfiguration<UserRecor
         builder.Property(x => x.InterestTags).HasColumnName("interest_tags").HasColumnType("text[]");
         builder.Property(x => x.ValueTags).HasColumnName("value_tags").HasColumnType("text[]");
         builder.Property(x => x.ResponsePreference).HasColumnName("response_preference").HasMaxLength(40);
+        builder.Property(x => x.Status).HasColumnName("status").HasMaxLength(20);
+        builder.Property(x => x.SuspendedUntil).HasColumnName("suspended_until");
+        builder.Property(x => x.StatusReason).HasColumnName("status_reason").HasMaxLength(500);
+        builder.Property(x => x.MembershipTier).HasColumnName("membership_tier").HasMaxLength(20);
+        builder.Property(x => x.MembershipExpiresAt).HasColumnName("membership_expires_at");
+        builder.Property(x => x.EmailVerified).HasColumnName("email_verified");
+        builder.Property(x => x.PhoneVerified).HasColumnName("phone_verified");
+        builder.Property(x => x.IdentityVerified).HasColumnName("identity_verified");
+        builder.Property(x => x.LastActiveAt).HasColumnName("last_active_at");
+        builder.HasIndex(x => x.Status);
         builder.Property(x => x.CreatedAt).HasColumnName("created_at");
         builder.Property(x => x.UpdatedAt).HasColumnName("updated_at");
         builder.Property(x => x.PhotoDataUrls).HasColumnName("photo_data_urls").HasColumnType("text[]");
