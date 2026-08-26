@@ -4,9 +4,23 @@
     {
       "name": "frontend",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "cwd": "C:/Users/cq4dario/source/同頻Today App/frontend",
       "port": 5173,
+      "autoPort": true
+    },
+    {
+      "name": "admin",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "cwd": "C:/Users/cq4dario/source/同頻Today App/admin",
+      "port": 5174,
       "autoPort": true
     }
   ]
