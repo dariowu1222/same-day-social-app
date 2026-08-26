@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Search } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
-import { deleteRant, getRants, replyRant, reportRant, understandRant, RANT_PAGE_SIZE } from './api'
+import { deleteRant, getRants, replyRant, understandRant, RANT_PAGE_SIZE } from './api'
 import type { RantPost } from './types'
 import { EMPTY_MEDIA, type MediaState } from '../../shared/ui/MediaInput'
 import RantPostCard from './RantPostCard'
@@ -66,7 +66,6 @@ export default function RantBoardPage() {
             replyText={replies[post.id] ?? ''}
             onReplyTextChange={(value) => setReplies({ ...replies, [post.id]: value })}
             onUnderstand={() => updatePost(() => understandRant(post.id))}
-            onReport={() => updatePost(() => reportRant(post.id))}
             replyMedia={replyMedia[post.id] ?? EMPTY_MEDIA}
             onReplyMediaChange={(media) => setReplyMedia({ ...replyMedia, [post.id]: media })}
             onReply={(parentReplyId) =>

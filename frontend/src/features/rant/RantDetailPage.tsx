@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Heart, MessageCircle, ChevronLeft, Flag, HeartHandshake, ArrowUp, X } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
-import { deleteRant, getRants, likeReply, replyRant, reportRant, understandRant } from './api'
+import { deleteRant, getRants, likeReply, replyRant, understandRant } from './api'
+import ReportSheet from '../report/ReportSheet'
 import type { RantPost } from './types'
 import { postImages } from './types'
 import MediaInput, { EMPTY_MEDIA, type MediaState } from '../../shared/ui/MediaInput'
@@ -33,6 +34,7 @@ export default function RantDetailPage() {
   const [submitting, setSubmitting] = useState(false)
   const [composeFocused, setComposeFocused] = useState(false)
   const [showHint, setShowHint] = useState(false)
+  const [reportOpen, setReportOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const hintText = post ? COMPOSE_HINTS[post.mode] : undefined
@@ -69,12 +71,6 @@ export default function RantDetailPage() {
   async function handleUnderstand() {
     if (!rantId) return
     await understandRant(rantId)
-    await loadPost()
-  }
-
-  async function handleReport() {
-    if (!rantId) return
-    await reportRant(rantId)
     await loadPost()
   }
 
@@ -173,7 +169,7 @@ export default function RantDetailPage() {
                 <button className="post-action-btn" onClick={() => { setComposeFocused(true); setTimeout(() => inputRef.current?.focus(), 50) }}>
                   <MessageCircle size={16} /> {post.replies.length > 0 ? post.replies.length : ''}
                 </button>
-                <button className="post-action-btn report-btn" onClick={handleReport}>
+                <button className="post-action-btn report-btn" onClick={() => setReportOpen(true)}>
                   <Flag size={14} /> 檢舉
                 </button>
               </div>
@@ -253,6 +249,14 @@ export default function RantDetailPage() {
         )}
         </div>
       </div>
+
+      {reportOpen && post && (
+        <ReportSheet
+          targetType="RANT_POST"
+          targetId={post.id}
+          onClose={() => setReportOpen(false)}
+        />
+      )}
     </div>
   )
 }

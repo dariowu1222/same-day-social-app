@@ -906,3 +906,15 @@ blockquote {
   color: #637271;
 }
 
+
+/* 回應的檢舉鈕：低調不搶戲，需要時才找得到 */
+.reply-report-btn {
+  border: none;
+  background: none;
+  color: #b3ab9f;
+  cursor: pointer;
+  padding: 2px 4px;
+  display: inline-flex;
+  align-items: center;
+}
+.reply-report-btn:hover { color: #c0574b; }

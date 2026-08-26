@@ -1,7 +1,28 @@
 import { useState } from 'react'
-import { Heart } from 'lucide-react'
+import { Heart, Flag } from 'lucide-react'
 import ImageLightbox from '../../shared/ui/ImageLightbox'
+import ReportSheet from '../report/ReportSheet'
 import { flattenReplies, type RantReply } from './types'
+
+// 回應的檢舉入口。原本只有貼文能檢舉，回應區反而是言語衝突最常發生的地方。
+function ReplyReportButton({ replyId }: { replyId: string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <button className="reply-report-btn" type="button" onClick={() => setOpen(true)} aria-label="檢舉這則回應">
+        <Flag size={12} />
+      </button>
+      {open && (
+        <ReportSheet
+          targetType="RANT_REPLY"
+          targetId={replyId}
+          title="檢舉這則回應"
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </>
+  )
+}
 
 function avatarLetter(nickname: string) {
   return nickname.trim()[0]?.toUpperCase() ?? '?'
@@ -67,6 +88,7 @@ export default function ReplyItem({ reply, onReply, onLike }: Props) {
             <Heart size={14} /> {reply.likeCount > 0 ? reply.likeCount : ''}
           </button>
           <button className="reply-sub-btn" onClick={() => onReply(reply.id, reply.nickname)}>回應</button>
+          <ReplyReportButton replyId={reply.id} />
         </div>
 
         {/* 子回覆：收合態 */}
@@ -114,6 +136,7 @@ export default function ReplyItem({ reply, onReply, onLike }: Props) {
                         <Heart size={13} /> {sub.likeCount > 0 ? sub.likeCount : ''}
                       </button>
                       <button className="reply-sub-btn" onClick={() => onReply(sub.id, sub.nickname)}>回應</button>
+                      <ReplyReportButton replyId={sub.id} />
                     </div>
                   </div>
                 </div>

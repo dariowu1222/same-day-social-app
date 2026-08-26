@@ -14,6 +14,8 @@ import { uploadMedia } from '../../shared/api/media'
 import { SAFETY_KEYS, safetyDismissed, dismissSafety } from '../../shared/lib/storageKeys'
 import { detectRisks, detectMeetupIntent, detectAbuse, MEETUP_SAFETY_TIPS, type RiskCategory } from './safety'
 import Avatar from '../../shared/ui/Avatar'
+import ReportSheet from '../report/ReportSheet'
+import type { ReportTargetType } from '../report/types'
 
 type Props = {
   room: ChatRoomType
@@ -70,6 +72,8 @@ export default function ChatRoom({
   const [toast, setToast] = useState('')
   // 多圖上傳中的張數（0 = 沒有在上傳）
   const [uploadingCount, setUploadingCount] = useState(0)
+  // 檢舉面板的標的：單則訊息或對方本人
+  const [reportTarget, setReportTarget] = useState<{ type: ReportTargetType; id: string } | null>(null)
   // 長按訊息操作列：紀錄目標訊息、歸屬、浮層座標
   const [action, setAction] = useState<{ msg: ChatMessage; isOut: boolean; x: number; y: number } | null>(null)
   // 引用回覆：被引用的訊息
@@ -86,6 +90,8 @@ export default function ChatRoom({
   // 安全：人身攻擊措辭提醒（送出前，不阻擋）
   const [wordingDialog, setWordingDialog] = useState<{ onProceed: () => void } | null>(null)
   const [wordingMuted, setWordingMuted] = useState(false)
+  // 「離開並檢舉」要等真的送出才離開；中途取消不該把對話移除
+  const reportedRef = useRef(false)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
@@ -151,7 +157,7 @@ export default function ChatRoom({
   }
   function confirmReport() {
     setMenuOpen(false)
-    setConfirm({ title: '離開並檢舉對方', desc: '我們會收到你的檢舉並審核，此對話也會移除。', danger: true, onYes: () => { setConfirm(null); onReport ? onReport() : onBack() } })
+    setConfirm({ title: '離開並檢舉對方', desc: '接著會請你選擇原因；送出後此對話也會移除。', danger: true, onYes: () => { setConfirm(null); setReportTarget({ type: 'USER', id: otherUserId }) } })
   }
 
   // ── 長按 / 右鍵訊息 → 操作列 ──
@@ -181,7 +187,11 @@ export default function ChatRoom({
     setAction(null)
     showToast('已複製')
   }
-  function actReport() { setAction(null); showToast('檢舉將在後端批次接通') }
+  function actReport() {
+    const target = action?.msg.id
+    setAction(null)
+    if (target) setReportTarget({ type: 'CHAT_MESSAGE', id: target })
+  }
   function actRecall() {
     if (action) onRecall?.(action.msg.id)
     setAction(null)
@@ -521,6 +531,24 @@ export default function ChatRoom({
       )}
 
       {toast && <div className="cr-toast">{toast}</div>}
+
+      {/* 檢舉面板：單則訊息、或對方本人（走「離開並檢舉」時，送出後才真的離開對話） */}
+      {reportTarget && (
+        <ReportSheet
+          targetType={reportTarget.type}
+          targetId={reportTarget.id}
+          title={reportTarget.type === 'USER' ? '檢舉對方' : '檢舉這則訊息'}
+          onClose={() => {
+            const wasUserReport = reportTarget.type === 'USER'
+            setReportTarget(null)
+            if (wasUserReport && reportedRef.current) {
+              reportedRef.current = false
+              onReport ? onReport() : onBack()
+            }
+          }}
+          onDone={() => { reportedRef.current = true }}
+        />
+      )}
 
       {/* 約見面安全提醒 modal */}
       {meetupModal && (

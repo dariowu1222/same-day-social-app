@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Heart, MessageCircle, Flag, HeartHandshake, X } from 'lucide-react'
+import ReportSheet from '../report/ReportSheet'
 import { likeReply } from './api'
 import type { RantPost } from './types'
 import { postImages } from './types'
@@ -23,7 +24,8 @@ type Props = {
   onReplyMediaChange: (media: MediaState) => void
   onUnderstand: () => void
   onReply: (parentReplyId?: string) => void
-  onReport: () => void
+  // 檢舉改由卡片內的 ReportSheet 處理，外層只負責顯示結果訊息
+  onReported?: (message: string) => void
   onDelete: () => void
   onLikedReply: () => void
   onHashtagClick?: (tag: string) => void
@@ -33,13 +35,14 @@ type Props = {
 export default function RantPostCard({
   post, replyText, replyMedia,
   onReplyTextChange, onReplyMediaChange,
-  onUnderstand, onReply, onReport, onDelete, onLikedReply, onHashtagClick, currentUserId,
+  onUnderstand, onReply, onReported, onDelete, onLikedReply, onHashtagClick, currentUserId,
 }: Props) {
   const navigate = useNavigate()
   const [showReplies, setShowReplies] = useState(false)
   const [showReplyForm, setShowReplyForm] = useState(false)
   const [replyTarget, setReplyTarget] = useState<{ id: string; nickname: string } | null>(null)
   const [showHint, setShowHint] = useState(false)
+  const [reportOpen, setReportOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const canReply = replyText.trim() || replyMedia.imageUrl || replyMedia.audioUrl
 
@@ -141,7 +144,7 @@ export default function RantPostCard({
             <button className="post-action-btn" onClick={(e) => { e.stopPropagation(); openReplyToPost() }}>
               <MessageCircle size={16} /> {post.replyCount > 0 ? post.replyCount : ''}
             </button>
-            <button className="post-action-btn report-btn" onClick={onReport}>
+            <button className="post-action-btn report-btn" onClick={() => setReportOpen(true)}>
               <Flag size={14} /> 檢舉
             </button>
           </div>
@@ -221,6 +224,15 @@ export default function RantPostCard({
             收起回應
           </button>
         </div>
+      )}
+
+      {reportOpen && (
+        <ReportSheet
+          targetType="RANT_POST"
+          targetId={post.id}
+          onClose={() => setReportOpen(false)}
+          onDone={(message) => onReported?.(message)}
+        />
       )}
     </article>
   )
