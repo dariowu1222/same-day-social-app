@@ -16,7 +16,6 @@ type EnrichedMatch = Omit<MatchResult, 'photos' | 'interests'> & {
 }
 
 const TUTORIAL_KEY = 'match-swipe-tutorial-done'
-const DATING_GOAL_OPTIONS = ['交友', '約會', '長期關係', '先聊聊'] as const
 const LOOKING_FOR_OPTIONS = ['男生', '女生', '不限'] as const
 
 const ZODIAC_ICON: Record<string, string> = {
@@ -337,22 +336,19 @@ function SwipeTutorial({ onStart }: { onStart: () => void }) {
   )
 }
 
-// 快速偏好：滑卡當下微調交友意圖，存檔後立即重刷卡片
+// 配對偏好：只放會真正改變卡片池的硬條件（想認識的對象 / 年齡）。
+// 交友目的、語言、活動時段等屬於自我描述，留在「我的」頁，不在這裡過濾。
 function PreferenceSheet({ userId, onClose, onApplied }: { userId: string; onClose: () => void; onApplied: () => void }) {
-  const [datingGoal, setDatingGoal] = useState('')
   const [lookingFor, setLookingFor] = useState('')
   const [ageMin, setAgeMin] = useState('')
   const [ageMax, setAgeMax] = useState('')
-  const [distanceKm, setDistanceKm] = useState('')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     getProfile(userId).then(res => {
-      setDatingGoal(res.data.datingGoal ?? '')
       setLookingFor(res.data.lookingFor ?? '')
       setAgeMin(res.data.ageMin != null ? String(res.data.ageMin) : '')
       setAgeMax(res.data.ageMax != null ? String(res.data.ageMax) : '')
-      setDistanceKm(res.data.distanceKm != null ? String(res.data.distanceKm) : '')
     }).catch(() => {})
   }, [userId])
 
@@ -360,11 +356,9 @@ function PreferenceSheet({ userId, onClose, onApplied }: { userId: string; onClo
     setSaving(true)
     try {
       await updateProfile(userId, {
-        datingGoal: datingGoal || undefined,
         lookingFor: lookingFor || undefined,
         ageMin: ageMin ? Number(ageMin) : null,
         ageMax: ageMax ? Number(ageMax) : null,
-        distanceKm: distanceKm ? Number(distanceKm) : null,
       })
     } catch { /* 存檔失敗不阻擋 */ }
     setSaving(false)
@@ -374,18 +368,13 @@ function PreferenceSheet({ userId, onClose, onApplied }: { userId: string; onClo
 
   return (
     <div className="pref-sheet-mask" onClick={onClose}>
-      <div className="pref-sheet" role="dialog" aria-label="快速偏好" onClick={e => e.stopPropagation()}>
+      <div className="pref-sheet" role="dialog" aria-label="配對偏好" onClick={e => e.stopPropagation()}>
         <div className="pref-sheet-head">
-          <span>調整想認識的人</span>
+          <span>調整我的配對偏好</span>
           <button className="pref-sheet-close" type="button" onClick={onClose} aria-label="關閉"><X size={18} /></button>
         </div>
 
-        <p className="pref-field-label">交友目的</p>
-        <div className="pref-chips">
-          {DATING_GOAL_OPTIONS.map(o => (
-            <button key={o} type="button" className={`pref-chip${datingGoal === o ? ' selected' : ''}`} onClick={() => setDatingGoal(v => v === o ? '' : o)}>{o}</button>
-          ))}
-        </div>
+        <p className="pref-sheet-note">調整後會同步更新你的個人檔案。</p>
 
         <p className="pref-field-label">想認識的對象</p>
         <div className="pref-chips">
@@ -400,12 +389,6 @@ function PreferenceSheet({ userId, onClose, onApplied }: { userId: string; onClo
           <span>—</span>
           <input type="number" inputMode="numeric" min={18} max={99} placeholder="最大" value={ageMax} onChange={e => setAgeMax(e.target.value)} />
           <span className="pref-unit">歲</span>
-        </div>
-
-        <p className="pref-field-label">距離偏好</p>
-        <div className="pref-range">
-          <input type="number" inputMode="numeric" min={1} max={500} placeholder="距離" value={distanceKm} onChange={e => setDistanceKm(e.target.value)} />
-          <span className="pref-unit">km</span>
         </div>
 
         <button className="pref-apply-btn" type="button" disabled={saving} onClick={apply}>

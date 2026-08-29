@@ -483,3 +483,7 @@
 [data-theme="dark"] .pref-chip.selected { border-color: #4caf7d; background: rgba(76, 175, 125, 0.2); color: #8fe0a8; }
 [data-theme="dark"] .pref-range input { background: rgba(22, 40, 32, 0.6); border-color: #2a4035; color: #d4ede8; }
 [data-theme="dark"] .pref-apply-btn { background: #4caf7d; }
+
+/* 配對偏好 sheet：說明這裡的欄位會同步寫回個人檔案 */
+.pref-sheet-note { margin: 2px 0 0; font-size: 12px; line-height: 1.6; color: #a2937f; }
+[data-theme="dark"] .pref-sheet-note { color: rgba(168, 212, 204, 0.55); }
