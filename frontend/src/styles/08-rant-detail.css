@@ -61,6 +61,8 @@
   color: #263238;
   margin: 12px 0;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .detail-action-row {
@@ -112,6 +114,7 @@
 
 .detail-reply-item .flat-reply-body {
   flex: 1;
+  min-width: 0;
 }
 
 .detail-reply-item .flat-reply-content {

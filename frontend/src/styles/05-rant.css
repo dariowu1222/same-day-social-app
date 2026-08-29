@@ -295,6 +295,9 @@ blockquote {
   font-size: 15px;
   line-height: 1.65;
   color: #2d3f3e;
+  /* 使用者可能貼上超長連續字元（如 9999...），必須強制斷行避免撐破卡片 */
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .post-action-row {
@@ -354,6 +357,7 @@ blockquote {
 
 .flat-reply-body {
   flex: 1;
+  min-width: 0;
   display: grid;
   gap: 3px;
 }
@@ -363,6 +367,8 @@ blockquote {
   font-size: 14px;
   color: #3a4f4e;
   line-height: 1.5;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* 每筆回覆底部的動作列 */
