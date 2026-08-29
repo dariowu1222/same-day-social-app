@@ -14,7 +14,9 @@
     "build:device": "tsc -b && vite build --mode device",
     "cap:device": "npm run build:device && cross-env CAP_BUILD=device npx cap sync",
     "cap:device:android": "npm run cap:device && npx cap open android",
-    "cap:device:ios": "npm run cap:device && npx cap open ios"
+    "cap:device:ios": "npm run cap:device && npx cap open ios",
+    "build:play": "tsc -b && vite build --mode production",
+    "cap:play": "npm run build:play && cross-env CAP_BUILD=play npx cap sync android"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.4",

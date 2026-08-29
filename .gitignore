@@ -7,6 +7,8 @@ node_modules/
 *.user
 *.log
 .env
+.env.*
+!.env*.example
 
 # IDE 設定
 .idea/

@@ -9,13 +9,17 @@ import type { CapacitorConfig } from '@capacitor/cli'
 //   API 位址由 frontend/.env.device 的 VITE_API_BASE_URL 決定
 //   詳細步驟見 docs/device-build.md
 
-const isDeviceBuild = process.env.CAP_BUILD === 'device'
+// CAP_BUILD: 'device' = 區網實機測試（打 http://<電腦IP>:5000）
+//            'play'   = 上架正式版（打公開 https 後端，不允許明文連線）
+//            未設    = 開發模式（連 Vite dev server，live reload）
+const buildMode = process.env.CAP_BUILD
+const isPackaged = buildMode === 'device' || buildMode === 'play'
 
 const config: CapacitorConfig = {
   appId: 'com.tongpin.today',
   appName: '同頻 Today',
   webDir: 'dist',
-  server: isDeviceBuild
+  server: isPackaged
     ? {
         androidScheme: 'https',
       }
@@ -25,9 +29,9 @@ const config: CapacitorConfig = {
         cleartext: true,
       },
   android: {
-    // 實機測試時 app（https://localhost）需要呼叫 http://<電腦IP>:5000
-    // 上架正式版（後端有 https）後應改回 false
-    allowMixedContent: true,
+    // 只有區網實機測試需要明文連線（http://<電腦IP>:5000）；
+    // 上架版一律關閉，強制走 https。
+    allowMixedContent: buildMode === 'device',
   },
   plugins: {
     StatusBar: {
