@@ -1,7 +1,15 @@
+# 不要把本機建置產物與機密帶進映像（也讓 build context 變小、部署更快）
 bin/
 obj/
 *.user
 *.log
 .vs/
 Properties/launchSettings.json
+
+# 本機資料（JsonStorageService 的檔案儲存）
+Data/
+data/
+
+# 機密：正式環境一律用環境變數提供，不進映像
 appsettings.Development.json
+secrets.json

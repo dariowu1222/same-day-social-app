@@ -156,11 +156,17 @@ app.UseAuthorization();
 app.UseRateLimiter();
 
 app.MapControllers();
+
+// 健康檢查：託管平台（Render / Railway / Cloud Run）用來判斷服務是否存活。
+// 刻意不碰資料庫，避免 DB 短暫不可用時整個服務被判定失敗而重啟。
+app.MapGet("/health", () => Results.Json(new { status = "ok" }));
 app.MapHub<ChatHub>("/hubs/chat", options =>
 {
     options.Transports = HttpTransportType.WebSockets | HttpTransportType.ServerSentEvents | HttpTransportType.LongPolling;
 });
-app.MapGet("/", () => Results.Content(
+if (app.Environment.IsDevelopment())
+{
+    app.MapGet("/", () => Results.Content(
     """
     <!doctype html>
     <html lang="zh-Hant">
@@ -218,5 +224,11 @@ app.MapGet("/", () => Results.Content(
     </html>
     """,
     "text/html"));
+}
+else
+{
+    // 正式環境：根路徑只回一句話，不暴露內部資訊、也不轉址到本機前端。
+    app.MapGet("/", () => Results.Text("同頻 Today API"));
+}
 
 app.Run();

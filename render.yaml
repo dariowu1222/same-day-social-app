@@ -1,0 +1,68 @@
+# Render Blueprint —— 同頻 Today 後端（.NET 8 Web API）
+#
+# 用法：Render Dashboard → New → Blueprint → 選這個 repo，它會讀這個檔自動建立服務。
+# 標記 sync: false 的變數不會寫在這裡（機密），要在 Render 網頁的 Environment 分頁自己填。
+# 詳細步驟見 docs/deploy-render.md
+#
+# 免費方案注意：15 分鐘無流量會自動休眠，下一個請求要等約 50 秒冷啟動。
+
+services:
+  - type: web
+    name: tongpin-api
+    runtime: docker
+    plan: free
+    region: singapore                 # 離台灣最近的免費區域
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /health
+    autoDeployTrigger: commit         # push 到 main 就自動重新部署
+
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+
+      # 觀測性：正式環境沒有 OTLP collector，留空即關閉（否則會一直嘗試送到 localhost）
+      - key: Observability__OtlpEndpoint
+        value: ""
+
+      # JWT 簽章密鑰：由 Render 產生並固定保存（換掉會讓所有使用者被登出）
+      # 需至少 32 位元組，否則後端會 fail-fast 拒絕啟動
+      - key: Jwt__Secret
+        generateValue: true
+
+      # ── 以下為機密，請在 Render 網頁手動填入 ──────────────────
+      # Supabase 連線字串。務必用 session pooler 的 5432（不是 6543），
+      # 並在結尾加上連線池參數，否則連續請求會把 pooler 槽位吃滿導致整個服務卡死：
+      #   ;Maximum Pool Size=8;Connection Idle Lifetime=20;Connection Pruning Interval=10;Timeout=15;Command Timeout=30
+      - key: ConnectionStrings__DefaultConnection
+        sync: false
+
+      # 寄信（註冊驗證碼、密碼重設）。沒設的話 API 會明確回 SMTP_NOT_CONFIGURED，不會假裝成功
+      - key: Smtp__Host
+        sync: false
+      - key: Smtp__Port
+        value: "587"
+      - key: Smtp__EnableSsl
+        value: "true"
+      - key: Smtp__Username
+        sync: false
+      - key: Smtp__Password
+        sync: false
+      - key: Smtp__FromEmail
+        sync: false
+      - key: Smtp__FromName
+        value: "同頻 Today"
+
+      # 媒體儲存（Supabase Storage）。service key 是機密，只放後端
+      - key: Media__Provider
+        value: supabase
+      - key: Media__Bucket
+        value: media
+      - key: Media__SupabaseUrl
+        sync: false
+      - key: Media__ServiceKey
+        sync: false
+
+      # Facebook 登入（App ID 已在 appsettings.json，非機密；Secret 才是機密）
+      - key: Authentication__Facebook__AppSecret
+        sync: false

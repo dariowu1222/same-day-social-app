@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>隱私權政策｜同頻 Today</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&family=Noto+Sans+TC:wght@400;700&display=swap">
+<style>
+:root{
+  --paper:#faf7f2; --surface:#fffdf9; --ink:#3b322a; --ink-soft:#6b5f52;
+  --ink-faint:#9a8d7e; --line:#e5dcce; --green:#41704f; --coral:#c95f3f;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --paper:#15130f; --surface:#1d1a15; --ink:#ebe3d6; --ink-soft:#b3a898;
+    --ink-faint:#867c6f; --line:#332e26; --green:#8fc79b; --coral:#efa287;
+  }
+}
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--paper);color:var(--ink);
+  font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  font-size:16px;line-height:1.9;-webkit-font-smoothing:antialiased;
+}
+main{max-width:760px;margin:0 auto;padding:48px 22px 96px}
+.eyebrow{
+  font-size:12px;font-weight:700;letter-spacing:.2em;color:var(--green);
+  text-transform:uppercase;margin:0 0 14px;
+}
+h1{
+  font-family:"Noto Serif TC","Songti TC",Georgia,serif;font-weight:700;
+  font-size:clamp(26px,4vw,36px);line-height:1.3;margin:0 0 10px;text-wrap:balance;
+}
+h2{
+  font-family:"Noto Serif TC","Songti TC",Georgia,serif;font-weight:700;
+  font-size:19px;margin:38px 0 10px;padding-top:22px;border-top:1px solid var(--line);
+}
+p{margin:0 0 14px;max-width:64ch}
+ol{margin:0 0 14px;padding-left:24px;max-width:64ch}
+li{margin:0 0 10px}
+.meta{color:var(--ink-faint);font-size:13.5px;margin:0 0 8px}
+a{color:var(--coral);text-underline-offset:3px}
+.card{
+  background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  padding:20px 22px;margin:0 0 22px;
+}
+.card > :last-child{margin-bottom:0}
+.card h2{border:0;padding-top:0;margin-top:0}
+nav.docs{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 30px}
+nav.docs a{
+  display:inline-block;padding:7px 14px;border:1px solid var(--line);
+  border-radius:20px;background:var(--surface);color:var(--ink-soft);
+  text-decoration:none;font-size:14px;
+}
+nav.docs a:hover{border-color:var(--green);color:var(--green)}
+nav.docs a:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);
+  color:var(--ink-faint);font-size:13px}
+</style>
+</head>
+<body>
+<main>
+<nav class="docs">
+  <a href="./index.html">首頁</a>
+  <a href="./privacy.html">隱私權政策</a>
+  <a href="./terms.html">服務條款</a>
+  <a href="./account-deletion.html">刪除帳號</a>
+</nav>
+<p class="eyebrow">同頻 Today</p>
+<h1>隱私權政策</h1>
+<p class="meta">最後更新：2026-08-29</p>
+<h2>一、資料控管者與適用範圍</h2>
+<ol>
+  <li>本隱私權政策（以下稱「本政策」）由同頻 Today 服務提供方（以下稱「本公司」）依中華民國個人資料保護法（以下稱「個資法」）及相關法規制定，說明本公司如何蒐集、處理、利用及保護使用者之個人資料。</li>
+  <li>本政策適用於同頻 Today 所提供之網站、漸進式網路應用程式（PWA）、API 及一切相關服務。使用者使用本服務，即表示同意本政策之全部內容。如對本政策有任何疑問，請透過本服務客服管道聯繫本公司。</li>
+</ol>
+<h2>二、蒐集資料之類別</h2>
+<ol>
+  <li>帳號識別資料：電子郵件地址、暱稱、密碼雜湊值（以 bcrypt 演算法不可逆處理，本公司不持有明文密碼）、出生年次、性別（選填）、服務條款同意時間戳記、電子郵件驗證及密碼重設紀錄。</li>
+  <li>服務使用資料：今日事件描述、情緒與興趣標籤、樹洞文章與留言內容、任務參與紀錄、聊天文字訊息、使用者發起之檢舉紀錄及內容安全審查結果。</li>
+  <li>技術與存取資料：IP 位址、瀏覽器類型與版本、作業系統或裝置資訊、存取時間與時區、API 請求紀錄、錯誤日誌，以及瀏覽器本地儲存（localStorage／sessionStorage）中之登入狀態資料。</li>
+</ol>
+<h2>三、蒐集目的與法律依據</h2>
+<ol>
+  <li>本公司依個資法第十九條規定，基於下列特定目的蒐集並處理個人資料：（一）帳號建立、身分驗證與登入管理（契約履行必要）；（二）電子郵件驗證及密碼重設（契約履行必要）；（三）今日共鳴配對演算與服務功能提供（契約履行必要）；（四）服務品質改善、資安維護及濫用防制（正當利益）；（五）依法律規定履行通報或提供資料之義務（法律遵循）。</li>
+  <li>使用者得選擇不提供特定資料，但若拒絕提供帳號建立或驗證所必需之資料，將無法使用帳號登入、配對、聊天或其他需要帳號之功能。</li>
+</ol>
+<h2>四、資料之使用與分享</h2>
+<ol>
+  <li>本公司不會出售、出租或以商業方式提供使用者個人資料予任何第三方。</li>
+  <li>本公司得將個人資料提供予下列對象：（一）依契約受本公司委託處理資料之主機代管、資料庫、電子郵件寄送及資安服務廠商，該等廠商均受保密義務約束，僅得於委託範圍內使用資料；（二）依法令、法院裁判或主管機關命令要求時；（三）為防止詐欺、重大安全威脅或維護使用者生命身體安全所必要時。</li>
+  <li>當本公司涉及合併、收購或資產轉讓時，將事先通知使用者，且受讓方須承繼本政策對使用者個人資料之保護義務。</li>
+</ol>
+<h2>五、資料保存期間</h2>
+<ol>
+  <li>帳號識別資料：保存至帳號刪除後六個月，以利爭議處理及法律義務之履行。</li>
+  <li>服務使用資料（文章、留言、聊天訊息）：保存至使用者請求刪除或本服務終止，惟經檢舉或涉及安全調查之內容得依法延長保存。</li>
+  <li>技術日誌與存取紀錄：保存十二個月後刪除或去識別化。逾上述期間或無繼續保存必要時，本公司將以刪除、銷毀或不可逆去識別化方式處理個人資料。</li>
+</ol>
+<h2>六、使用者之權利</h2>
+<ol>
+  <li>依個資法第三條，使用者就其個人資料享有下列權利，並得隨時向本公司行使：（一）查詢或請求閱覽；（二）請求製給複製本；（三）請求補充或更正；（四）請求停止蒐集、處理或利用；（五）請求刪除。</li>
+  <li>本公司將於收到書面或電子請求後三十日內回覆，如需延長處理期間，將事先通知使用者。行使上述權利如須負擔必要成本，本公司將事先告知收費標準。</li>
+</ol>
+<h2>七、安全措施</h2>
+<ol>
+  <li>本公司採取符合業界標準之安全措施保護使用者個人資料，包括：密碼以 bcrypt 演算法雜湊儲存、驗證碼設有時效限制並單次使用後即失效、資料傳輸採 TLS 加密、資料庫存取實施最小權限原則，以及定期安全審查。</li>
+  <li>儘管本公司已採取前述措施，網際網路傳輸無法保證絕對安全。如發生個人資料外洩事件，本公司將依個資法規定於知悉後採取必要補救措施，並依法通知受影響之使用者及主管機關。</li>
+</ol>
+<h2>八、未成年人保護</h2>
+<ol>
+  <li>本服務僅提供年滿十八歲之使用者註冊與使用。若本公司發現使用者未滿十八歲，得限制或終止其帳號使用，並依適用法令刪除或停止處理相關個人資料。</li>
+</ol>
+<h2>九、Cookie 與本地儲存</h2>
+<ol>
+  <li>本服務使用瀏覽器 localStorage 或 sessionStorage 儲存使用者登入狀態，不使用第三方廣告追蹤 Cookie。使用者得隨時透過瀏覽器設定清除本地儲存資料，惟清除後需重新登入。</li>
+</ol>
+<h2>十、政策更新</h2>
+<ol>
+  <li>本公司得因服務功能調整、法規變更或資料處理實務更新本政策。重大變更（包括蒐集目的擴張、新增資料分享對象等）將於生效前至少七日以站內公告或電子郵件通知使用者。使用者於通知期間屆滿後繼續使用本服務，視為同意更新後之政策。本政策之最後更新日期標示於文件頂端。</li>
+</ol>
+<footer>同頻 Today　聯絡信箱：<a href="mailto:tongpintoday@gmail.com">tongpintoday@gmail.com</a>　最後更新：2026-08-29</footer>
+</main>
+</body>
+</html>

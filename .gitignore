@@ -24,3 +24,8 @@ tools/
 *-report.txt
 .claude/*.lock
 .claude/scheduled_tasks.lock
+
+# 內部文件：repo 是公開的，這些不入版控也不會被 GitHub Pages 公開
+docs/business-plan.html
+docs/tech-whitepaper.html
+docs/同頻_ClaudeCode紀錄_*/
