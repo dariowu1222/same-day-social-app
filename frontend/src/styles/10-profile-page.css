@@ -94,9 +94,13 @@
   flex-shrink: 0;
 }
 
-.profile-photo-edit-btn {
+/* 編輯 / 取消 切換鈕：有字有 icon，一眼看懂目前是檢視還是編輯 */
+.profile-edit-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   height: 34px;
-  padding: 0 13px;
+  padding: 0 14px;
   border: none;
   border-radius: 17px;
   background: #f3ebe2;
@@ -104,12 +108,37 @@
   font-size: 13px;
   font-weight: 700;
   white-space: nowrap;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+.profile-edit-toggle:hover { background: #ece0d4; }
+.profile-edit-toggle.editing {
+  background: transparent;
+  color: #b0715a;
+  border: 1.5px solid #e0c4b4;
 }
 
-.profile-photo-edit-btn.active {
-  background: #c8785a;
-  color: #ffffff;
+/* fieldset 重置 + 檢視模式（disabled）：欄位不可改，但保持可讀 */
+.profile-fields {
+  border: none;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
 }
+.profile-fields:disabled .profile-text-input,
+.profile-fields:disabled textarea,
+.profile-fields:disabled select {
+  color: var(--theme-text, #4a3f35);
+  -webkit-text-fill-color: var(--theme-text, #4a3f35);
+  opacity: 1;
+  background: #faf7f2;
+  cursor: default;
+}
+.profile-fields:disabled .ob-tag,
+.profile-fields:disabled button,
+.profile-fields:disabled select { cursor: default; }
+.profile-fields:disabled .ob-tag { opacity: 0.92; }
 
 .profile-eye-btn {
   width: 36px;
@@ -322,6 +351,7 @@
 .profile-hint { font-size: 12px; font-weight: 400; color: #9a8f82; }
 .profile-field-label { display: flex; align-items: baseline; flex-wrap: wrap; gap: 3px; }
 
+
 /* 興趣標籤：平常只顯示已選橫列，編輯時才展開完整選項 */
 .profile-compact-tags {
   display: grid;
@@ -498,13 +528,21 @@
   background: rgba(90, 158, 130, 0.18);
   color: #9fd8c4;
 }
-[data-theme="dark"] .profile-photo-edit-btn {
+[data-theme="dark"] .profile-edit-toggle {
   background: rgba(168,212,204,0.12);
   color: rgba(212,237,232,0.78);
 }
-[data-theme="dark"] .profile-photo-edit-btn.active {
-  background: #5a9e82;
-  color: #07120f;
+[data-theme="dark"] .profile-edit-toggle.editing {
+  background: transparent;
+  color: rgba(212,237,232,0.7);
+  border-color: rgba(168,212,204,0.25);
+}
+[data-theme="dark"] .profile-fields:disabled .profile-text-input,
+[data-theme="dark"] .profile-fields:disabled textarea,
+[data-theme="dark"] .profile-fields:disabled select {
+  color: var(--theme-text, #d4ede8);
+  -webkit-text-fill-color: var(--theme-text, #d4ede8);
+  background: rgba(255,255,255,0.03);
 }
 
 /* 身高/體重：兩欄並排，單位後綴 */

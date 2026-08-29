@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import { Plus, X, Eye, Check } from "lucide-react"
+import { Plus, X, Eye, Check, Pencil } from "lucide-react"
 import { useAuth } from "../auth/AuthContext"
 import { getProfile, updateProfile } from "./api"
 import { CalendarPicker } from "./CalendarPicker"
@@ -149,7 +149,7 @@ const TEST_PHOTOS = [
 ]
 
 export default function ProfilePage() {
-  const { user } = useAuth()
+  const { user, setUser } = useAuth()
   const [bio, setBio] = useState('')
   const [birthday, setBirthday] = useState('')
   const [interestTags, setInterestTags] = useState<string[]>([])
@@ -177,7 +177,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
-  const [editingTags, setEditingTags] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
   const [toast, setToast] = useState('')
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -190,7 +190,7 @@ export default function ProfilePage() {
     return () => window.removeEventListener('nav-reselect-profile', onReselect)
   }, [])
 
-  useEffect(() => {
+  function loadProfile() {
     if (!user) return
     getProfile(user.userId)
       .then(res => {
@@ -221,7 +221,10 @@ export default function ProfilePage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [user?.userId])
+  }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadProfile() }, [user?.userId])
 
   function showToast(msg: string) {
     setToast(msg)
@@ -313,7 +316,12 @@ export default function ProfilePage() {
         meetSoon,
         ...(photosDirty ? { photoDataUrls: photos } : {}),
       })
-      setEditingTags(false)
+      // 暱稱存進 profile 後，同步更新登入態，讓左上角標題（讀 user.nickname）也跟著變、重整後仍在
+      const nextNickname = nickname.trim()
+      if (nextNickname && nextNickname !== user.nickname) {
+        setUser({ ...user, nickname: nextNickname })
+      }
+      setIsEditing(false)
       showToast('已儲存 ✓')
     } catch (err) {
       showToast(err instanceof Error ? err.message : '儲存失敗')
@@ -337,11 +345,14 @@ export default function ProfilePage() {
           </p>
           <div className="profile-photo-actions">
             <button
-              className={`profile-photo-edit-btn${editingTags ? ' active' : ''}`}
+              className={`profile-edit-toggle${isEditing ? ' editing' : ''}`}
               type="button"
-              onClick={() => setEditingTags(value => !value)}
+              onClick={() => {
+                if (isEditing) { setIsEditing(false); loadProfile() }
+                else setIsEditing(true)
+              }}
             >
-              {editingTags ? '完成' : '編輯標籤'}
+              {isEditing ? '取消' : <><Pencil size={15} strokeWidth={2.2} /> 編輯</>}
             </button>
             <button
               className={`profile-eye-btn${showPreview ? ' active' : ''}`}
@@ -358,24 +369,26 @@ export default function ProfilePage() {
             <div
               key={i}
               className="profile-photo-cell"
-              draggable
+              draggable={isEditing}
               onDragStart={() => { dragIndex.current = i }}
               onDragOver={e => e.preventDefault()}
               onDrop={() => dropPhoto(i)}
             >
               <img src={src} alt={`照片 ${i + 1}`} />
               {i === 0 && <span className="profile-photo-main">主照片</span>}
-              <button
-                className="profile-photo-remove"
-                type="button"
-                onClick={() => removePhoto(i)}
-                aria-label="移除照片"
-              >
-                <X size={14} strokeWidth={2.5} />
-              </button>
+              {isEditing && (
+                <button
+                  className="profile-photo-remove"
+                  type="button"
+                  onClick={() => removePhoto(i)}
+                  aria-label="移除照片"
+                >
+                  <X size={14} strokeWidth={2.5} />
+                </button>
+              )}
             </div>
           ))}
-          {photos.length < MAX_PHOTOS && (
+          {isEditing && photos.length < MAX_PHOTOS && (
             <button
               className="profile-photo-add"
               type="button"
@@ -396,6 +409,7 @@ export default function ProfilePage() {
         />
       </section>
 
+      <fieldset className="profile-fields" disabled={!isEditing}>
       {/* 暱稱 */}
       <section className="panel">
         <FieldLabel title="暱稱" required />
@@ -450,7 +464,7 @@ export default function ProfilePage() {
           options={INTEREST_OPTIONS}
           values={interestTags}
           onToggle={toggleTag}
-          editing={editingTags}
+          editing={isEditing}
         />
       </section>
 
@@ -461,7 +475,7 @@ export default function ProfilePage() {
           options={PERSONALITY_OPTIONS}
           values={personalityTags}
           onToggle={togglePersonality}
-          editing={editingTags}
+          editing={isEditing}
         />
       </section>
 
@@ -472,7 +486,7 @@ export default function ProfilePage() {
           options={APPEARANCE_OPTIONS}
           values={appearanceTags}
           onToggle={toggleAppearance}
-          editing={editingTags}
+          editing={isEditing}
         />
       </section>
 
@@ -535,8 +549,11 @@ export default function ProfilePage() {
         <SingleChips options={BLOOD_OPTIONS} value={bloodType} onChange={setBloodType} />
       </section>
 
-      {/* ── 交友意圖（配對用）── */}
-      <p className="profile-settings-divider">交友意圖</p>
+      {/* ── 交友意圖 ──
+          註：後端 MatchService.MatchesPreferences 目前只用 lookingFor + ageMin/ageMax 篩選候選；
+          datingGoal / distanceKm / languages / activeTime / voiceFirst / meetSoon 只有存檔，尚未進配對邏輯。
+          （distanceKm 沒有位置資料可算，未來預計改用 preferredArea 偏好縣市。）
+          這是內部資訊，UI 不對使用者標示。 */}
 
       <section className="panel">
         <FieldLabel title="交友目的" optional mode="single" />
@@ -587,19 +604,21 @@ export default function ProfilePage() {
           <button type="button" className={`ob-tag${meetSoon ? ' selected' : ''}`} onClick={() => setMeetSoon(v => !v)}>願意線下快見</button>
         </div>
       </section>
+      </fieldset>
 
-
-      {/* 儲存：吸附底部 */}
-      <div className="profile-save-bar">
-        <button
-          className="profile-save-btn"
-          type="button"
-          disabled={saving || loading}
-          onClick={save}
-        >
-          {saving ? '儲存中⋯' : '儲存變更'}
-        </button>
-      </div>
+      {/* 儲存：吸附底部（僅編輯模式） */}
+      {isEditing && (
+        <div className="profile-save-bar">
+          <button
+            className="profile-save-btn"
+            type="button"
+            disabled={saving || loading}
+            onClick={save}
+          >
+            {saving ? '儲存中⋯' : '儲存變更'}
+          </button>
+        </div>
+      )}
 
       {toast && <div className="center-toast">{toast}</div>}
 
