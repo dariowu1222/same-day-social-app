@@ -1,0 +1,427 @@
+/* ==========================================================================
+   桌面版佈局（疊加層）
+
+   整份檔案只有 min-width: 1024px 的 media query，且排在所有樣式最後。
+   手機與平板（≤1023px）完全走原本的規則，這裡一行都不生效——
+   既有的間距、safe-area、底部導覽因此不可能被改壞。
+
+   三個原則：
+   1. 導覽從底部移到左側（底部導覽是為拇指設計的，桌面用滑鼠）
+   2. 內容維持可讀寬度（空間變多不等於文字該變長）
+   3. 多出來的橫向空間拿去並排，讓桌面真的省一次操作
+   ========================================================================== */
+
+@media (min-width: 1024px) {
+  :root {
+    --desk-rail: 264px;   /* 左側導覽寬 */
+    --desk-read: 720px;   /* 文字內容的可讀寬度 */
+    --desk-aside: 288px;  /* 右側輔助欄 */
+    --desk-max: 1240px;   /* 整體最大寬 */
+  }
+
+  /* ── 外框：置中窄欄 → 「導覽 ＋ 內容」兩欄 ── */
+  .app-shell {
+    width: 100%;
+    max-width: var(--desk-max);
+    display: grid;
+    grid-template-columns: var(--desk-rail) minmax(0, 1fr);
+    align-items: start;
+    min-height: 100vh;
+    /* 桌面沒有瀏海與手勢列，safe-area 的補償一併收掉 */
+    padding: 0;
+  }
+
+  /* 路由渲染出的頁面落在第二欄 */
+  .app-shell > .page {
+    grid-column: 2;
+    min-width: 0;
+    /* 沒有這行，頁面在 grid 欄位裡會縮成內容寬度，max-width 根本用不到 */
+    width: 100%;
+    max-width: var(--desk-read);
+    margin: 0 auto;
+    padding: 40px 40px 64px;
+  }
+
+  /* ── 導覽：底部橫條 → 左側直欄 ── */
+  .bottom-nav {
+    position: sticky;
+    top: 0;
+    grid-column: 1;
+    grid-row: 1;
+    /* 手機版是 width: min(100%, 520px)，這裡要填滿整個導覽欄，
+       用 auto 會縮成內容寬度、右邊界對不齊內容區 */
+    width: 100%;
+    max-width: none;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 4px;
+    padding: 32px 16px;
+    border-top: none;
+    border-right: 0.5px solid #e8e0d4;
+  }
+
+  /* 手機是「圖示上、文字下」；桌面改成橫向一列 */
+  .bottom-nav .bn-tab {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 16px;
+    width: 100%;
+    padding: 15px 18px;
+    border-radius: 12px;
+  }
+
+  /* 手機版圖示為了省空間偏小，桌面放大到與文字相稱 */
+  .bottom-nav .bn-icon svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  /* 選中態從內層膠囊移到整列，膠囊本身讓位 */
+  .bottom-nav .bn-tab .bn-capsule {
+    background: transparent;
+    padding: 0;
+  }
+
+  .bottom-nav .bn-tab.active {
+    background: #fce8e0;
+    color: #c8785a;
+  }
+
+  .bottom-nav .bn-tab.active .bn-capsule {
+    background: transparent;
+    color: #c8785a;
+  }
+
+  .bottom-nav .bn-label { font-size: 15.5px; font-weight: 500; }
+
+  /* ── 品牌區與使用者區 ──
+     這兩塊只在桌面由 BottomNav 渲染（useIsDesktop），
+     手機版連 DOM 都沒有，因此不需要任何隱藏規則。 */
+  .bottom-nav .nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 4px 18px 22px;
+    margin-bottom: 6px;
+    border-bottom: 1px solid #ece3d6;
+  }
+
+  .bottom-nav .nav-brand-mark {
+    width: 34px;
+    height: 34px;
+    border-radius: 11px;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(140deg, #f6c9a4, #e8a179);
+    color: #fff;
+    font-size: 16px;
+    font-weight: 800;
+    flex-shrink: 0;
+  }
+
+  .bottom-nav .nav-brand-text {
+    font-size: 16px;
+    font-weight: 800;
+    color: #4a3f35;
+    letter-spacing: 0.01em;
+  }
+
+  /* 使用者區推到最底 */
+  .bottom-nav .nav-user {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 14px 4px;
+    border-top: 1px solid #ece3d6;
+  }
+
+  .bottom-nav .nav-user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: #e8d5c0;
+    color: #8a6a4a;
+    font-size: 14px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .bottom-nav .nav-user-name {
+    flex: 1;
+    min-width: 0;
+    font-size: 14px;
+    color: #6b5c4d;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .bottom-nav .nav-user-logout {
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #a89684;
+    cursor: pointer;
+  }
+
+  .bottom-nav .nav-user-logout:hover { background: #f2ebe2; color: #c8785a; }
+
+  [data-theme="dark"] .bottom-nav .nav-brand,
+  [data-theme="dark"] .bottom-nav .nav-user {
+    border-color: rgba(80, 160, 60, 0.15);
+  }
+
+  [data-theme="dark"] .bottom-nav .nav-brand-text { color: rgba(200, 245, 180, 0.9); }
+  [data-theme="dark"] .bottom-nav .nav-user-name { color: rgba(200, 245, 180, 0.7); }
+
+  /* ══ 今日 ══
+     手機必須捲動才能走完「選心情 → 寫一段話 → 送出」；
+     桌面螢幕是橫向的，把它拆成左右兩欄，一屏就看完全部、不必捲動。
+
+     尺度也整體上調一級：桌面的字級與留白該比手機大 40-60%，
+     只放大 15% 會看起來像被拉大的手機截圖。 */
+  .app-shell > .page.today-page {
+    max-width: 940px;
+    /* 內容量固定且不多，用上下 margin 把整塊往畫面中間帶，
+       讓版面有重心。不能用 align-content: center——那會連帶把
+       卡片本身撐高，反而更空。 */
+    min-height: auto;
+    margin-top: clamp(24px, 9vh, 96px);
+    gap: 24px;
+  }
+
+  /* 卡片維持內容高度，不隨容器拉伸 */
+  .today-page .today-entry-card {
+    align-self: start;
+  }
+
+  .today-page .today-intro-headline {
+    font-size: 34px;
+    line-height: 1.4;
+  }
+
+  /* 卡片本身變成兩欄容器：左選心情、右寫字 */
+  .today-page .today-entry-card {
+    display: grid;
+    grid-template-columns: minmax(0, 400px) minmax(0, 1fr);
+    grid-template-areas:
+      "moods note"
+      "moods submit";
+    align-content: start;
+    column-gap: 32px;
+    row-gap: 18px;
+    padding: 30px 32px;
+    border-radius: 22px;
+  }
+
+  .today-page .quick-entry-grid {
+    grid-area: moods;
+    align-content: start;
+    gap: 14px;
+  }
+
+  /* 心情卡：手機為了塞進小螢幕很緊湊，桌面給它該有的份量 */
+  .today-page .quick-entry-button {
+    padding: 22px 20px;
+    border-radius: 18px;
+    gap: 7px;
+  }
+
+  .today-page .quick-entry-emoji { font-size: 26px; }
+  .today-page .quick-entry-title { font-size: 17px; }
+  .today-page .quick-entry-sub { font-size: 13.5px; }
+
+  .today-page .today-note-field {
+    grid-area: note;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .today-page .today-note-field textarea {
+    flex: 1;
+    min-height: 232px;
+    font-size: 16px;
+    line-height: 1.8;
+    padding: 16px 18px;
+    border-radius: 16px;
+  }
+
+  .today-page .today-submit-btn {
+    grid-area: submit;
+    padding: 16px;
+    font-size: 16.5px;
+    border-radius: 14px;
+  }
+
+  /* 心靈小語在桌面跨兩欄放底部，不佔用主要動線 */
+  .today-page .soul-note {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+
+  /* ── 樹洞：主列表 ＋ 右側搜尋常駐 ──
+     搜尋在手機上是一條要點進另一頁的入口列；桌面把它移到右欄常駐，
+     不必離開列表就能搜尋。 */
+  .app-shell > .page.rant-page {
+    max-width: calc(var(--desk-read) + var(--desk-aside) + 24px);
+    display: grid;
+    grid-template-columns: minmax(0, var(--desk-read)) var(--desk-aside);
+    grid-template-areas:
+      "title  side"
+      "list   side";
+    align-content: start;
+    column-gap: 24px;
+  }
+
+  .rant-page .rant-board-title { grid-area: title; }
+  .rant-page > .list { grid-area: list; min-width: 0; }
+
+  .rant-page .rant-search-entry-bar {
+    grid-area: side;
+    position: sticky;
+    top: 28px;
+    align-self: start;
+    padding: 0;
+  }
+
+  /* ── 聊天室（單一對話）──
+     .cr-page 是 position: fixed，四邊都照手機版面算：
+       bottom 預留 64px 給底部導覽（桌面導覽已移到左側，這塊就成了空白）
+       left/right 鎖在 520px 置中（桌面應該填滿內容區）
+     三個值在桌面全部重算。 */
+  .cr-page {
+    top: 0;
+    bottom: 0;
+    left: var(--desk-rail);
+    right: 0;
+    max-width: none;
+  }
+
+  /* 對話內容維持可讀寬度，不要讓氣泡橫跨整個螢幕 */
+  .cr-body,
+  .cr-input {
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+  }
+
+  /* ── 滑卡：卡片不隨視窗放大 ──
+     照片撐滿螢幕不會更好看，比例也會跑掉，所以固定寬度置中。 */
+  .app-shell > .page.match-result-page {
+    max-width: 460px;
+  }
+
+  /* 新增貼文的浮動鈕：手機版用 calc(50% - 520px/2) 貼齊置中欄，
+     桌面版面改了那個算式就會失準，改成貼齊內容欄右下。 */
+  .rant-fab {
+    /* 用 sticky 貼在列表欄內的右下，不再靠視窗寬度硬算位置——
+       版面日後再調也不會失準。 */
+    position: sticky;
+    right: auto;
+    left: auto;
+    bottom: 24px;
+    align-self: end;
+    margin-left: auto;
+    margin-right: 8px;
+    grid-area: list;
+    justify-self: end;
+    z-index: 15;
+  }
+
+  /* ── 桌面互動：滑鼠有 hover，觸控沒有 ── */
+  .bottom-nav .bn-tab:hover:not(.active) { background: #f4efe7; }
+  .post-action-btn:hover { opacity: 0.75; }
+
+  .card {
+    transition: box-shadow 0.2s ease;
+  }
+
+  .card:hover {
+    box-shadow: 0 14px 30px rgba(120, 90, 60, 0.10);
+  }
+
+  /* ── 夜間模式：沿用 09-theme-night 的深色，只補左側邊框 ── */
+  [data-theme="dark"] .bottom-nav {
+    border-top: none;
+    border-right-color: rgba(80, 160, 60, 0.15);
+  }
+
+  [data-theme="dark"] .bottom-nav .bn-tab:hover:not(.active) {
+    background: rgba(100, 200, 80, 0.08);
+  }
+  /* ══ 登入 / 歡迎頁 ══
+     LoginPage 掛在 app-shell 之外，所以上面的規則碰不到它，要單獨處理。
+
+     手機是「輕觸畫面 → 選項從底部滑出」；桌面沒有「輕觸」這個心理模型，
+     滑鼠使用者多按一次是白費的一步，因此改為左右分欄、登入選項常駐右側。 */
+
+  .login-screen {
+    /* 原本 min(100%, 430px)，背景裝飾也被關在這 430px 裡，
+       桌面兩側才會是死白。放開後背景鋪滿整個視窗。 */
+    width: 100%;
+    max-width: none;
+    display: block;
+    padding: 0;
+  }
+
+  /* 分欄要做在 .login-content 上：登入面板是它的子層，
+     做在 .login-screen 上的話面板會留在第一欄，第二欄空著。 */
+  .login-screen .login-content {
+    min-height: 100dvh;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 420px;
+    align-items: center;
+    gap: clamp(32px, 5vw, 88px);
+    padding: 48px clamp(48px, 7vw, 120px);
+    max-width: 1320px;
+    margin: 0 auto;
+  }
+
+  /* 左欄：品牌訊息 */
+  .login-screen .welcome-hero {
+    grid-column: 1;
+    cursor: default;
+    text-align: left;
+    align-items: flex-start;
+  }
+
+  /* 右欄：登入選項，從「滑出的 sheet」變成常駐卡片 */
+  .login-screen .auth-options-sheet {
+    grid-column: 2;
+    position: static;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    transform: none;            /* 解除 translateY(110%) 的隱藏 */
+    transition: none;
+    border-radius: 20px;
+    padding: 26px 26px 30px;
+    box-shadow: 0 18px 44px rgba(120, 74, 42, 0.14);
+    border: 1px solid #f0e2d4;
+  }
+
+  /* 常駐後不需要遮罩與拖曳把手 */
+  .login-screen .auth-options-mask,
+  .login-screen .auth-options-handle { display: none; }
+
+  /* 「輕觸畫面，開始同頻」在桌面沒有意義——選項已經在右邊了 */
+  .login-screen .welcome-cta { display: none; }
+
+  .login-screen .login-main-title { font-size: 34px; }
+  .login-screen .login-subtitle { font-size: 17px; }
+
+  /* 裝飾圓點依視窗散開，不再擠在窄欄裡 */
+  .login-screen .login-decoration.chat-left { left: 6%; }
+  .login-screen .login-decoration.chat-right { right: 6%; }
+}

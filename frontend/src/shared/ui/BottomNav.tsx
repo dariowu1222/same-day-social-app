@@ -1,4 +1,6 @@
-import { Sun, Trees, MessageSquare, User, Settings } from 'lucide-react'
+import { LogOut, MessageSquare, Settings, Sun, Trees, User } from 'lucide-react'
+import { useAuth } from '../../features/auth/AuthContext'
+import { useIsDesktop } from '../hooks/useIsDesktop'
 
 export type PageKey = 'today' | 'rant' | 'chat' | 'profile' | 'settings'
 
@@ -19,8 +21,20 @@ type Props = {
 }
 
 export default function BottomNav({ activePage, onChange, chatUnread = 0 }: Props) {
+  // 桌面版這條導覽會變成左側直欄，有空間放品牌與使用者資訊；
+  // 手機版維持底部橫條，以下兩區塊連 DOM 都不會產生。
+  const isDesktop = useIsDesktop()
+  const { user, logout } = useAuth()
+
   return (
     <nav className="bottom-nav" aria-label="主要導覽">
+      {isDesktop && (
+        <div className="nav-brand">
+          <span className="nav-brand-mark" aria-hidden="true">同</span>
+          <span className="nav-brand-text">同頻 Today</span>
+        </div>
+      )}
+
       {items.map(({ key, label, Icon }) => {
         const active = activePage === key
         return (
@@ -40,9 +54,21 @@ export default function BottomNav({ activePage, onChange, chatUnread = 0 }: Prop
               </span>
               <span className="bn-label">{label}</span>
             </span>
-          </button>
+            </button>
         )
       })}
+
+      {isDesktop && user && (
+        <div className="nav-user">
+          <span className="nav-user-avatar" aria-hidden="true">
+            {user.nickname.trim()[0]?.toUpperCase() ?? '?'}
+          </span>
+          <span className="nav-user-name">{user.nickname}</span>
+          <button type="button" className="nav-user-logout" onClick={logout} aria-label="登出">
+            <LogOut size={16} strokeWidth={1.9} />
+          </button>
+        </div>
+      )}
     </nav>
   )
 }
