@@ -9,6 +9,10 @@ node_modules/
 .env
 .env.*
 !.env*.example
+# .env.production 刻意納入版控：裡面只有公開的 API 位址與 Google/FB ID
+#（那些本來就會被打包進 App、可被反編譯取得），少了它在別台機器或 CI
+# 打包會產出連不到後端的 App。真正的機密一律只放後端。
+!frontend/.env.production
 
 # IDE 設定
 .idea/
