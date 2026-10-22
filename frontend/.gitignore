@@ -31,3 +31,10 @@ playwright/.cache/
 
 # 實機測試環境變數（每台機器 IP 不同，不 commit）
 .env.device
+
+# Android 正式簽章：keystore.properties
+key.properties 內含金鑰密碼，金鑰本體則放在專案之外。
+# 這兩者外洩等於別人可以冒名發佈你的 App 更新，絕不可進版控。
+keystore.properties
+*.jks
+*.keystore

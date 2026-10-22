@@ -110,9 +110,25 @@ export default function LoginPage({ onAuthenticated }: Props) {
     if (registerEmailError) setRegisterEmailError('')
   }
 
+  // 兩個密碼欄互相依賴，任一邊變動都要用「這次的新值」重新比對。
+  // 先前只在離開確認密碼欄時檢查、且只有編輯確認密碼才清除錯誤，
+  // 導致「先填確認密碼 → 再補完密碼」時，兩邊明明一致卻一直顯示不一致。
+  function syncPasswordMatch(nextPassword: string, nextConfirm: string) {
+    if (!nextConfirm) {
+      setConfirmPasswordError('')
+      return
+    }
+    setConfirmPasswordError(nextPassword === nextConfirm ? '' : '密碼不一致，請重新確認')
+  }
+
+  function handlePasswordChange(value: string) {
+    setPassword(value)
+    syncPasswordMatch(value, confirmPassword)
+  }
+
   function handleConfirmPasswordChange(value: string) {
     setConfirmPassword(value)
-    if (confirmPasswordError) setConfirmPasswordError('')
+    syncPasswordMatch(password, value)
   }
 
   function openForgot() {
@@ -446,7 +462,7 @@ export default function LoginPage({ onAuthenticated }: Props) {
               <AuthField
                 icon="lock"
                 value={password}
-                onChange={setPassword}
+                onChange={handlePasswordChange}
                 placeholder="請設定 8 碼以上，含英文與數字"
                 type={showRegisterPassword ? 'text' : 'password'}
                 autoComplete="new-password"
@@ -465,7 +481,7 @@ export default function LoginPage({ onAuthenticated }: Props) {
                 type={showRegisterPassword ? 'text' : 'password'}
                 autoComplete="new-password"
                 error={confirmPasswordError}
-                onBlur={() => { if (confirmPassword && confirmPassword !== password) setConfirmPasswordError('密碼不一致，請重新確認') }}
+                onBlur={() => syncPasswordMatch(password, confirmPassword)}
                 isPasswordToggle
                 isPasswordVisible={showRegisterPassword}
                 onAction={() => setShowRegisterPassword(!showRegisterPassword)}
