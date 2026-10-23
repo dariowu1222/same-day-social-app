@@ -2143,6 +2143,86 @@
 .password-strength.medium > em { color: #e8a645; }
 .password-strength.strong > em { color: #4e9188; }
 
+/* 密碼規則提示小窗：點進密碼欄時浮出，幾秒後自己淡出。
+   絕對定位在欄位上方，表單不會因為它出現／消失而上下跳動；
+   pointer-events: none 讓它不擋住底下的欄位——看得到，但點得過去。 */
+.password-hint-anchor {
+  position: relative;
+}
+
+.password-hint {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: calc(100% + 8px);
+  z-index: 4;
+  padding: 12px 15px;
+  border-radius: 15px;
+  background: #5a4638;
+  color: #fff6ec;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.5;
+  box-shadow: 0 14px 26px rgba(90, 70, 56, 0.26);
+  pointer-events: none;
+  animation: password-hint-in 0.22s ease-out;
+}
+
+.password-hint.leaving {
+  animation: password-hint-out 0.3s ease-in forwards;
+}
+
+/* 指向密碼欄的小箭頭 */
+.password-hint::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 30px;
+  border: 7px solid transparent;
+  border-top-color: #5a4638;
+}
+
+.password-hint-title {
+  margin: 0 0 7px;
+  color: #e9c9a8;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.password-hint ul {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.password-hint li {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.password-hint li.passed {
+  color: #9bd6c6;
+}
+
+.password-hint-mark {
+  width: 14px;
+  text-align: center;
+  font-weight: 800;
+}
+
+@keyframes password-hint-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes password-hint-out {
+  to { opacity: 0; transform: translateY(-4px); }
+}
+
 .field-error {
   display: block;
   margin-top: 5px;
@@ -2172,3 +2252,12 @@
   accent-color: #e8754e;
 }
 
+
+/* 測試期間的版本標示：低調但看得到，方便測試者回報 */
+.welcome-version {
+  display: block;
+  margin-top: 18px;
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  color: rgba(122, 90, 64, 0.5);
+}

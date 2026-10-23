@@ -62,6 +62,7 @@ export function AuthField({
   type = 'text',
   onAction,
   onBlur,
+  onFocus,
   suffix,
   inputMode,
   autoComplete,
@@ -76,6 +77,7 @@ export function AuthField({
   type?: string
   onAction?: () => void
   onBlur?: () => void
+  onFocus?: () => void
   suffix?: string
   inputMode?: 'text' | 'email' | 'numeric'
   autoComplete?: string
@@ -96,6 +98,7 @@ export function AuthField({
         inputMode={inputMode}
         autoComplete={autoComplete}
         onBlur={onBlur}
+        onFocus={onFocus}
       />
       {error && <span className="field-error">{error}</span>}
       {suffix && <span className="field-suffix">{suffix}</span>}
@@ -144,6 +147,37 @@ export function PasswordStrength({ password }: { password: string }) {
         <span /><span /><span />
       </div>
       <em>{label}</em>
+    </div>
+  )
+}
+
+export type HintState = 'hidden' | 'shown' | 'leaving'
+export type PasswordRuleState = { label: string; passed: boolean }
+
+/**
+ * 密碼規則提示小窗：點進密碼欄時浮出，過幾秒自己淡出。
+ *
+ * 兩個刻意的選擇：
+ * - 浮在欄位上方（絕對定位）而不是插進版面，否則出現與消失時整張表單會上下跳兩次。
+ * - pointer-events: none，讓它不會擋住底下的欄位——看得到，但點得過去。
+ *
+ * 勾選狀態會隨著打字即時更新，使用者不用猜還差哪一項。
+ */
+export function PasswordHint({ state, rules }: { state: HintState; rules: PasswordRuleState[] }) {
+  if (state === 'hidden') {
+    return null
+  }
+  return (
+    <div className={`password-hint${state === 'leaving' ? ' leaving' : ''}`}>
+      <p className="password-hint-title">密碼需要</p>
+      <ul>
+        {rules.map((rule) => (
+          <li key={rule.label} className={rule.passed ? 'passed' : ''}>
+            <span className="password-hint-mark" aria-hidden="true">{rule.passed ? '✓' : '○'}</span>
+            {rule.label}
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }

@@ -6,8 +6,8 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
 import { useTheme, type ThemePreference } from '../../shared/theme/ThemeContext'
+import { APP_VERSION_LABEL } from '../../shared/lib/appVersion'
 
-const APP_VERSION = '0.1.0'
 
 const APPEARANCE: { value: ThemePreference; label: string; Icon: typeof Sun }[] = [
   { value: 'day', label: '亮色', Icon: Sun },
@@ -96,7 +96,7 @@ export default function SettingsPage() {
         <SettingRow Icon={LogOut} seatBg="#fceeea" iconColor="#c0392b" title="登出" danger onClick={() => setConfirmLogout(true)} />
       </section>
 
-      <p className="set-version">同頻 Today v{APP_VERSION}</p>
+      <p className="set-version">同頻 Today {APP_VERSION_LABEL}</p>
 
       {confirmLogout && (
         <div className="set-confirm-mask" onClick={() => setConfirmLogout(false)}>

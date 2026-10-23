@@ -4,8 +4,15 @@ export function toUserMessage(code?: string, message?: string) {
   switch (code) {
     case 'ACCOUNT_NOT_FOUND':
       return '查無此帳號，請確認 Email 是否輸入正確，或先建立帳號。'
+    // 密碼規則由後端 ValidatePassword 判定，訊息會隨規則調整，因此優先採用後端文案。
+    // 先前這裡寫死「密碼錯誤，請重新輸入。」——那是登入的語氣，但這個碼只出現在
+    // 註冊／重設密碼，使用者看到只會以為自己打錯字，不知道是長度不足。
     case 'INVALID_PASSWORD':
-      return '密碼錯誤，請重新輸入。'
+      return message ?? '密碼需為 8 到 64 碼。'
+    case 'WEAK_PASSWORD':
+      return message ?? '密碼需同時包含英文與數字。'
+    case 'PASSWORD_NOT_MATCH':
+      return message ?? '兩次輸入的密碼不一致。'
     case 'INVALID_LOGIN':
       return '請輸入正確的 Email 與密碼。'
     case 'DATABASE_NOT_CONFIGURED':

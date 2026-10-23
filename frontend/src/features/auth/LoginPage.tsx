@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Mail } from 'lucide-react'
 import { SocialLogin } from '@capgo/capacitor-social-login'
 import { ensureSocialInit, GOOGLE_WEB_CLIENT_ID, FACEBOOK_APP_ID } from './googleAuth'
@@ -15,6 +15,7 @@ import {
 } from './api'
 import type { DemoUser } from './types'
 import type { LegalDoc } from './legalDocuments'
+import { APP_VERSION_LABEL } from '../../shared/lib/appVersion'
 import {
   AuthFrame,
   LogoBlock,
@@ -22,10 +23,83 @@ import {
   AuthNotice,
   FloatingField,
   PasswordStrength,
+  PasswordHint,
   LegalModal,
   getForgotDescription,
   type ForgotStep,
+  type HintState,
 } from './AuthControls'
+
+// 密碼規則的單一來源：提示小窗、欄位錯誤、送出前檢查都讀這一份，不會各寫各的。
+// 內容必須與後端 AuthService.ValidatePassword 一致——兩邊不同步會變成前端放行、
+// 後端退回，使用者只看得到一條講不清原因的錯誤。
+const PASSWORD_RULES = [
+  {
+    label: '8 到 64 碼',
+    error: '密碼需為 8 到 64 碼',
+    test: (value: string) => value.length >= 8 && value.length <= 64,
+  },
+  {
+    label: '英文與數字都要有',
+    error: '密碼需同時包含英文與數字',
+    test: (value: string) => /[A-Za-z]/.test(value) && /[0-9]/.test(value),
+  },
+]
+
+function passwordRuleStates(value: string) {
+  return PASSWORD_RULES.map((rule) => ({ label: rule.label, passed: rule.test(value) }))
+}
+
+/**
+ * 「點一下浮出、過幾秒自己消失」的提示小窗狀態。
+ *
+ * leaving 是給淡出動畫用的中繼狀態；少了它就會直接閃不見。
+ * 重新聚焦會重設計時器，所以反覆點欄位不會累積一堆 timeout。
+ */
+function useAutoHideHint(visibleMs = 5000, fadeMs = 300) {
+  const [state, setState] = useState<HintState>('hidden')
+  const timers = useRef<number[]>([])
+
+  function clearTimers() {
+    timers.current.forEach(clearTimeout)
+    timers.current = []
+  }
+
+  function restartCountdown() {
+    clearTimers()
+    timers.current.push(
+      window.setTimeout(() => setState('leaving'), visibleMs),
+      window.setTimeout(() => setState('hidden'), visibleMs + fadeMs),
+    )
+  }
+
+  // 元件卸載時收掉計時器，避免在已卸載的元件上 setState
+  useEffect(() => () => timers.current.forEach(clearTimeout), [])
+
+  return {
+    state,
+    show() {
+      setState('shown')
+      restartCountdown()
+    },
+    /**
+     * 打字時把倒數往後推，小窗才不會在使用者正在輸入時消失——
+     * 勾選清單最有用的時候正是他邊打邊看還差哪一項。
+     * 已經收掉的就不再叫回來：每打一個字彈一次會很吵。
+     */
+    keepAlive() {
+      if (state === 'hidden') {
+        return
+      }
+      setState('shown')
+      restartCountdown()
+    },
+    hide() {
+      clearTimers()
+      setState('hidden')
+    },
+  }
+}
 
 type AuthMode = 'welcome' | 'login' | 'forgot' | 'register'
 type RegisterStep = 'form' | 'verify'
@@ -64,7 +138,7 @@ function isAdultBirthYear(birthYear: string) {
 }
 
 export default function LoginPage({ onAuthenticated }: Props) {
-  const [mode, setMode] = useState<AuthMode>('welcome')
+  const [mode, setModeState] = useState<AuthMode>('welcome')
   const [optionsOpen, setOptionsOpen] = useState(false)
   const [forgotStep, setForgotStep] = useState<ForgotStep>('account')
   const [email, setEmail] = useState('')
@@ -90,14 +164,60 @@ export default function LoginPage({ onAuthenticated }: Props) {
   const [loginEmailError, setLoginEmailError] = useState('')
   const [registerEmailError, setRegisterEmailError] = useState('')
   const [confirmPasswordError, setConfirmPasswordError] = useState('')
+  const [passwordError, setPasswordError] = useState('')
+  const [registerNameError, setRegisterNameError] = useState('')
+  const [newPasswordError, setNewPasswordError] = useState('')
+  const registerPasswordHint = useAutoHideHint()
+  const resetPasswordHint = useAutoHideHint()
+
+  /**
+   * 切換登入／註冊／忘記密碼畫面。
+   *
+   * 三個畫面共用同一組密碼欄位 state，不在切換時清掉的話，
+   * 剛剛在註冊頁打到一半的密碼會原封不動出現在登入頁的密碼欄。
+   * 切換點有八處，所以包成一個函式——真正的 setter 只在這裡用，
+   * 日後新增入口照樣呼叫 setMode 就不會漏掉。
+   */
+  function setMode(next: AuthMode) {
+    setModeState(next)
+    setPassword('')
+    setConfirmPassword('')
+    setNewPassword('')
+    setPasswordError('')
+    setConfirmPasswordError('')
+    setNewPasswordError('')
+  }
 
   function resetStatus() {
     setAuthMessage('')
     setAuthError('')
   }
 
+  // 送出後的錯誤橫幅講的是「上一次送出」的結果；使用者一開始修改欄位，那條訊息就過期了。
+  // 不清掉會讓人以為改了也沒用——這正是註冊看起來「卡死」的體感來源。
+  function clearAuthError() {
+    if (authError) setAuthError('')
+  }
+
+  function passwordRuleError(value: string): string {
+    return PASSWORD_RULES.find((rule) => !rule.test(value))?.error ?? ''
+  }
+
   function isValidEmail(value: string) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+  }
+
+  // 與後端 ValidateRegister 的暱稱規則一致（2 到 20 個字）。
+  // 先前前端只擋空白，1 個字要送到後端才被退回，錯誤還落在表單最底下。
+  function nicknameRuleError(value: string): string {
+    const trimmed = value.trim()
+    return trimmed.length >= 2 && trimmed.length <= 20 ? '' : '暱稱需為 2 到 20 個字'
+  }
+
+  function handleRegisterNameChange(value: string) {
+    setRegisterName(value)
+    clearAuthError()
+    if (registerNameError) setRegisterNameError(nicknameRuleError(value))
   }
 
   function handleEmailChange(value: string) {
@@ -107,6 +227,7 @@ export default function LoginPage({ onAuthenticated }: Props) {
 
   function handleRegisterEmailChange(value: string) {
     setRegisterEmail(value)
+    clearAuthError()
     if (registerEmailError) setRegisterEmailError('')
   }
 
@@ -123,12 +244,33 @@ export default function LoginPage({ onAuthenticated }: Props) {
 
   function handlePasswordChange(value: string) {
     setPassword(value)
+    clearAuthError()
+    registerPasswordHint.keepAlive()
     syncPasswordMatch(value, confirmPassword)
+    // 只在「已經顯示錯誤」時即時重算，使用者一改好就立刻消失；
+    // 還沒出錯就不要邊打邊唸，剛輸入第一個字元時長度本來就不足。
+    if (passwordError) setPasswordError(passwordRuleError(value))
   }
 
   function handleConfirmPasswordChange(value: string) {
     setConfirmPassword(value)
+    clearAuthError()
     syncPasswordMatch(password, value)
+  }
+
+  // 重設密碼那一步用的是 newPassword，但共用同一個「確認密碼」欄位
+  function handleNewPasswordChange(value: string) {
+    setNewPassword(value)
+    clearAuthError()
+    resetPasswordHint.keepAlive()
+    syncPasswordMatch(value, confirmPassword)
+    if (newPasswordError) setNewPasswordError(passwordRuleError(value))
+  }
+
+  function handleResetConfirmChange(value: string) {
+    setConfirmPassword(value)
+    clearAuthError()
+    syncPasswordMatch(newPassword, value)
   }
 
   function openForgot() {
@@ -151,6 +293,11 @@ export default function LoginPage({ onAuthenticated }: Props) {
 
   async function submitLogin() {
     await runAuthAction(async () => {
+      // 格式明顯不對就不用跑一趟後端，錯誤也標在 Email 欄而不是表單底部
+      if (!isValidEmail(email)) {
+        setLoginEmailError('請輸入有效的 Email 格式')
+        throw new Error('請輸入有效的 Email 格式。')
+      }
       const user = await loginAccount({ email, password }, rememberMe)
       onAuthenticated(user, rememberMe)
     })
@@ -216,8 +363,30 @@ export default function LoginPage({ onAuthenticated }: Props) {
         throw new Error('請先閱讀並同意服務條款與隱私權政策。')
       }
 
+      // 每一項都先在前端擋下來，並把錯誤標在對應欄位上。
+      // 否則使用者只會在表單底部看到一句不知道該改哪裡的訊息——
+      // 而那正是「改了半天還是過不去」的來源。
+      const nameError = nicknameRuleError(registerName)
+      if (nameError) {
+        setRegisterNameError(nameError)
+        throw new Error(`${nameError}。`)
+      }
+      if (!isValidEmail(registerEmail)) {
+        setRegisterEmailError('請輸入有效的 Email 格式')
+        throw new Error('請輸入有效的 Email 格式。')
+      }
       if (!isAdultBirthYear(birthYear)) {
         throw new Error('未滿 18 歲暫時不能使用同頻 Today。')
+      }
+
+      const ruleError = passwordRuleError(password)
+      if (ruleError) {
+        setPasswordError(ruleError)
+        throw new Error(`${ruleError}。`)
+      }
+      if (password !== confirmPassword) {
+        setConfirmPasswordError('密碼不一致，請重新確認')
+        throw new Error('兩次輸入的密碼不一致。')
       }
 
       const result = await registerAccount({
@@ -243,6 +412,10 @@ export default function LoginPage({ onAuthenticated }: Props) {
 
   async function submitResetRequest() {
     await runAuthAction(async () => {
+      if (!isValidEmail(email)) {
+        setLoginEmailError('請輸入有效的 Email 格式')
+        throw new Error('請輸入有效的 Email 格式。')
+      }
       const result = await requestPasswordReset(email)
       setAuthMessage(`驗證碼已寄到 ${result.data.email}，${result.data.expiresInMinutes} 分鐘內有效。`)
       setForgotStep('verify')
@@ -259,6 +432,17 @@ export default function LoginPage({ onAuthenticated }: Props) {
 
   async function submitResetPassword() {
     await runAuthAction(async () => {
+      // 與註冊頁同一套檢查：這裡同樣是在「設定密碼」，少了它就會重現
+      // 「按了沒反應、底部跳一句看不懂的話」那個狀況。
+      const ruleError = passwordRuleError(newPassword)
+      if (ruleError) {
+        setNewPasswordError(ruleError)
+        throw new Error(`${ruleError}。`)
+      }
+      if (newPassword !== confirmPassword) {
+        setConfirmPasswordError('密碼不一致，請重新確認')
+        throw new Error('兩次輸入的密碼不一致。')
+      }
       const user = await confirmPasswordReset({
         email,
         code: resetCode,
@@ -286,6 +470,8 @@ export default function LoginPage({ onAuthenticated }: Props) {
             輕觸畫面，開始同頻
             <span className="welcome-cta-arrow" aria-hidden="true">↑</span>
           </span>
+          {/* 測試期間顯示版本：回報問題時能直接對上是哪一版，不必先登入進設定頁 */}
+          <span className="welcome-version">{APP_VERSION_LABEL}</span>
         </button>
 
         {/* 登入方式 Bottom Sheet */}
@@ -378,24 +564,36 @@ export default function LoginPage({ onAuthenticated }: Props) {
 
           {forgotStep === 'reset' && (
             <>
-              <AuthField
-                icon="lock"
-                value={newPassword}
-                onChange={setNewPassword}
-                placeholder="新密碼"
-                type={showNewPassword ? 'text' : 'password'}
-                autoComplete="new-password"
-                isPasswordToggle
-                isPasswordVisible={showNewPassword}
-                onAction={() => setShowNewPassword(!showNewPassword)}
-              />
+              {/* 這一步同樣要符合密碼規則，所以用同一組提示；外層 div 只是給小窗定位用 */}
+              <div className="password-hint-anchor">
+                <AuthField
+                  icon="lock"
+                  value={newPassword}
+                  onChange={handleNewPasswordChange}
+                  placeholder="新密碼"
+                  type={showNewPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  error={newPasswordError}
+                  onFocus={resetPasswordHint.show}
+                  onBlur={() => {
+                    resetPasswordHint.hide()
+                    setNewPasswordError(newPassword ? passwordRuleError(newPassword) : '')
+                  }}
+                  isPasswordToggle
+                  isPasswordVisible={showNewPassword}
+                  onAction={() => setShowNewPassword(!showNewPassword)}
+                />
+                <PasswordHint state={resetPasswordHint.state} rules={passwordRuleStates(newPassword)} />
+              </div>
               <AuthField
                 icon="lock"
                 value={confirmPassword}
-                onChange={setConfirmPassword}
+                onChange={handleResetConfirmChange}
                 placeholder="確認新密碼"
                 type={showNewPassword ? 'text' : 'password'}
                 autoComplete="new-password"
+                error={confirmPasswordError}
+                onBlur={() => syncPasswordMatch(newPassword, confirmPassword)}
                 isPasswordToggle
                 isPasswordVisible={showNewPassword}
                 onAction={() => setShowNewPassword(!showNewPassword)}
@@ -440,10 +638,12 @@ export default function LoginPage({ onAuthenticated }: Props) {
               <AuthField
                 icon="user"
                 value={registerName}
-                onChange={setRegisterName}
+                onChange={handleRegisterNameChange}
                 placeholder="請輸入你的暱稱"
                 autoComplete="nickname"
                 suffix={`${registerName.length}/20`}
+                error={registerNameError}
+                onBlur={() => setRegisterNameError(registerName ? nicknameRuleError(registerName) : '')}
               />
             </FloatingField>
             <FloatingField label="電子郵件">
@@ -466,10 +666,17 @@ export default function LoginPage({ onAuthenticated }: Props) {
                 placeholder="請設定 8 碼以上，含英文與數字"
                 type={showRegisterPassword ? 'text' : 'password'}
                 autoComplete="new-password"
+                error={passwordError}
+                onFocus={registerPasswordHint.show}
+                onBlur={() => {
+                  registerPasswordHint.hide()
+                  setPasswordError(password ? passwordRuleError(password) : '')
+                }}
                 isPasswordToggle
                 isPasswordVisible={showRegisterPassword}
                 onAction={() => setShowRegisterPassword(!showRegisterPassword)}
               />
+              <PasswordHint state={registerPasswordHint.state} rules={passwordRuleStates(password)} />
             </FloatingField>
             <PasswordStrength password={password} />
             <FloatingField label="確認密碼">
@@ -488,7 +695,7 @@ export default function LoginPage({ onAuthenticated }: Props) {
               />
             </FloatingField>
             <FloatingField label="出生年次">
-              <AuthField icon="calendar" value={birthYear} onChange={setBirthYear} placeholder="出生年份，例如 1995" inputMode="numeric" autoComplete="bday-year" />
+              <AuthField icon="calendar" value={birthYear} onChange={(value) => { clearAuthError(); setBirthYear(value) }} placeholder="出生年份，例如 1995" inputMode="numeric" autoComplete="bday-year" />
             </FloatingField>
 
             <div className="gender-field">
@@ -510,7 +717,7 @@ export default function LoginPage({ onAuthenticated }: Props) {
             </div>
 
             <label className="terms-row">
-              <input type="checkbox" checked={agreed} onChange={(event) => setAgreed(event.target.checked)} />
+              <input type="checkbox" checked={agreed} onChange={(event) => { clearAuthError(); setAgreed(event.target.checked) }} />
               <span>
                 我已閱讀並同意{' '}
                 <button type="button" onClick={() => setLegalDoc('terms')}>服務條款</button>

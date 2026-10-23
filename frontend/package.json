@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -15,6 +15,9 @@
     "cap:device": "npm run build:device && cross-env CAP_BUILD=device npx cap sync",
     "cap:device:android": "npm run cap:device && npx cap open android",
     "cap:device:ios": "npm run cap:device && npx cap open ios",
+    "release:patch": "node scripts/release.mjs patch",
+    "release:minor": "node scripts/release.mjs minor",
+    "release:major": "node scripts/release.mjs major",
     "build:play": "tsc -b && vite build --mode production",
     "cap:play": "npm run build:play && cross-env CAP_BUILD=play npx cap sync android"
   },
