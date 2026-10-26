@@ -1056,3 +1056,21 @@
 /* 鎖定的單選欄位（如性別）：已選保持高亮、其餘淡化、不可點 */
 .ob-tag:disabled { cursor: default; }
 .ob-tag:disabled:not(.selected) { opacity: 0.45; }
+
+/* 年齡偏好改用共用的雙向滑桿（shared/ui/AgeRangeSlider）。
+   這裡只覆寫配色，結構在 01-tokens-base.css。
+   主色沿用本頁輸入框 focus 的 #c8785a；深色比照 .profile-bio-input 那組。
+   label 傳空字串，標題交給上面的 FieldLabel，這裡只留右側的數值。 */
+.profile-age-range {
+  --ar-rail: #ddd5c8;
+  --ar-fill: #c8785a;
+  --ar-thumb: #ffffff;
+  --ar-value: #c8785a;
+}
+
+[data-theme="dark"] .profile-age-range {
+  --ar-rail: #2a4035;
+  --ar-fill: #5a9e82;
+  --ar-thumb: #16281e;
+  --ar-value: #7fc4a6;
+}

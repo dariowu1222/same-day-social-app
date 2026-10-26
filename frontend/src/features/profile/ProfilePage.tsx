@@ -6,6 +6,7 @@ import { CalendarPicker } from "./CalendarPicker"
 import { ProfileCardFullscreen } from "./ProfileCardFullscreen"
 import { getZodiac, getAge, isAdultBirthday, fileToResizedBase64, ZODIAC_ICON } from "./profileUtils"
 import { uploadMedia } from "../../shared/api/media"
+import AgeRangeSlider, { AGE_FLOOR, AGE_CEIL } from "../../shared/ui/AgeRangeSlider"
 import {
   GENDER_OPTIONS, RELATIONSHIP_OPTIONS, DATING_GOAL_OPTIONS, LOOKING_FOR_OPTIONS,
   PERSONALITY_OPTIONS, APPEARANCE_OPTIONS, BLOOD_OPTIONS,
@@ -165,8 +166,11 @@ export default function ProfilePage() {
   const [bloodType, setBloodType] = useState('')
   const [datingGoal, setDatingGoal] = useState('')
   const [lookingFor, setLookingFor] = useState('')
-  const [ageMin, setAgeMin] = useState('')
-  const [ageMax, setAgeMax] = useState('')
+  // 滑桿一定有值；ageTouched 分辨「真的設過」與「只是打開看看」，
+  // 沒動過就不送，避免把未設定寫成 18/99（見 AgeRangeSlider 的註解）
+  const [ageMin, setAgeMin] = useState(AGE_FLOOR)
+  const [ageMax, setAgeMax] = useState(AGE_CEIL)
+  const [ageTouched, setAgeTouched] = useState(false)
   const [distanceKm, setDistanceKm] = useState('')
   const [languages, setLanguages] = useState<string[]>([])
   const [activeTime, setActiveTime] = useState('')
@@ -209,8 +213,9 @@ export default function ProfilePage() {
         setBloodType(res.data.bloodType ?? '')
         setDatingGoal(res.data.datingGoal ?? '')
         setLookingFor(res.data.lookingFor ?? '')
-        setAgeMin(res.data.ageMin != null ? String(res.data.ageMin) : '')
-        setAgeMax(res.data.ageMax != null ? String(res.data.ageMax) : '')
+        setAgeMin(res.data.ageMin ?? AGE_FLOOR)
+        setAgeMax(res.data.ageMax ?? AGE_CEIL)
+        if (res.data.ageMin != null || res.data.ageMax != null) setAgeTouched(true)
         setDistanceKm(res.data.distanceKm != null ? String(res.data.distanceKm) : '')
         setLanguages(res.data.languages ?? [])
         setActiveTime(res.data.activeTime ?? '')
@@ -307,8 +312,8 @@ export default function ProfilePage() {
         bloodType: bloodType || undefined,
         datingGoal: datingGoal || undefined,
         lookingFor: lookingFor || undefined,
-        ageMin: ageMin ? Number(ageMin) : null,
-        ageMax: ageMax ? Number(ageMax) : null,
+        ageMin: ageTouched ? ageMin : undefined,
+        ageMax: ageTouched ? ageMax : undefined,
         distanceKm: distanceKm ? Number(distanceKm) : null,
         languages,
         activeTime: activeTime || undefined,
@@ -567,16 +572,13 @@ export default function ProfilePage() {
 
       <section className="panel">
         <FieldLabel title="年齡偏好" optional />
-        <div className="profile-field-row">
-          <div className="profile-field-unit">
-            <input className="profile-text-input" type="number" inputMode="numeric" min={18} max={99} placeholder="最小" value={ageMin} onChange={e => setAgeMin(e.target.value)} />
-            <span className="profile-unit">歲</span>
-          </div>
-          <div className="profile-field-unit">
-            <input className="profile-text-input" type="number" inputMode="numeric" min={18} max={99} placeholder="最大" value={ageMax} onChange={e => setAgeMax(e.target.value)} />
-            <span className="profile-unit">歲</span>
-          </div>
-        </div>
+        <AgeRangeSlider
+          className="profile-age-range"
+          label=""
+          min={ageMin}
+          max={ageMax}
+          onChange={(lo, hi) => { setAgeMin(lo); setAgeMax(hi); setAgeTouched(true) }}
+        />
       </section>
 
       <section className="panel">

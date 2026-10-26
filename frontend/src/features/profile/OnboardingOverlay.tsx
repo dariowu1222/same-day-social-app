@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import type { DemoUser } from '../auth/types'
 import { updateProfile } from './api'
+import AgeRangeSlider, { AGE_FLOOR } from '../../shared/ui/AgeRangeSlider'
 import {
   DATING_GOAL_OPTIONS,
   GENDER_OPTIONS,
@@ -58,10 +59,6 @@ const INTEREST_OPTIONS = [
   '旅遊', '攝影', '運動', '遊戲', '動漫', 'Podcast',
   '貓狗', '手作', '冥想', '追劇', '寫作', '展覽',
 ]
-
-// 年齡範圍雙滑桿的上下限
-const AGE_FLOOR = 18
-const AGE_CEIL = 99
 
 // 距離偏好「依縣市」用的台灣縣市清單
 const AREA_OPTIONS = [
@@ -212,39 +209,11 @@ export default function OnboardingOverlay({ user, onComplete }: Props) {
             </div>
 
             <div className="ob-field">
-              <div className="ob-range-head">
-                <span className="ob-field-label">年齡範圍</span>
-                <span className="ob-range-value">{ageMin} – {ageMax} 歲</span>
-              </div>
-              <div className="ob-range">
-                <div className="ob-range-rail">
-                  <div
-                    className="ob-range-fill"
-                    style={{
-                      left: `${((ageMin - AGE_FLOOR) / (AGE_CEIL - AGE_FLOOR)) * 100}%`,
-                      right: `${100 - ((ageMax - AGE_FLOOR) / (AGE_CEIL - AGE_FLOOR)) * 100}%`,
-                    }}
-                  />
-                </div>
-                <input
-                  className="ob-range-input"
-                  type="range"
-                  min={AGE_FLOOR}
-                  max={AGE_CEIL}
-                  value={ageMin}
-                  aria-label="最小年齡"
-                  onChange={event => setAgeMin(Math.min(Number(event.target.value), ageMax - 1))}
-                />
-                <input
-                  className="ob-range-input"
-                  type="range"
-                  min={AGE_FLOOR}
-                  max={AGE_CEIL}
-                  value={ageMax}
-                  aria-label="最大年齡"
-                  onChange={event => setAgeMax(Math.max(Number(event.target.value), ageMin + 1))}
-                />
-              </div>
+              <AgeRangeSlider
+                min={ageMin}
+                max={ageMax}
+                onChange={(lo, hi) => { setAgeMin(lo); setAgeMax(hi) }}
+              />
             </div>
 
             <div className="ob-field">

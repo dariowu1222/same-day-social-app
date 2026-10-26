@@ -471,10 +471,17 @@
 .pref-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .pref-chip { padding: 8px 14px; border: 0.5px solid #ddd5c8; background: #fff; border-radius: 18px; color: #5a4f44; font-size: 13px; cursor: pointer; }
 .pref-chip.selected { border-color: #c8785a; background: #fce8e0; color: #b5532f; }
-.pref-range { display: flex; align-items: center; gap: 8px; }
-.pref-range input { width: 84px; padding: 9px 12px; border: 0.5px solid #ddd5c8; border-radius: 10px; font-size: 14px; color: #4a3f35; outline: none; font-family: inherit; }
-.pref-range input:focus { border-color: #c8785a; }
-.pref-unit { font-size: 13px; color: #9a8f82; }
+/* 年齡範圍改用共用的雙向滑桿（shared/ui/AgeRangeSlider），
+   這裡只覆寫配色，結構在 01-tokens-base.css。
+   主色用偏好 sheet 這一組既有的 #c8785a，不是 Onboarding 的 #e8754e。 */
+.pref-age-range {
+  --ar-rail: #ddd5c8;
+  --ar-fill: #c8785a;
+  --ar-thumb: #fff;
+  --ar-value: #c8785a;
+  --ar-label: #6e594a;
+  margin-bottom: 4px;
+}
 .pref-apply-btn { width: 100%; margin-top: 20px; padding: 13px; border: none; border-radius: 14px; background: #c8785a; color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; }
 .pref-apply-btn:disabled { opacity: 0.6; }
 
@@ -484,7 +491,15 @@
 [data-theme="dark"] .pref-field-label { color: rgba(168, 212, 204, 0.7); }
 [data-theme="dark"] .pref-chip { background: rgba(22, 40, 32, 0.6); border-color: #2a4035; color: #d4ede8; }
 [data-theme="dark"] .pref-chip.selected { border-color: #4caf7d; background: rgba(76, 175, 125, 0.2); color: #8fe0a8; }
-[data-theme="dark"] .pref-range input { background: rgba(22, 40, 32, 0.6); border-color: #2a4035; color: #d4ede8; }
+/* 深色一定要補：共用結構刻意沒有深色規則（Onboarding 固定亮色），
+   不寫的話夜間主題下滑桿會是一條淺米色配橘點，跟深綠 sheet 完全不搭。 */
+[data-theme="dark"] .pref-age-range {
+  --ar-rail: #2a4035;
+  --ar-fill: #4caf7d;
+  --ar-thumb: #16281e;
+  --ar-value: #4caf7d;
+  --ar-label: #9ec4b4;
+}
 [data-theme="dark"] .pref-apply-btn { background: #4caf7d; }
 
 /* 配對偏好 sheet：說明這裡的欄位會同步寫回個人檔案 */

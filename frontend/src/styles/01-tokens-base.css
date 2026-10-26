@@ -152,6 +152,112 @@ h3 {
   z-index: 1;
 }
 
+/* ── 年齡區間雙向滑桿（shared/ui/AgeRangeSlider）────────────────
+   Onboarding、配對偏好 sheet、我的→年齡偏好共用。結構只有這一份，
+   配色走 --ar-* 變數讓各頁自己覆寫；預設值＝Onboarding 原本的暖橘，
+   所以 Onboarding 不需要任何覆寫，外觀與抽元件之前相同。
+   深色模式刻意不寫在這裡：Onboarding 固定維持亮色介面（見
+   07-onboarding.css 的註解），需要深色的頁面自己加。 */
+.age-range-field {
+  --ar-rail: #ead3bf;
+  --ar-fill: #e8754e;
+  --ar-thumb: #fffdf8;
+  --ar-value: #c25830;
+  --ar-label: #6e594a;
+}
+
+/* 與 .ob-field-label 同樣式，讓 Onboarding 換成共用元件後外觀不變 */
+.age-range-label {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--ar-label);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.age-range-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.age-range-value {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--ar-value);
+}
+
+.age-range {
+  position: relative;
+  height: 34px;
+  margin-top: 4px;
+}
+
+/* 軌道左右各內縮半個圓點(11px)，讓 fill 的百分比對齊 thumb 中心
+   （thumb 在兩端會被瀏覽器內縮） */
+.age-range-rail {
+  position: absolute;
+  top: 50%;
+  left: 11px;
+  right: 11px;
+  transform: translateY(-50%);
+  height: 5px;
+  border-radius: 3px;
+  background: var(--ar-rail);
+  pointer-events: none;
+}
+
+.age-range-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 3px;
+  background: var(--ar-fill);
+  pointer-events: none;
+}
+
+/* 兩個 range 疊在一起：整條不吃點擊，只有圓點可拖，否則上層那條會把
+   下層的圓點整個蓋住 */
+.age-range-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 34px;
+  margin: 0;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  pointer-events: none;
+}
+
+.age-range-input::-webkit-slider-runnable-track { background: transparent; }
+.age-range-input::-moz-range-track { background: transparent; }
+
+.age-range-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  pointer-events: auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--ar-thumb);
+  border: 2px solid var(--ar-fill);
+  box-shadow: 0 2px 6px rgba(120, 74, 42, 0.25);
+  cursor: pointer;
+}
+
+.age-range-input::-moz-range-thumb {
+  pointer-events: auto;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--ar-fill);
+  border-radius: 50%;
+  background: var(--ar-thumb);
+  box-shadow: 0 2px 6px rgba(120, 74, 42, 0.25);
+  cursor: pointer;
+}
+
 .auth-shell {
   display: grid;
   align-content: start;

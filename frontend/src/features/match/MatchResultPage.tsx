@@ -5,6 +5,7 @@ import { getTodayMatches, likeMatch } from './api'
 import { getProfile, updateProfile } from '../profile/api'
 import { getZodiac, getAge } from '../profile/profileUtils'
 import type { MatchResult } from './types'
+import AgeRangeSlider, { AGE_FLOOR, AGE_CEIL } from '../../shared/ui/AgeRangeSlider'
 
 type EnrichedMatch = Omit<MatchResult, 'photos' | 'interests' | 'personalityTags' | 'appearanceTags'> & {
   photos: string[]
@@ -384,15 +385,20 @@ function SwipeTutorial({ onStart }: { onStart: () => void }) {
 // 交友目的、語言、活動時段等屬於自我描述，留在「我的」頁，不在這裡過濾。
 function PreferenceSheet({ userId, onClose, onApplied }: { userId: string; onClose: () => void; onApplied: () => void }) {
   const [lookingFor, setLookingFor] = useState('')
-  const [ageMin, setAgeMin] = useState('')
-  const [ageMax, setAgeMax] = useState('')
+  // 滑桿一定有值，沒有「空白＝不限」這個狀態。ageTouched 用來分辨
+  // 「使用者真的設過」與「只是打開看看」——沒動過就不送這兩個欄位，
+  // 否則會把老使用者原本未設定的年齡偏好寫成 18/99。
+  const [ageMin, setAgeMin] = useState(AGE_FLOOR)
+  const [ageMax, setAgeMax] = useState(AGE_CEIL)
+  const [ageTouched, setAgeTouched] = useState(false)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     getProfile(userId).then(res => {
       setLookingFor(res.data.lookingFor ?? '')
-      setAgeMin(res.data.ageMin != null ? String(res.data.ageMin) : '')
-      setAgeMax(res.data.ageMax != null ? String(res.data.ageMax) : '')
+      setAgeMin(res.data.ageMin ?? AGE_FLOOR)
+      setAgeMax(res.data.ageMax ?? AGE_CEIL)
+      if (res.data.ageMin != null || res.data.ageMax != null) setAgeTouched(true)
     }).catch(() => {})
   }, [userId])
 
@@ -401,8 +407,10 @@ function PreferenceSheet({ userId, onClose, onApplied }: { userId: string; onClo
     try {
       await updateProfile(userId, {
         lookingFor: lookingFor || undefined,
-        ageMin: ageMin ? Number(ageMin) : null,
-        ageMax: ageMax ? Number(ageMax) : null,
+        // 沒動過就不帶這兩個欄位（undefined 而非 null）——後端對 null
+        // 本來就是忽略，送 undefined 語意更清楚，也不會動到既有設定。
+        ageMin: ageTouched ? ageMin : undefined,
+        ageMax: ageTouched ? ageMax : undefined,
       })
     } catch { /* 存檔失敗不阻擋 */ }
     setSaving(false)
@@ -427,13 +435,12 @@ function PreferenceSheet({ userId, onClose, onApplied }: { userId: string; onClo
           ))}
         </div>
 
-        <p className="pref-field-label">年齡範圍</p>
-        <div className="pref-range">
-          <input type="number" inputMode="numeric" min={18} max={99} placeholder="最小" value={ageMin} onChange={e => setAgeMin(e.target.value)} />
-          <span>—</span>
-          <input type="number" inputMode="numeric" min={18} max={99} placeholder="最大" value={ageMax} onChange={e => setAgeMax(e.target.value)} />
-          <span className="pref-unit">歲</span>
-        </div>
+        <AgeRangeSlider
+          className="pref-age-range"
+          min={ageMin}
+          max={ageMax}
+          onChange={(lo, hi) => { setAgeMin(lo); setAgeMax(hi); setAgeTouched(true) }}
+        />
 
         <button className="pref-apply-btn" type="button" disabled={saving} onClick={apply}>
           {saving ? '套用中⋯' : '套用並重新配對'}
