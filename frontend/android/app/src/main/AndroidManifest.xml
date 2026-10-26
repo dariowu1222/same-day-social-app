@@ -45,4 +45,9 @@
          沒宣告的話錄音會直接被系統拒絕。 -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+
+    <!-- Play 會從 RECORD_AUDIO 自動推斷「必須有麥克風」，把沒麥克風的裝置
+         （部分平板與電視）整個濾掉。語音訊息只是聊天的附加功能，打字聊天
+         不需要麥克風，所以明確宣告為非必要，讓那些裝置照樣裝得到、收得到更新。 -->
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
 </manifest>
