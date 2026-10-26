@@ -4,6 +4,9 @@
 <dict>
     <key>CAPACITOR_DEBUG</key>
 	<string>$(CAPACITOR_DEBUG)</string>
+	<!-- 聊天室的語音訊息；缺這一項 iOS 會直接拒絕麥克風存取 -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>錄製語音訊息傳給聊天對象</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>

@@ -19,7 +19,11 @@ export function useAudioRecorder(onRecorded: (dataUrl: string) => void) {
       chunksRef.current = []
       recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
       recorder.onstop = async () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+        // 用 recorder 實際採用的格式，不要寫死 audio/webm：
+        // iOS 的 WKWebView 錄出來是 mp4/aac，標錯會讓上傳後的副檔名與
+        // 播放端的判斷對不上。Android 本來就是 webm，行為不變。
+        const type = recorder.mimeType || 'audio/webm'
+        const blob = new Blob(chunksRef.current, { type })
         onRecorded(await blobToDataUrl(blob))
         stream.getTracks().forEach((t) => t.stop())
       }

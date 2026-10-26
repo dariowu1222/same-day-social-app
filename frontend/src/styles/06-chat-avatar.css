@@ -480,6 +480,80 @@
   background: rgba(255, 255, 255, 0.7);
 }
 
+/* 語音訊息：錄音中的提示與閃爍紅點 */
+.cr-recording-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: #c0533a;
+}
+
+.cr-recording-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #d9533a;
+  animation: cr-recording-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes cr-recording-pulse {
+  50% { opacity: 0.25; }
+}
+
+/* 錄音鍵在錄製中換成紅底，讓「再按一次停止」看得出來 */
+.cr-input-icon.cr-voice.recording {
+  color: #fff;
+  background: #d9533a;
+  border-radius: 50%;
+}
+
+/* 錄好但還沒送出的試聽列，排在輸入列上方 */
+.cr-voice-draft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.92);
+  border-top: 1px solid #ece3d8;
+}
+
+.cr-voice-draft-audio {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+}
+
+.cr-voice-draft-btn {
+  flex-shrink: 0;
+  border: none;
+  border-radius: 999px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cr-voice-draft-btn.discard {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  color: #8a705f;
+  background: #f0e8df;
+}
+
+.cr-voice-draft-btn.send {
+  padding: 0 16px;
+  height: 32px;
+  color: #fff;
+  background: #e08356;
+  font-size: 14px;
+}
+
+.cr-voice-draft-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
 /* 樂觀更新的送出狀態，佔位與 .cr-time 一致，避免送達時畫面跳動 */
 .cr-msg-status {
   flex-shrink: 0;

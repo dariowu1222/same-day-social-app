@@ -40,4 +40,9 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- 聊天室的語音訊息。WebView 的 getUserMedia 需要這個 runtime 權限，
+         沒宣告的話錄音會直接被系統拒絕。 -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 </manifest>

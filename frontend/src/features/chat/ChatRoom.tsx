@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 // import { useNavigate } from 'react-router-dom' // 任務功能暫時下架（後端保留）
 import { Capacitor } from '@capacitor/core'
 import {
-  Image as ImageIcon, Mic, ArrowUp, MoreHorizontal, X, Search,
+  Image as ImageIcon, Mic, Square, ArrowUp, MoreHorizontal, X, Search,
   User, Flag, Pencil, Pin, BellOff, BellRing, LogOut, Ban,
   Reply, Copy, RotateCcw, ShieldCheck, AlertTriangle,
 } from 'lucide-react'
@@ -11,6 +11,7 @@ import type { QuoteInfo } from './api'
 import type { UserProfile } from '../profile/types'
 import { getAge, getZodiac, ZODIAC_ICON, testAvatarPhoto } from '../../shared/lib/userDisplay'
 import { uploadMedia } from '../../shared/api/media'
+import { useAudioRecorder } from '../../shared/hooks/useAudioRecorder'
 import { SAFETY_KEYS, safetyDismissed, dismissSafety } from '../../shared/lib/storageKeys'
 import { detectRisks, detectMeetupIntent, detectAbuse, MEETUP_SAFETY_TIPS, type RiskCategory } from './safety'
 import Avatar from '../../shared/ui/Avatar'
@@ -72,6 +73,26 @@ export default function ChatRoom({
   const [toast, setToast] = useState('')
   // 多圖上傳中的張數（0 = 沒有在上傳）
   const [uploadingCount, setUploadingCount] = useState(0)
+
+  // 語音訊息：按一下開始錄、再按一下停止，停止後先留在本機讓使用者試聽，
+  // 按了傳送才真的上傳。錄壞重錄不會浪費一次上傳，也不會在對話裡留下廢檔。
+  const [voiceDraft, setVoiceDraft] = useState<string | null>(null)
+  const [sendingVoice, setSendingVoice] = useState(false)
+  const { isRecording, toggle: toggleRecording } = useAudioRecorder(setVoiceDraft)
+
+  async function sendVoice() {
+    if (!voiceDraft || !onSendContent) return
+    setSendingVoice(true)
+    try {
+      const url = await uploadMedia(voiceDraft, 'chats')
+      await onSendContent(url)
+      setVoiceDraft(null)
+    } catch {
+      showToast('語音傳送失敗，請再試一次')
+    } finally {
+      setSendingVoice(false)
+    }
+  }
   // 檢舉面板的標的：單則訊息或對方本人
   const [reportTarget, setReportTarget] = useState<{ type: ReportTargetType; id: string } | null>(null)
   // 長按訊息操作列：紀錄目標訊息、歸屬、浮層座標
@@ -444,6 +465,37 @@ export default function ChatRoom({
         </div>
       )}
 
+      {isRecording && (
+        <div className="cr-upload-hint cr-recording-hint">
+          <span className="cr-recording-dot" aria-hidden="true" />
+          錄音中…再按一次麥克風停止
+        </div>
+      )}
+
+      {/* 錄好之後先試聽，確認了才送。按 X 可以丟掉重錄。 */}
+      {voiceDraft && !isRecording && (
+        <div className="cr-voice-draft">
+          <audio controls src={voiceDraft} className="cr-voice-draft-audio" />
+          <button
+            className="cr-voice-draft-btn discard"
+            type="button"
+            onClick={() => setVoiceDraft(null)}
+            disabled={sendingVoice}
+            aria-label="刪除錄音"
+          >
+            <X size={15} strokeWidth={2.2} />
+          </button>
+          <button
+            className="cr-voice-draft-btn send"
+            type="button"
+            onClick={sendVoice}
+            disabled={sendingVoice}
+          >
+            {sendingVoice ? '傳送中…' : '傳送'}
+          </button>
+        </div>
+      )}
+
       {/* 輸入列：圖片 / 語音 / 輸入框 / 送出 */}
       <div className="cr-input">
         <button
@@ -455,8 +507,15 @@ export default function ChatRoom({
         >
           <ImageIcon size={20} strokeWidth={1.9} />
         </button>
-        <button className="cr-input-icon cr-voice" type="button" aria-label="語音訊息">
-          <Mic size={20} strokeWidth={1.9} />
+        <button
+          className={`cr-input-icon cr-voice${isRecording ? ' recording' : ''}`}
+          type="button"
+          onClick={toggleRecording}
+          disabled={sendingVoice || uploadingCount > 0 || (!!voiceDraft && !isRecording)}
+          aria-label={isRecording ? '停止錄音' : '語音訊息'}
+          aria-pressed={isRecording}
+        >
+          {isRecording ? <Square size={16} strokeWidth={2.4} /> : <Mic size={20} strokeWidth={1.9} />}
         </button>
         <input
           className="cr-input-box"
