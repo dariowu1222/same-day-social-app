@@ -101,9 +101,15 @@ function SwipeCard({
       const card = cardRef.current
       if (card) {
         const rect = card.getBoundingClientRect()
-        const relY = e.clientY - rect.top
-        const photoAreaHeight = rect.width * 1.05
-        if (relY < photoAreaHeight) {
+        // 量照片區的實際下緣，不要用寬度推估。
+        // 原本寫 rect.width * 1.05，但照片高度是卡片高度的百分比
+        // （收合 50%、展開 24%），跟寬度無關：收合時約差 36px、展開時
+        // 差到 200px，資訊區頂端那一帶會被誤判成照片而變成翻照片。
+        const photo = card.querySelector('.swipe-photo-wrap')
+        const photoBottom = photo
+          ? photo.getBoundingClientRect().bottom
+          : rect.top + rect.width * 1.05
+        if (e.clientY < photoBottom) {
           if (match.photos.length > 1) {
             const relX = e.clientX - rect.left
             if (relX < rect.width / 2) {

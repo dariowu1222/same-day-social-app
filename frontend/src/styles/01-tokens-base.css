@@ -18,6 +18,14 @@
   --theme-text: #4a3f35;
   --theme-muted: #b0a090;
   --bottom-nav-height: 64px;
+
+  /* .app-shell 的上下內距，抽成變數讓需要「剛好一屏」的頁面扣同一個值。
+     先前各處寫死 112px（= 20 + 92），但那只在沒有 safe-area 的裝置上成立：
+     App 開了 StatusBar.overlaysWebView，手機的 inset-top 不是 0，
+     寫死就會少扣、整頁多出一段捲動。要改內距請只改這裡。 */
+  --shell-pad-top: max(20px, env(safe-area-inset-top));
+  --shell-pad-bottom: calc(92px + env(safe-area-inset-bottom));
+  --shell-vspace: calc(var(--shell-pad-top) + var(--shell-pad-bottom));
 }
 
 [data-theme="dark"] {
@@ -134,10 +142,11 @@ h3 {
   width: min(100%, 520px);
   min-height: 100vh;
   margin: 0 auto;
-  /* Safe area：iOS 劉海/Dynamic Island（頂部）+ Android/iOS 手勢列（底部）*/
-  padding-top: max(20px, env(safe-area-inset-top));
+  /* Safe area：iOS 劉海/Dynamic Island（頂部）+ Android/iOS 手勢列（底部）
+     上下兩邊走 :root 的變數，需要滿版一屏的頁面才能扣到完全相同的值。 */
+  padding-top: var(--shell-pad-top);
   padding-right: max(16px, env(safe-area-inset-right));
-  padding-bottom: calc(92px + env(safe-area-inset-bottom));
+  padding-bottom: var(--shell-pad-bottom);
   padding-left: max(16px, env(safe-area-inset-left));
   position: relative;
   z-index: 1;

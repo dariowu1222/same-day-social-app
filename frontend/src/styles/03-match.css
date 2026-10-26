@@ -6,7 +6,10 @@
 /* ── 配對結果頁 ───────────────────────────── */
 .match-result-page {
   position: relative;
-  min-height: calc(100vh - 56px);
+  /* 滑卡頁要剛好一屏、不該捲動，所以扣掉和 .app-shell 完全相同的上下內距。
+     先前寫 calc(100vh - 56px)，只扣了一半，整頁多出 56px 的捲動空間：
+     往下捲時卡片被帶上去、底部空出一片，看起來就像卡片沒置中。 */
+  min-height: calc(100vh - var(--shell-vspace));
 }
 
 /* 載入遮罩 */
@@ -16,7 +19,7 @@
   align-items: center;
   justify-content: center;
   gap: 24px;
-  min-height: calc(100vh - 112px);
+  min-height: calc(100vh - var(--shell-vspace));
 }
 
 @keyframes spin-ring {
@@ -45,7 +48,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  height: calc(100vh - 112px);
+  height: calc(100vh - var(--shell-vspace));
 }
 
 .match-result-header {

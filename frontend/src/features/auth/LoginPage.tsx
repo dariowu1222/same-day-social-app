@@ -51,6 +51,37 @@ function passwordRuleStates(value: string) {
 }
 
 /**
+ * 使用者是否只是自己取消了社群登入。
+ *
+ * @capgo/capacitor-social-login 在 Android 與 iOS 都以 code 'USER_CANCELLED' 回報
+ * （Android 是 GetCredentialCancellationException，iOS 是 ASWebAuthenticationSession
+ * 的 canceledLogin 等）。關掉帳號選單是正常操作，不該當成錯誤顯示。
+ */
+function isUserCancelled(error: unknown): boolean {
+  return (error as { code?: string } | null)?.code === 'USER_CANCELLED'
+}
+
+/**
+ * 外掛丟出來的錯誤是英文的（例如 "Google Sign-In failed: ..."），
+ * 測試者看不懂、也判斷不出能不能重試。包成中文，但把原文留在括號裡——
+ * 回報問題時那段才是線索。
+ */
+function toAuthErrorMessage(error: unknown): string {
+  if (!(error instanceof Error) || !error.message) {
+    return '操作失敗，請稍後再試。'
+  }
+  const raw = error.message
+  if (/no credentials? available|nocredential/i.test(raw)) {
+    return '這台裝置還沒有可用的 Google 帳號，請先在系統設定加入帳號，或改用 Email 登入。'
+  }
+  if (/sign-?in failed/i.test(raw)) {
+    const provider = /facebook/i.test(raw) ? 'Facebook' : 'Google'
+    return `${provider} 登入失敗，請改用 Email 登入或稍後再試。（${raw}）`
+  }
+  return raw
+}
+
+/**
  * 「點一下浮出、過幾秒自己消失」的提示小窗狀態。
  *
  * leaving 是給淡出動畫用的中繼狀態；少了它就會直接閃不見。
@@ -285,7 +316,12 @@ export default function LoginPage({ onAuthenticated }: Props) {
     try {
       await action()
     } catch (error) {
-      setAuthError(error instanceof Error ? error.message : '操作失敗，請稍後再試。')
+      // 使用者自己關掉 Google／Facebook 的帳號選單也會丟錯，
+      // 但那是他的選擇不是失敗——跳紅字只會讓人以為程式壞了。
+      if (isUserCancelled(error)) {
+        return
+      }
+      setAuthError(toAuthErrorMessage(error))
     } finally {
       setSubmitting(false)
     }
