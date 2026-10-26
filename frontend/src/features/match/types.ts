@@ -15,4 +15,7 @@ export type MatchResult = {
   interests?: string[] | null
   photos?: string[] | null
   birthday?: string | null
+  personalityTags?: string[] | null
+  appearanceTags?: string[] | null
+  relationship?: string | null
 }

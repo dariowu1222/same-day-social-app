@@ -628,6 +628,9 @@ export default function ProfilePage() {
           bio={bio}
           birthday={birthday}
           interestTags={interestTags}
+          personalityTags={personalityTags}
+          appearanceTags={appearanceTags}
+          relationship={relationship}
           photos={photos}
           onClose={() => setShowPreview(false)}
           onGoAddPhoto={() => setTimeout(() => fileInputRef.current?.click(), 300)}

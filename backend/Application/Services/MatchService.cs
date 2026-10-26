@@ -222,7 +222,10 @@ public sealed class MatchService
             user?.Bio,
             user?.InterestTags ?? [],
             user?.PhotoDataUrls ?? [],
-            user?.Birthday?.ToString("yyyy-MM-dd"));
+            user?.Birthday?.ToString("yyyy-MM-dd"),
+            user?.PersonalityTags ?? [],
+            user?.AppearanceTags ?? [],
+            user?.Relationship);
     }
 
     private void PersistOrReuseMatch(MatchRecord match)
@@ -346,4 +349,10 @@ public sealed record MatchResponse(
     string? Bio = null,
     List<string>? Interests = null,
     List<string>? Photos = null,
-    string? Birthday = null);
+    string? Birthday = null,
+    // 個性／外貌／感情狀態：使用者在個人檔案填了，但配對卡原本沒帶，
+    // 所以別人看到的卡片永遠只有興趣。新參數一律放尾端並給預設值，
+    // 既有的具名與位置呼叫都不受影響。
+    List<string>? PersonalityTags = null,
+    List<string>? AppearanceTags = null,
+    string? Relationship = null);

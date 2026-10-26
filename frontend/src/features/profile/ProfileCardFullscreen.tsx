@@ -6,10 +6,13 @@ import { getAge, getZodiac, ZODIAC_ICON } from './profileUtils'
 // 「預覽我的卡」全螢幕視圖：模擬別人在配對頁看到你的樣子。
 export function ProfileCardFullscreen({
   user, bio, birthday, interestTags, photos, onClose, onGoAddPhoto,
+  personalityTags = [], appearanceTags = [], relationship = '',
 }: {
   user: DemoUser; bio: string; birthday: string
   interestTags: string[]; photos: string[]
   onClose: () => void; onGoAddPhoto: () => void
+  // 給預設值，之後若有別的呼叫端不傳也不會壞
+  personalityTags?: string[]; appearanceTags?: string[]; relationship?: string
 }) {
   const [photoIndex, setPhotoIndex] = useState(0)
   const [visible, setVisible] = useState(false)
@@ -112,11 +115,36 @@ export function ProfileCardFullscreen({
               <span className="swipe-resonance-dot" />
               <span>你今天的共鳴語句，會顯示在這裡</span>
             </div>
+            {/* 順序與編輯頁一致：興趣 → 個性 → 外貌 → 感情狀態 */}
             {interestTags.length > 0 && (
               <div className="swipe-field">
                 <p className="swipe-field-label">興趣</p>
                 <div className="swipe-tags">
                   {interestTags.map(tag => <span key={tag} className="swipe-tag">{tag}</span>)}
+                </div>
+              </div>
+            )}
+            {personalityTags.length > 0 && (
+              <div className="swipe-field">
+                <p className="swipe-field-label">個性</p>
+                <div className="swipe-tags">
+                  {personalityTags.map(tag => <span key={tag} className="swipe-tag">{tag}</span>)}
+                </div>
+              </div>
+            )}
+            {appearanceTags.length > 0 && (
+              <div className="swipe-field">
+                <p className="swipe-field-label">外貌</p>
+                <div className="swipe-tags">
+                  {appearanceTags.map(tag => <span key={tag} className="swipe-tag">{tag}</span>)}
+                </div>
+              </div>
+            )}
+            {relationship && (
+              <div className="swipe-field">
+                <p className="swipe-field-label">感情狀態</p>
+                <div className="swipe-tags">
+                  <span className="swipe-tag">{relationship}</span>
                 </div>
               </div>
             )}

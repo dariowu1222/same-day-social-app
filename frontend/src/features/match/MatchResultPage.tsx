@@ -6,9 +6,12 @@ import { getProfile, updateProfile } from '../profile/api'
 import { getZodiac, getAge } from '../profile/profileUtils'
 import type { MatchResult } from './types'
 
-type EnrichedMatch = Omit<MatchResult, 'photos' | 'interests'> & {
+type EnrichedMatch = Omit<MatchResult, 'photos' | 'interests' | 'personalityTags' | 'appearanceTags'> & {
   photos: string[]
   interests: string[]
+  // 後端可能回 null，這裡統一收斂成陣列，渲染端就不用一路做 null 判斷
+  personalityTags: string[]
+  appearanceTags: string[]
   age?: number
   city?: string
   bio?: string
@@ -36,6 +39,8 @@ function mapMatch(m: MatchResult): EnrichedMatch {
     ...m,
     photos,
     interests: m.interests ?? [],
+    personalityTags: m.personalityTags ?? [],
+    appearanceTags: m.appearanceTags ?? [],
     age: age ?? undefined,
     city: m.city ?? undefined,
     bio: m.bio ?? undefined,
@@ -245,6 +250,39 @@ function SwipeCard({
 
         {showProfile && (
           <>
+            {/* 個性／外貌／感情狀態只在展開時出現：收合卡的高度剛好一屏，
+                多塞三組標籤會把「看更多」那行擠掉。 */}
+            {match.personalityTags.length > 0 && (
+              <div className="swipe-field">
+                <p className="swipe-field-label">個性</p>
+                <div className="swipe-tags">
+                  {match.personalityTags.map(tag => (
+                    <span key={tag} className="swipe-tag">{tag}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {match.appearanceTags.length > 0 && (
+              <div className="swipe-field">
+                <p className="swipe-field-label">外貌</p>
+                <div className="swipe-tags">
+                  {match.appearanceTags.map(tag => (
+                    <span key={tag} className="swipe-tag">{tag}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {match.relationship && (
+              <div className="swipe-field">
+                <p className="swipe-field-label">感情狀態</p>
+                <div className="swipe-tags">
+                  <span className="swipe-tag">{match.relationship}</span>
+                </div>
+              </div>
+            )}
+
             <div className="profile-sheet-icebreaker">
               <p className="swipe-today-label">破冰問題</p>
               <p className="profile-sheet-icebreaker-text">「{match.icebreaker}」</p>
