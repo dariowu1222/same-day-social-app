@@ -1,0 +1,52 @@
+# Render 免費方案保活
+#
+# 免費方案閒置 15 分鐘就休眠，下一個請求要等十幾秒到一分鐘才會回應。
+# 而前端的請求逾時是 30 秒（frontend/src/shared/api/httpClient.ts），
+# 所以休眠後的第一次操作（送訊息、傳圖）很容易直接失敗。
+# 這支排程每 5 分鐘打一次 /health，讓它在有人使用的時段維持清醒。
+#
+# ── 為什麼不是 24 小時保活 ──
+# Render 免費方案是「每個 workspace 每月 750 instance-hours」，
+# 而一個月有 720～744 小時。保活 24/7 幾乎會把額度用光，
+# 一旦超過，整個 workspace 的免費服務會被停用到下個月一號。
+# 因此只在台灣時間 08:00–00:59 保活（約 510 小時/月，餘裕充足），
+# 深夜讓它睡。要改成 24 小時的話，把下面的 cron 換成 '*/5 * * * *'
+# ——但前提是這個 workspace 沒有第二個免費服務。
+#
+# ── 限制 ──
+# GitHub 的排程在平台繁忙時可能延遲數分鐘，偶爾會整次跳過。
+# 若實際使用仍常遇到冷啟動，改用外部監控服務（cron-job.org / UptimeRobot）
+# 會更準時。另外 GitHub 會停用「連續 60 天沒有任何 commit」的 repo 排程。
+
+name: Keep Render awake
+
+on:
+  schedule:
+    # cron 走 UTC：0-16 時 = 台灣時間 08:00–00:59
+    - cron: '*/5 0-16 * * *'
+  workflow_dispatch: {}
+
+# 同時只跑一個，排程塞車時不要累積一堆重複的 ping
+concurrency:
+  group: keep-render-awake
+  cancel-in-progress: true
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping /health
+        env:
+          URL: https://tongpin-api-twu8.onrender.com/health
+        run: |
+          # 冷啟動可能要一分鐘，所以 --max-time 給 90 秒、最多試三次。
+          for i in 1 2 3; do
+            start=$(date +%s)
+            code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 90 "$URL" || echo 000)
+            echo "第 $i 次：HTTP $code（耗時 $(( $(date +%s) - start )) 秒）"
+            [ "$code" = "200" ] && exit 0
+            sleep 15
+          done
+          echo "三次都沒拿到 200，服務可能真的有問題"
+          exit 1
