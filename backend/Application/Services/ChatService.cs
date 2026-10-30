@@ -406,8 +406,64 @@ public sealed class ChatService
                 peerId,
                 peer.Nickname,
                 peer.Photo,
-                lastMessages.GetValueOrDefault(room.Id));
+                ToPreview(lastMessages.GetValueOrDefault(room.Id)));
         }).ToList();
+    }
+
+    /// <summary>
+    /// 把最後一則訊息折成「預覽」再回傳。
+    ///
+    /// 列表只會顯示一行字，但訊息內容可能是整串 base64——實測資料庫裡最長的
+    /// 一則有 122,931 個字元。不折的話，列表為了印一句「你傳了一張圖片」
+    /// 就要下載 120 KB。網址型的媒體也沒必要整串傳，前端的 formatMessagePreview
+    /// 本來就看得懂 [image] / [audio] 這種標記。
+    /// </summary>
+    private static ChatMessage? ToPreview(ChatMessage? message)
+    {
+        if (message == null)
+        {
+            return null;
+        }
+
+        var content = message.Content.Trim();
+        if (content.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase) || IsMediaUrl(content, ImageExtensions))
+        {
+            content = "[image]";
+        }
+        else if (content.StartsWith("data:audio/", StringComparison.OrdinalIgnoreCase) || IsMediaUrl(content, AudioExtensions))
+        {
+            content = "[audio]";
+        }
+        else if (content.Length > PreviewLength)
+        {
+            content = content[..PreviewLength];
+        }
+
+        return new ChatMessage
+        {
+            Id = message.Id,
+            ChatRoomId = message.ChatRoomId,
+            SenderId = message.SenderId,
+            Content = content,
+            CreatedAt = message.CreatedAt,
+            IsRecalled = message.IsRecalled,
+            // 引用欄位列表用不到，不帶出去
+        };
+    }
+
+    private const int PreviewLength = 120;
+    private static readonly string[] ImageExtensions = [".jpg", ".jpeg", ".png", ".webp", ".gif"];
+    private static readonly string[] AudioExtensions = [".mp3", ".webm", ".wav", ".m4a", ".ogg"];
+
+    private static bool IsMediaUrl(string content, string[] extensions)
+    {
+        if (!content.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+            && !content.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+        var path = content.Split('?')[0];
+        return extensions.Any(ext => path.EndsWith(ext, StringComparison.OrdinalIgnoreCase));
     }
 
     private static string? PeerOf(ChatRoom room, string userId)

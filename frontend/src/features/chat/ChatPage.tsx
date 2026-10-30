@@ -504,7 +504,7 @@ function formatMessagePreview(message: ChatMessage | undefined, currentUserId: s
   // 語音訊息的內容同樣是一串網址，不折起來的話列表會直接露出
   // https://...supabase.co/storage/... 這種東西。判斷式與 ChatRoom 的
   // isAudioMedia 一致，兩邊要一起改。
-  if (isAudioPreview(content)) {
+  if (content === '[audio]' || isAudioPreview(content)) {
     return `${who}傳了一則語音`
   }
   return content || '還沒開始聊天'
