@@ -2335,3 +2335,52 @@
   letter-spacing: 0.04em;
   color: rgba(122, 90, 64, 0.5);
 }
+
+/* 聊天列表的載入骨架。
+   沿用 .chat-list-card 的格線與尺寸，只把內容換成灰塊，所以資料進來時
+   高度不變、畫面不會跳。先前載入中顯示的是「還沒有聊天室」，等於在等待時
+   告訴使用者他沒有對話。 */
+.chat-card-skeleton {
+  cursor: default;
+  pointer-events: none;
+}
+
+.skeleton-block,
+.skeleton-line {
+  display: block;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #f1ebe3 25%, #f8f4ee 50%, #f1ebe3 75%);
+  background-size: 200% 100%;
+  animation: skeleton-sweep 1.4s ease-in-out infinite;
+}
+
+.chat-card-skeleton .skeleton-block {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+}
+
+.chat-card-skeleton .chat-card-main {
+  display: grid;
+  gap: 7px;
+}
+
+.skeleton-line-name { width: 38%; height: 13px; }
+.skeleton-line-preview { width: 72%; height: 12px; }
+
+@keyframes skeleton-sweep {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+/* 動畫會持續重繪，使用者若要求減少動態就停掉 */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-block,
+  .skeleton-line { animation: none; }
+}
+
+[data-theme="dark"] .skeleton-block,
+[data-theme="dark"] .skeleton-line {
+  background: linear-gradient(90deg, #1d3328 25%, #24402f 50%, #1d3328 75%);
+  background-size: 200% 100%;
+}

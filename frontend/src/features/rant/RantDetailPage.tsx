@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Heart, MessageCircle, ChevronLeft, Flag, HeartHandshake, ArrowUp, X } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
-import { deleteRant, getRants, likeReply, replyRant, understandRant } from './api'
+import { deleteRant, getRant, likeReply, replyRant, understandRant } from './api'
 import ReportSheet from '../report/ReportSheet'
 import type { RantPost } from './types'
 import { postImages } from './types'
@@ -28,6 +28,8 @@ export default function RantDetailPage() {
   const { rantId } = useParams<{ rantId: string }>()
   const navigate = useNavigate()
   const [post, setPost] = useState<RantPost | null>(null)
+  // 分辨「還在抓」與「抓完了但這篇不存在」，否則被刪的貼文會永遠停在「載入中…」
+  const [loaded, setLoaded] = useState(false)
   const [replyText, setReplyText] = useState('')
   const [replyMedia, setReplyMedia] = useState<MediaState>(EMPTY_MEDIA)
   const [replyTarget, setReplyTarget] = useState<{ id: string; nickname: string } | null>(null)
@@ -61,11 +63,16 @@ export default function RantDetailPage() {
   }
 
   async function loadPost() {
+    if (!rantId) return
     try {
-      const res = await getRants()
-      const found = res.data.find((p) => p.id === rantId) ?? null
-      setPost(found)
-    } catch { /* ignore */ }
+      const res = await getRant(rantId)
+      setPost(res.data)
+    } catch {
+      // 找不到（已被刪除或下架）就讓畫面顯示空狀態，不要永遠停在「載入中…」
+      setPost(null)
+    } finally {
+      setLoaded(true)
+    }
   }
 
   async function handleUnderstand() {
@@ -111,7 +118,9 @@ export default function RantDetailPage() {
           <button className="detail-back-btn" onClick={() => navigate(-1)}><ChevronLeft size={22} /></button>
           <span className="detail-topbar-title">貼文</span>
         </div>
-        <p style={{ padding: '24px', color: '#8a9e9c' }}>載入中…</p>
+        <p style={{ padding: '24px', color: '#8a9e9c' }}>
+          {loaded ? '找不到這篇貼文，可能已被刪除。' : '載入中…'}
+        </p>
       </div>
     )
   }

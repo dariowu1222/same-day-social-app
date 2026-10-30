@@ -9,6 +9,12 @@ export async function getRants(cursor?: string, limit = RANT_PAGE_SIZE) {
   return request<RantPost[]>(`/api/rants?${params.toString()}`)
 }
 
+// 單篇。詳情頁先前是抓整個列表再 .find()，使用者按過「載入更多」之後
+// 點第 21 篇以後的貼文永遠找不到，畫面會卡在「載入中…」。
+export async function getRant(rantId: string) {
+  return request<RantPost>(`/api/rants/${rantId}`)
+}
+
 export async function createRant(payload: { nickname: string; content: string; mode: string; hashtags?: string[]; imageUrls?: string[]; thumbUrls?: string[]; audioUrl?: string | null }) {
   return request<RantPost>('/api/rants', { method: 'POST', body: JSON.stringify(payload) })
 }

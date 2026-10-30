@@ -38,9 +38,17 @@ export default function RantBoardPage() {
     }
   }
 
-  async function updatePost(action: () => Promise<unknown>) {
+  // 互動後把後端回傳的那一篇就地換掉，不要整頁重抓。
+  // 先前按一次愛心是「1 次寫入 + 1 次全列表重抓」，而且會把使用者
+  // 捲到第 2 頁之後的內容整個丟掉、跳回第一頁。
+  async function updatePost(action: () => Promise<{ data: RantPost }>) {
+    const res = await action()
+    setPosts((prev) => prev.map((p) => (p.id === res.data.id ? res.data : p)))
+  }
+
+  async function removePost(rantId: string, action: () => Promise<unknown>) {
     await action()
-    await loadPosts()
+    setPosts((prev) => prev.filter((p) => p.id !== rantId))
   }
 
   if (!user) return null
@@ -71,7 +79,7 @@ export default function RantBoardPage() {
             onReply={(parentReplyId) =>
               updatePost(() => replyRant(post.id, { nickname: user.nickname, content: replies[post.id] ?? '', ...(replyMedia[post.id] ?? EMPTY_MEDIA), parentReplyId }))
             }
-            onDelete={() => updatePost(() => deleteRant(post.id))}
+            onDelete={() => removePost(post.id, () => deleteRant(post.id))}
             onLikedReply={loadPosts}
             onHashtagClick={(tag) => navigate('/rant/search', { state: { q: tag } })}
             currentUserId={user.userId}
