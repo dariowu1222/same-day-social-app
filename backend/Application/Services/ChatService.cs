@@ -340,6 +340,79 @@ public sealed class ChatService
         Muted = r.Muted
     };
 
+    /// <summary>
+    /// 聊天列表一次要的全部資料：房間、對方的暱稱與照片、最後一則訊息。
+    ///
+    /// 先前前端是「房間列表 → 每間房各打一次 /messages + 每個對方各打一次
+    /// /profile」，30 間房就是 60 幾個請求。瀏覽器對同一來源只開 6 條連線，
+    /// 實測單一請求 54-331ms，但擠在一起時中位數變成 4,353ms——95% 的時間
+    /// 都在排隊。而那 60 個請求問的只是「最後一則訊息是什麼、對方是誰」。
+    ///
+    /// 這裡用 4 個查詢回答完：房間、成員、對方的使用者資料、每房最後一則訊息。
+    /// 進房後仍走原本的 GetMessages，這支只服務列表。
+    /// </summary>
+    public List<ChatRoomOverview> GetRoomOverviews(string userId)
+    {
+        if (db == null)
+        {
+            return GetRoomsByUser(userId)
+                .Select(room => new ChatRoomOverview(room, PeerOf(room, userId), null, null, null))
+                .ToList();
+        }
+
+        var rooms = GetRoomsByUser(userId);
+        if (rooms.Count == 0)
+        {
+            return [];
+        }
+
+        var roomIds = rooms.Select(x => x.Id).ToList();
+
+        // 每間房的最後一則：用相關子查詢比對該房的最大 created_at，
+        // 吃得到既有的 ix_chat_messages_room_created 索引。
+        var lastMessages = db.ChatMessages.AsNoTracking()
+            .Where(m => roomIds.Contains(m.ChatRoomId)
+                        && m.CreatedAt == db.ChatMessages
+                            .Where(x => x.ChatRoomId == m.ChatRoomId)
+                            .Max(x => x.CreatedAt))
+            .ToList()
+            // 同一毫秒有兩則時會各回一筆，取其一即可
+            .GroupBy(m => m.ChatRoomId)
+            .ToDictionary(g => g.Key, g => g.First().ToDomain());
+
+        var peerIds = rooms
+            .Select(room => PeerOf(room, userId))
+            .Where(id => id != null)
+            .Select(id => id!)
+            .Distinct()
+            .ToList();
+
+        // 列表只用得到暱稱與第一張照片，不要整包 User（那裡面有興趣、個性、
+        // 外貌等幾十個欄位，而且照片可能是 base64）
+        var peers = db.Users.AsNoTracking()
+            .Where(u => peerIds.Contains(u.Id))
+            .Select(u => new { u.Id, u.Nickname, u.PhotoDataUrls })
+            .ToList()
+            .ToDictionary(
+                u => u.Id,
+                u => (Nickname: u.Nickname, Photo: u.PhotoDataUrls.FirstOrDefault()));
+
+        return rooms.Select(room =>
+        {
+            var peerId = PeerOf(room, userId);
+            var peer = peerId != null && peers.TryGetValue(peerId, out var p) ? p : default;
+            return new ChatRoomOverview(
+                room,
+                peerId,
+                peer.Nickname,
+                peer.Photo,
+                lastMessages.GetValueOrDefault(room.Id));
+        }).ToList();
+    }
+
+    private static string? PeerOf(ChatRoom room, string userId)
+        => room.UserIds.FirstOrDefault(id => id != userId);
+
     private ChatRoom? BuildRoom(string roomId)
     {
         if (db == null)
@@ -359,3 +432,14 @@ public sealed class ChatService
         return room.ToDomain(users);
     }
 }
+
+/// <summary>
+/// 聊天列表一次要的資料。對方不存在或房間還沒有訊息時，後三個欄位會是 null，
+/// 前端照既有的退場邏輯處理（暱稱退回「同頻對話 xxxx」、預覽顯示「還沒開始聊天」）。
+/// </summary>
+public sealed record ChatRoomOverview(
+    ChatRoom Room,
+    string? PeerUserId,
+    string? PeerNickname,
+    string? PeerPhotoUrl,
+    ChatMessage? LastMessage);

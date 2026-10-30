@@ -6,17 +6,20 @@
 //
 // 這裡把資料留在模組層級（元件生命週期之外），切回分頁時可以先把上次的內容
 // 直接放上畫面，再於背景刷新。快取以 userId 綁定，換人登入自動失效。
-import type { ChatMessage, ChatRoom, ChatMemberSetting } from './types'
+import type { ChatMessage, ChatRoom, ChatMemberSetting, ChatPeer } from './types'
 import type { UserProfile } from '../profile/types'
 
 export type ChatCacheData = {
   rooms: ChatRoom[]
   roomMessages: Record<string, ChatMessage[]>
+  // 列表用的精簡對方資料（暱稱＋頭像），由 overview 端點一次帶回
+  peers: Record<string, ChatPeer>
+  // 完整 profile 只有進過的房間才有，供 peek sheet 使用
   profiles: Record<string, UserProfile>
   settings: Record<string, ChatMemberSetting>
 }
 
-const emptyData = (): ChatCacheData => ({ rooms: [], roomMessages: {}, profiles: {}, settings: {} })
+const emptyData = (): ChatCacheData => ({ rooms: [], roomMessages: {}, peers: {}, profiles: {}, settings: {} })
 
 let cachedUserId: string | null = null
 let cachedData: ChatCacheData = emptyData()

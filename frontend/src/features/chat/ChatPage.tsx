@@ -2,11 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Search, X } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
 import {
-  getChatRooms, getMessages, sendMessage, recallMessage,
+  getChatOverview, getMessages, sendMessage, recallMessage,
   getMemberSettings, updateChatSetting, leaveChatRoom, blockChatUser, reportChatUser,
   type QuoteInfo,
 } from './api'
-import type { ChatMessage, ChatRoom as ChatRoomType, ChatMemberSetting } from './types'
+import type { ChatMessage, ChatRoom as ChatRoomType, ChatMemberSetting, ChatPeer } from './types'
 import { getProfile } from '../profile/api'
 import type { UserProfile } from '../profile/types'
 import ChatRoom from './ChatRoom'
@@ -23,9 +23,14 @@ export default function ChatPage() {
   const [rooms, setRooms] = useState<ChatRoomType[]>(restored?.rooms ?? [])
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null)
   const [roomMessages, setRoomMessages] = useState<Record<string, ChatMessage[]>>(restored?.roomMessages ?? {})
+  // 列表只需要暱稱與頭像，由 overview 一次帶回；完整 profile 進房才抓
+  const [peers, setPeers] = useState<Record<string, ChatPeer>>(restored?.peers ?? {})
   const [profiles, setProfiles] = useState<Record<string, UserProfile>>(restored?.profiles ?? {})
   const [settings, setSettings] = useState<Record<string, ChatMemberSetting>>(restored?.settings ?? {})
   const [messages, setMessages] = useState<ChatMessage[]>([])
+  // 載入中與「真的沒有聊天室」是兩回事。先前沒有這個旗標，使用者在等待的
+  // 那幾秒看到的是「還沒有聊天室」——等於 App 明確告訴他沒有對話。
+  const [loaded, setLoaded] = useState(restored != null)
   const [draft, setDraft] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -35,6 +40,10 @@ export default function ChatPage() {
   // 開房時要立即讀到已快取的訊息，但不能把 roomMessages 放進 effect deps（會無限重跑）。
   // 初始值同樣取還原資料，否則切回分頁後第一次開房仍會落空。
   const roomMessagesRef = useRef<Record<string, ChatMessage[]>>(restored?.roomMessages ?? {})
+  // 同理：進房時要判斷「這位的完整 profile 抓過沒」，但不能放進 deps
+  const profilesRef = useRef<Record<string, UserProfile>>(restored?.profiles ?? {})
+
+  useEffect(() => { profilesRef.current = profiles }, [profiles])
 
   useEffect(() => {
     activeRoomIdRef.current = activeRoomId
@@ -50,11 +59,11 @@ export default function ChatPage() {
 
   // 把最新內容留在模組層級，切走再切回時可以直接接上
   useEffect(() => {
-    writeChatCache(user?.userId, { rooms, roomMessages, profiles, settings })
-  }, [user?.userId, rooms, roomMessages, profiles, settings])
+    writeChatCache(user?.userId, { rooms, roomMessages, peers, profiles, settings })
+  }, [user?.userId, rooms, roomMessages, peers, profiles, settings])
 
   useEffect(() => {
-    loadRooms()
+    loadRooms().catch(() => {}).finally(() => setLoaded(true))
   }, [])
 
   useEffect(() => {
@@ -106,50 +115,52 @@ export default function ChatPage() {
     // 秒開：先用 loadRooms already 抓好的快取立即上畫面，再背景抓最新覆蓋。
     setMessages(roomMessagesRef.current[activeRoomId] ?? [])
     loadMessages(activeRoomId)
+
+    // 完整 profile 只有 peek sheet 用得到，所以進房才抓、而且只抓這一位。
+    // 列表本身用 overview 帶回的 peers（暱稱＋頭像）就夠了。
+    const room = roomsRef.current.find((r) => r.id === activeRoomId)
+    const peerId = room?.userIds.find((id) => id !== user?.userId)
+    if (peerId && !profilesRef.current[peerId]) {
+      getProfile(peerId)
+        .then((res) => setProfiles((prev) => ({ ...prev, [peerId]: res.data })))
+        .catch(() => {})
+    }
   }, [activeRoomId])
 
   async function loadRooms() {
     if (!user) return
 
-    // 第一段：房間清單與個人設定互不依賴，同時發。
-    // 設定端點未就緒時不影響聊天列表，故單獨吞掉錯誤。
-    const [response, settingsRes] = await Promise.all([
-      getChatRooms(user.userId),
+    // 列表所需的一切由 overview 一次帶回：房間、對方暱稱與頭像、最後一則訊息。
+    //
+    // 先前是兩波：房間清單 → 再對每間房打一次 /messages、每個對方打一次
+    // /profile。30 間房就是 60 幾個請求，而瀏覽器對同一來源只開 6 條連線，
+    // 實測單一請求 54-331ms、擠在一起時中位數變成 4,353ms。
+    // 設定端點未就緒時不影響列表，故單獨吞掉錯誤。
+    const [overviewRes, settingsRes] = await Promise.all([
+      getChatOverview(user.userId),
       getMemberSettings(user.userId).catch(() => null),
     ])
-    setRooms(response.data)
+
+    setRooms(overviewRes.data.map((item) => item.room))
     if (settingsRes) {
       setSettings(Object.fromEntries(settingsRes.data.map((s) => [s.chatRoomId, s])))
     }
 
-    // 載入每個對話中「對方」的個人資料，供頭像與自介使用
-    const otherIds = Array.from(new Set(
-      response.data
-        .map((room) => room.userIds.find((id) => id !== user.userId))
-        .filter((id): id is string => !!id),
-    ))
-
-    // 第二段：各房訊息與對方 profile 也互不依賴，一起抓，不要互等。
-    const [messagePairs, profileEntries] = await Promise.all([
-      Promise.all(
-        response.data.map(async (room) => {
-          const messageResponse = await getMessages(room.id)
-          return [room.id, messageResponse.data] as const
-        }),
-      ),
-      Promise.all(
-        otherIds.map(async (id) => {
-          try {
-            const res = await getProfile(id)
-            return [id, res.data] as const
-          } catch {
-            return null
-          }
-        }),
-      ),
-    ])
-    setRoomMessages(Object.fromEntries(messagePairs))
-    setProfiles(Object.fromEntries(profileEntries.filter((entry): entry is readonly [string, UserProfile] => !!entry)))
+    const nextPeers: Record<string, ChatPeer> = {}
+    const nextMessages: Record<string, ChatMessage[]> = {}
+    for (const item of overviewRes.data) {
+      if (item.peerUserId) {
+        nextPeers[item.peerUserId] = { nickname: item.peerNickname, photoUrl: item.peerPhotoUrl }
+      }
+      // 列表只要最後一則；進房時 loadMessages 會補上完整的 50 則。
+      // 已經進過的房間保留原本的完整訊息，不要被這一則蓋掉。
+      const existing = roomMessagesRef.current[item.room.id]
+      nextMessages[item.room.id] = existing && existing.length > 1
+        ? existing
+        : (item.lastMessage ? [item.lastMessage] : [])
+    }
+    setPeers(nextPeers)
+    setRoomMessages(nextMessages)
   }
 
   async function loadMessages(roomId: string) {
@@ -258,7 +269,7 @@ export default function ChatPage() {
   const roomSummaries = useMemo(
     () => rooms
       .map((room) => {
-        const base = buildRoomSummary(room, roomMessages[room.id] ?? [], profiles, user?.userId ?? '')
+        const base = buildRoomSummary(room, roomMessages[room.id] ?? [], peers, user?.userId ?? '')
         const setting = settings[room.id]
         return { ...base, title: setting?.noteName?.trim() || base.title, pinned: !!setting?.pinned }
       })
@@ -362,7 +373,21 @@ export default function ChatPage() {
         <p className="eyebrow">聊天</p>
         <h1>慢慢說就好。</h1>
       </header>
-      <section className="panel empty-state">還沒有聊天室。雙方都按「想聊聊」後，這裡會出現對話。</section>
+      {loaded ? (
+        <section className="panel empty-state">還沒有聊天室。雙方都按「想聊聊」後，這裡會出現對話。</section>
+      ) : (
+        <div className="chat-card-list">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="chat-list-card chat-card-skeleton" aria-hidden="true">
+              <span className="chat-avatar skeleton-block" />
+              <span className="chat-card-main">
+                <span className="skeleton-line skeleton-line-name" />
+                <span className="skeleton-line skeleton-line-preview" />
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -425,11 +450,11 @@ function HighlightName({ name, query }: { name: string; query: string }) {
   )
 }
 
-function buildRoomSummary(room: ChatRoomType, messages: ChatMessage[], profiles: Record<string, UserProfile>, currentUserId: string): ChatSummary {
+function buildRoomSummary(room: ChatRoomType, messages: ChatMessage[], peers: Record<string, ChatPeer>, currentUserId: string): ChatSummary {
   const lastMessage = messages[messages.length - 1]
   const otherUserId = room.userIds.find((id) => id !== currentUserId) ?? room.id
-  const profile = profiles[otherUserId]
-  const title = buildRoomTitle(room, profile, currentUserId)
+  const peer = peers[otherUserId]
+  const title = buildRoomTitle(room, peer, currentUserId)
   const lastAt = new Date(lastMessage?.createdAt ?? room.createdAt)
 
   return {
@@ -437,7 +462,7 @@ function buildRoomSummary(room: ChatRoomType, messages: ChatMessage[], profiles:
     title,
     otherUserId,
     // 正式環境用帳號 photoDataUrls[0]；測試先給寫死照片，失效時 Avatar 退回動物頭像
-    avatarPhoto: profile?.photoDataUrls?.[0] ?? testAvatarPhoto(otherUserId),
+    avatarPhoto: peer?.photoUrl ?? testAvatarPhoto(otherUserId),
     preview: formatMessagePreview(lastMessage, currentUserId, title),
     lastAt,
     timeLabel: formatRelativeTime(lastAt),
@@ -446,8 +471,8 @@ function buildRoomSummary(room: ChatRoomType, messages: ChatMessage[], profiles:
   }
 }
 
-function buildRoomTitle(room: ChatRoomType, profile: UserProfile | undefined, currentUserId: string) {
-  if (profile?.nickname?.trim()) return profile.nickname.trim()
+function buildRoomTitle(room: ChatRoomType, peer: ChatPeer | undefined, currentUserId: string) {
+  if (peer?.nickname?.trim()) return peer.nickname.trim()
 
   const otherUserId = room.userIds.find((id) => id !== currentUserId)
   if (otherUserId) {
@@ -476,11 +501,21 @@ function formatMessagePreview(message: ChatMessage | undefined, currentUserId: s
   if (content === '[image]' || isImagePreview(content)) {
     return `${who}傳了一張圖片`
   }
+  // 語音訊息的內容同樣是一串網址，不折起來的話列表會直接露出
+  // https://...supabase.co/storage/... 這種東西。判斷式與 ChatRoom 的
+  // isAudioMedia 一致，兩邊要一起改。
+  if (isAudioPreview(content)) {
+    return `${who}傳了一則語音`
+  }
   return content || '還沒開始聊天'
 }
 
 function isImagePreview(s: string) {
   return /^data:image\//.test(s) || (/^https?:\/\//.test(s) && /\.(jpe?g|png|webp|gif)(\?|$)/i.test(s))
+}
+
+function isAudioPreview(s: string) {
+  return /^data:audio\//.test(s) || (/^https?:\/\//.test(s) && /\.(mp3|webm|wav|m4a|ogg)(\?|$)/i.test(s))
 }
 
 function isToday(value: string) {

@@ -1,8 +1,13 @@
 import { request } from '../../shared/api/httpClient'
-import type { ChatRoom, ChatMessage, ChatMemberSetting } from './types'
+import type { ChatRoom, ChatMessage, ChatMemberSetting, ChatRoomOverview } from './types'
 
 export async function getChatRooms(userId: string) {
   return request<ChatRoom[]>(`/api/chats/user/${userId}`)
+}
+
+// 聊天列表走這支，一個請求拿完房間、對方資料與最後一則訊息
+export async function getChatOverview(userId: string) {
+  return request<ChatRoomOverview[]>(`/api/chats/user/${userId}/overview`)
 }
 
 export async function createChatRoom(payload: { userIds: string[]; sourceType: string; sourceId: string }) {

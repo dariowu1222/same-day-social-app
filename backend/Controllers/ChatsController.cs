@@ -23,6 +23,17 @@ public sealed class ChatsController(ChatService chatService, IHubContext<ChatHub
         return ApiResponse<List<ChatRoom>>.Ok(chatService.GetRoomsByUser(userId));
     }
 
+    /// <summary>
+    /// 聊天列表用：一次回所有房間、對方資料與最後一則訊息。
+    /// 舊的 /user/{userId} 與 /{roomId}/messages 原樣保留，已上架的版本不受影響。
+    /// </summary>
+    [HttpGet("user/{userId}/overview")]
+    public ActionResult<ApiResponse<List<ChatRoomOverview>>> GetOverview(string userId)
+    {
+        if (CallerId != userId) return Forbid();
+        return ApiResponse<List<ChatRoomOverview>>.Ok(chatService.GetRoomOverviews(userId));
+    }
+
     [HttpPost]
     public ActionResult<ApiResponse<ChatRoom>> Create([FromBody] CreateChatRoomRequest request)
     {

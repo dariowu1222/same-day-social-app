@@ -43,7 +43,11 @@ builder.Services.AddCors(options =>
             )
             .AllowAnyHeader()
             .AllowAnyMethod()
-            .AllowCredentials();
+            .AllowCredentials()
+            // 每個請求都帶 Authorization，屬於非簡單請求，瀏覽器會先送一發 OPTIONS。
+            // 不設這個的話 Chromium 只快取預檢結果 5 秒、而且以 URL 為單位，
+            // 一個畫面幾十個不同 URL 就是幾十發額外往返，實際 HTTP 往返數直接翻倍。
+            .SetPreflightMaxAge(TimeSpan.FromHours(24));
     });
 });
 
