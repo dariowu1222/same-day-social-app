@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { STORAGE_KEYS, rememberSet, rememberGet, rememberClear } from '../../shared/lib/storageKeys'
 import { clearAuthToken } from '../../shared/api/httpClient'
 import { clearChatCache } from '../chat/chatCache'
+import { detachPush } from '../../shared/push/push'
 import type { DemoUser } from './types'
 
 type AuthContextValue = {
@@ -54,6 +55,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   function logout() {
+    // 先解除推播綁定，免得下一個登入這台裝置的人收到前一個人的通知。
+    // 刻意不 await：本機 token 當場就清掉了，伺服器那邊盡力而為——
+    // Render 休眠時一次寫入要等 75 秒，不能讓登出卡在那裡。
+    detachPush()
     clearAuthToken()
     rememberClear(STORAGE_KEYS.user)
     // 聊天快取留在模組層級（不隨元件卸載清空），登出時要一併清掉，

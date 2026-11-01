@@ -15,6 +15,7 @@ import ReportSheet from '../report/ReportSheet'
 import Avatar from '../../shared/ui/Avatar'
 import { testAvatarPhoto } from '../../shared/lib/userDisplay'
 import { useChatRealtime } from './ChatRealtimeContext'
+import { enablePush } from '../../shared/push/push'
 import { readChatCache, writeChatCache } from './chatCache'
 
 export default function ChatPage() {
@@ -131,6 +132,15 @@ export default function ChatPage() {
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [])
+
+  // 推播權限在「第一次真的進到某個對話」時才問。
+  // Android 13 起連續拒絕兩次之後系統就永遠不再跳視窗，所以啟動時問是浪費
+  // 唯一的機會——那時使用者還不知道這個 App 會通知他什麼。
+  // 人已經在對話裡、正等著對方回覆，理由才自明。
+  useEffect(() => {
+    if (!activeRoomId) return
+    void enablePush()
+  }, [activeRoomId])
 
   useEffect(() => {
     if (!activeRoomId) return

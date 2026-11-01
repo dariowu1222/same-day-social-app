@@ -8,6 +8,7 @@ import { onboardingKey } from '../shared/lib/storageKeys'
 import { useAuth } from '../features/auth/AuthContext'
 import { useChatRealtime } from '../features/chat/ChatRealtimeContext'
 import { ensureSocialInit } from '../features/auth/googleAuth'
+import { syncPushRegistration, onPushOpened } from '../shared/push/push'
 import type { DemoUser } from '../features/auth/types'
 import LoginPage from '../features/auth/LoginPage'
 import OnboardingOverlay from '../features/profile/OnboardingOverlay'
@@ -56,6 +57,18 @@ function App() {
   useEffect(() => {
     if (user) setOnboardingDone(!!localStorage.getItem(onboardingKey(user.userId)))
   }, [user])
+
+  // FCM token 會輪替，所以每次啟動都要重送一次，否則伺服器那份過期後推播會靜靜地不到。
+  // 只有已經授權的人才會真的做事，不會跳任何視窗。
+  useEffect(() => {
+    if (!user) return
+    void syncPushRegistration()
+  }, [user])
+
+  // 點推播通知進來時，如果帶了房號就直接開那間房
+  useEffect(() => onPushOpened((roomId) => {
+    navigate(roomId ? `/chat?room=${encodeURIComponent(roomId)}` : '/chat')
+  }), [navigate])
 
   // 啟動即初始化社群登入：網頁版 Google popup 回到本站時，外掛建構子會自動把結果回傳給主視窗。
   useEffect(() => {

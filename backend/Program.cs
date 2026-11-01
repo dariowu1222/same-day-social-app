@@ -27,6 +27,9 @@ builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection("Smtp")
 builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
 // 媒體物件儲存（provider 無關；目前 adapter 為 Supabase Storage）
 builder.Services.Configure<MediaOptions>(builder.Configuration.GetSection("Media"));
+
+// 推播：憑證與排程密鑰都從環境變數進來（Render 的 Push__XXX）
+builder.Services.Configure<PushOptions>(builder.Configuration.GetSection("Push"));
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<IMediaStorage, SupabaseMediaStorage>();
 builder.Services.AddCors(options =>
@@ -115,6 +118,9 @@ builder.Services.AddScoped<SameDaySocialApp.Application.Services.NotificationSer
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.ReportService>();
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.AdminUserService>();
 builder.Services.AddSingleton<SameDaySocialApp.Application.Services.AdminAccessService>();
+// FirebaseApp 是行程層級單例，PushSender 跟著做成 Singleton
+builder.Services.AddSingleton<SameDaySocialApp.Application.Services.PushSender>();
+builder.Services.AddScoped<SameDaySocialApp.Application.Services.PushService>();
 
 // 速率限制（防暴力登入 / 帳號枚舉 / 互動刷量）；分區鍵：登入者用 userId，否則用來源 IP
 static string RateKey(HttpContext ctx) =>

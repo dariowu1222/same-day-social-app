@@ -1,0 +1,65 @@
+# 彙總推播：每兩小時把未讀訊息與未讀通知合成一則推播
+#
+# 為什麼不是後端自己跑 BackgroundService：
+# Render 免費方案閒置 15 分鐘就休眠、行程整個停掉，PeriodicTimer 不會跑，
+# 醒來還會重新計時。所以後端只提供端點，排程交給這裡。
+#
+# 為什麼不是每則訊息即時推：
+# 那會把人轟炸到直接關掉通知。彙總成一則，而且後端只在「距離上次推播之後
+# 真的有新東西」時才送——否則每兩小時收到同一句話，第一天就被關掉。
+#
+# 時段：cron 走 UTC，0,2,...,14 對應台灣時間 08:00–22:00，一天 8 次。
+# 最後一槽故意選 UTC 14（台灣 22:00）而不是 16（台灣 00:00），半夜不該推。
+# 後端另有安靜時段判斷（台灣 23:00–07:59）擋手動誤觸。
+# 這些時間完全落在 keep-render-awake 的保活視窗內，不會額外吃 instance-hours。
+
+name: Push digest
+
+on:
+  schedule:
+    - cron: '0 0,2,4,6,8,10,12,14 * * *'
+  workflow_dispatch: {}
+
+# 兩個 digest 同時跑會讀到同一份舊水位，把同一批人推兩次
+concurrency:
+  group: push-digest
+  cancel-in-progress: false
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 叫醒服務
+        env:
+          BASE: https://tongpin-api-twu8.onrender.com
+        run: curl -sS -o /dev/null --max-time 120 "$BASE/health" || true
+
+      - name: 送出彙總推播
+        env:
+          BASE: https://tongpin-api-twu8.onrender.com
+          SECRET: ${{ secrets.PUSH_TRIGGER_SECRET }}
+        run: |
+          if [ -z "$SECRET" ]; then
+            echo "PUSH_TRIGGER_SECRET 沒設，跳過"
+            exit 0
+          fi
+
+          # 刻意不重試：digest 跑到一半被砍時已推的人水位已經落地，
+          # 但重試會和還在跑的那次並行，讓同一批人收到兩則。失敗就等下一輪。
+          body=$(mktemp)
+          code=$(curl -sS -o "$body" -w '%{http_code}' --max-time 300 \
+                   -X POST "$BASE/api/push/digest" \
+                   -H "X-Push-Trigger: $SECRET" \
+                   -H 'Content-Length: 0' || echo 000)
+
+          echo "HTTP $code"
+          cat "$body"
+          echo
+
+          [ "$code" = "200" ] || exit 1
+
+          # reason 不是 OK 就讓這次 run 顯眼一點，否則送信全失敗也是一個綠勾
+          if grep -q '"reason":"PARTIAL_FAILURE"' "$body"; then
+            echo "::warning::部分使用者送信失敗，水位維持不變，下一輪會重試"
+          fi

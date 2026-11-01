@@ -511,7 +511,23 @@
   transition: transform 0.18s;
 }
 .settings-switch.on .settings-switch-knob { transform: translateX(18px); }
+
+/* 設定列右側的動作按鈕（開關以外的，例如「開啟系統推播」） */
+.settings-row-action {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  border: 0.5px solid #d8cebf;
+  border-radius: 999px;
+  background: transparent;
+  font-size: 13px;
+  color: #c8785a;
+  cursor: pointer;
+}
+.settings-row-action:active { background: #f6efe6; }
+
 [data-theme="dark"] .settings-row { border-bottom-color: rgba(168, 212, 204, 0.12); }
+[data-theme="dark"] .settings-row-action { border-color: rgba(168, 212, 204, 0.24); color: #e8a98c; }
+[data-theme="dark"] .settings-row-action:active { background: rgba(168, 212, 204, 0.1); }
 [data-theme="dark"] .settings-row-label { color: #d4ede8; }
 [data-theme="dark"] .settings-switch { background: #2a4035; }
 [data-theme="dark"] .settings-switch.on { background: #c8785a; }
