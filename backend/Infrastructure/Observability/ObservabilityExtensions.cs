@@ -26,12 +26,19 @@ public static class ObservabilityExtensions
         var otlpBase = cfg["Observability:OtlpEndpoint"]?.TrimEnd('/');
         var otlpOn = !string.IsNullOrWhiteSpace(otlpBase);
 
+        // EF Core 把每一句 SQL 記在 Information。平常會把主控台淹掉，所以壓到 Warning；
+        // 但要確認某段 LINQ 究竟翻成 SQL 還是被拉回記憶體算時，又非看不可。
+        // 留一個設定開關，不必改碼重編：Observability__EfCommandLogging=true
+        var efLevel = cfg.GetValue("Observability:EfCommandLogging", false)
+            ? LogEventLevel.Information
+            : LogEventLevel.Warning;
+
         builder.Host.UseSerilog((context, config) =>
         {
             config
                 .MinimumLevel.Information()
                 .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
-                .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
+                .MinimumLevel.Override("Microsoft.EntityFrameworkCore", efLevel)
                 .Enrich.FromLogContext()
                 .WriteTo.Console();
 
