@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { SlidersHorizontal, X } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
-import { getTodayMatches, likeMatch } from './api'
+import { getTodayMatches, likeMatch, passMatch } from './api'
+import {
+  rememberPassed, readPassedIds,
+  rememberPendingLike, readPendingLikes, clearPendingLike,
+} from './decidedCache'
 import { getProfile, updateProfile } from '../profile/api'
 import { getZodiac, getAge } from '../profile/profileUtils'
 import type { MatchResult } from './types'
@@ -455,14 +460,47 @@ export default function MatchResultPage({ onBack, onGoToRant, moodLabel }: Props
   const [phase, setPhase] = useState<'loading' | 'tutorial' | 'done'>('loading')
   const [matches, setMatches] = useState<EnrichedMatch[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
+  const navigate = useNavigate()
+  // 配對成功時要秀的慶祝畫面；null 表示不顯示
+  const [matched, setMatched] = useState<{ name: string; photo?: string; chatRoomId?: string | null } | null>(null)
   const [lastDir, setLastDir] = useState<SwipeDir>(null)
   const [prefOpen, setPrefOpen] = useState(false)
+  // 右滑沒送出去時要講一聲，不能讓使用者以為表達過了
+  const [toast, setToast] = useState('')
+  // toast 自己消失。房內用的是同一套（ChatRoom.tsx 的 toastTimer）。
+  useEffect(() => {
+    if (!toast) return
+    const timer = setTimeout(() => setToast(''), 3000)
+    return () => clearTimeout(timer)
+  }, [toast])
+
+
+  // 已滑掉但表態還在路上的卡。伺服器此刻還不知道它們被滑過，
+  // 所以重新載入（離開再進來、按「套用並重新配對」）時要自己濾掉，
+  // 否則剛滑掉的人會立刻再出現一次——正是這次要修的問題。
+  const pendingRef = useRef<Set<string>>(new Set())
 
   const loadMatches = useCallback(async () => {
     if (!user) return
+
+    // 上次沒送出去的右滑先補送。後端的 Like 是冪等的（已右滑過就不再發通知），
+    // 所以重送安全；不補的話那幾次同頻等於從未發生，對方永遠配不到。
+    for (const matchId of readPendingLikes()) {
+      try {
+        await likeMatch(matchId)
+        clearPendingLike(matchId)
+      } catch {
+        // 還是送不出去就留著，下次進來再試
+      }
+    }
+
     try {
       const res = await getTodayMatches(user.userId)
-      setMatches(res.data.map(mapMatch))
+      // 只濾掉左滑過的。右滑失敗的人不能濾——濾掉就等於幫使用者把人藏起來，
+      // 而伺服器根本沒收到那次同頻。
+      const skip = readPassedIds()
+      pendingRef.current.forEach((id) => skip.add(id))
+      setMatches(res.data.filter((m) => !skip.has(m.matchId)).map(mapMatch))
     } catch {
       setMatches([])
     }
@@ -480,9 +518,39 @@ export default function MatchResultPage({ onBack, onGoToRant, moodLabel }: Props
 
   function handleSwipe(dir: SwipeDir) {
     const card = matches[currentIndex]
-    if (dir === 'right' && card) void likeMatch(card.matchId).catch(() => {})
+    // 畫面先走，網路在背景跑。滑卡手感優先，不給 loading、不擋 UI。
     setLastDir(dir)
     setCurrentIndex((i) => i + 1)
+    if (card) void recordDecision(card, dir)
+  }
+
+  async function recordDecision(card: EnrichedMatch, dir: SwipeDir) {
+    pendingRef.current.add(card.matchId)
+    try {
+      if (dir === 'right') {
+        // 右滑當下不重試：httpClient 明文規定寫入請求不重試，重送會讓對方
+        // 收到第二則「你們互相同頻了」。失敗改排進佇列，下次進頁面補送。
+        // 只有「雙方都按了同頻」才跳慶祝畫面：單向喜歡時對方還不知道這件事。
+        const res = await likeMatch(card.matchId)
+        if (res.data?.isMutual) {
+          setMatched({ name: card.nickname, photo: card.photos[0], chatRoomId: res.data.chatRoomId })
+        }
+      } else {
+        // 左滑是冪等的（後端一律重新計時），而且它是「不再出現」的唯一依據，
+        // 所以值得重試一次。
+        await passMatch(card.matchId).catch(() => passMatch(card.matchId))
+      }
+    } catch {
+      if (dir === 'right') {
+        // 絕不能只記在本機就算了——那會讓這次同頻靜靜消失，而且人還被擋住
+        rememberPendingLike(card.matchId)
+        setToast('這個同頻還沒送出，下次打開會自動補送')
+      } else {
+        rememberPassed(card.matchId)
+      }
+    } finally {
+      pendingRef.current.delete(card.matchId)
+    }
   }
 
   const visibleCards = matches.slice(currentIndex, currentIndex + 3)
@@ -490,6 +558,18 @@ export default function MatchResultPage({ onBack, onGoToRant, moodLabel }: Props
 
   return (
     <div className="page match-result-page">
+      {toast && <div className="cr-toast" role="status">{toast}</div>}
+      {matched && (
+        <MatchCelebration
+          name={matched.name}
+          photo={matched.photo}
+          onClose={() => setMatched(null)}
+          onGoChat={matched.chatRoomId
+            ? () => { const id = matched.chatRoomId!; setMatched(null); navigate(`/chat?room=${encodeURIComponent(id)}`) }
+            : undefined}
+        />
+      )}
+
       {phase === 'loading' && (
         <div className="match-loading-mask">
           <div className="match-spinner-ring" />
@@ -529,11 +609,14 @@ export default function MatchResultPage({ onBack, onGoToRant, moodLabel }: Props
                   <circle cx="44" cy="30" r="2.5" fill="#b8d4ce" />
                 </svg>
               </div>
-              <p className="match-empty-title">今天的緣分到這裡了。</p>
+              <p className="match-empty-title">今天先看到這裡。</p>
               <p className="match-empty-desc">
-                {moodLabel ? `今天${moodLabel}的你，已經把今天的人都看過了。` : '今天的人都看過了。'}
+                {moodLabel ? `今天${moodLabel}的你，已經把能看的人都看過了。` : '能看的人都看過了。'}
               </p>
-              <p className="match-empty-desc">去樹洞看看今天還有誰在，或調整偏好再試試？</p>
+              <p className="match-empty-desc">
+                略過的人過陣子會回到這裡，新朋友發了「今天」也會出現。
+                先去樹洞看看，或把偏好放寬一點？
+              </p>
               <div className="match-empty-actions">
                 <button className="match-empty-rant" onClick={onGoToRant}>去樹洞看看</button>
                 <button className="match-empty-back" onClick={() => setPrefOpen(true)}>調整偏好</button>
@@ -574,6 +657,51 @@ export default function MatchResultPage({ onBack, onGoToRant, moodLabel }: Props
           onApplied={() => { setPhase('loading'); void loadMatches().then(() => setPhase('done')) }}
         />
       )}
+    </div>
+  )
+}
+
+
+/**
+ * 配對成功的慶祝畫面。
+ *
+ * 只在雙方都按下同頻時出現。兩個頭像從左右滑進來、中間的愛心彈跳一下，
+ * 下方給「開始聊天」直接切到那間已經自動開好的房。
+ * 開房失敗時不給按鈕（onGoChat 為 undefined），只恭喜一下就好。
+ */
+function MatchCelebration({ name, photo, onClose, onGoChat }: {
+  name: string
+  photo?: string
+  onClose: () => void
+  onGoChat?: () => void
+}) {
+  return (
+    <div className="match-celebrate-backdrop" role="dialog" aria-modal="true" aria-label="配對成功">
+      <div className="match-celebrate">
+        <div className="match-celebrate-avatars">
+          <span className="match-celebrate-avatar from-left">
+            <span className="match-celebrate-avatar-inner you">你</span>
+          </span>
+          <span className="match-celebrate-heart" aria-hidden="true">♥</span>
+          <span className="match-celebrate-avatar from-right">
+            {photo
+              ? <img src={photo} alt="" className="match-celebrate-avatar-inner" />
+              : <span className="match-celebrate-avatar-inner">{name.trim()[0] ?? '?'}</span>}
+          </span>
+        </div>
+
+        <p className="match-celebrate-title">你們互相同頻了</p>
+        <p className="match-celebrate-sub">你和 {name} 都按下了同頻</p>
+
+        {onGoChat && (
+          <button className="match-celebrate-chat" type="button" onClick={onGoChat}>
+            開始聊天
+          </button>
+        )}
+        <button className="match-celebrate-later" type="button" onClick={onClose}>
+          繼續看看
+        </button>
+      </div>
     </div>
   )
 }

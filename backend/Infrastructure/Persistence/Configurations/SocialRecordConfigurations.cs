@@ -41,6 +41,7 @@ public sealed class MatchRecordEntityConfiguration : IEntityTypeConfiguration<Ma
         builder.Property(x => x.Icebreaker).HasColumnName("icebreaker").HasMaxLength(500);
         builder.Property(x => x.UserLiked).HasColumnName("user_liked");
         builder.Property(x => x.MatchedUserLiked).HasColumnName("matched_user_liked");
+        builder.Property(x => x.PassedAt).HasColumnName("passed_at");
         builder.Property(x => x.CreatedAt).HasColumnName("created_at");
         builder.HasIndex(x => new { x.UserId, x.MatchedUserId }).IsUnique();
         builder.HasIndex(x => new { x.UserId, x.MatchScore });

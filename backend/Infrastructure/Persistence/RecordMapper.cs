@@ -180,6 +180,7 @@ public static class RecordMapper
             Icebreaker = record.Icebreaker,
             UserLiked = record.UserLiked,
             MatchedUserLiked = record.MatchedUserLiked,
+            PassedAt = record.PassedAt,
             CreatedAt = record.CreatedAt
         };
     }
@@ -198,6 +199,7 @@ public static class RecordMapper
             Icebreaker = match.Icebreaker,
             UserLiked = match.UserLiked,
             MatchedUserLiked = match.MatchedUserLiked,
+            PassedAt = match.PassedAt,
             CreatedAt = match.CreatedAt
         };
     }

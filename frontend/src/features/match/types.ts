@@ -19,3 +19,16 @@ export type MatchResult = {
   appearanceTags?: string[] | null
   relationship?: string | null
 }
+
+/** 右滑的結果。isMutual 為 true 代表雙方都按了同頻，聊天室已自動開好。 */
+export type LikeResult = {
+  match: {
+    id: string
+    userId: string
+    matchedUserId: string
+    userLiked: boolean
+    matchedUserLiked: boolean
+  }
+  isMutual: boolean
+  chatRoomId?: string | null
+}

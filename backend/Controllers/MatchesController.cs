@@ -24,11 +24,24 @@ public sealed class MatchesController(MatchService matchService) : ControllerBas
 
     [EnableRateLimiting("write")]
     [HttpPost("{matchId}/like")]
-    public ActionResult<ApiResponse<MatchRecord>> Like(string matchId)
+    public ActionResult<ApiResponse<LikeResult>> Like(string matchId)
     {
-        var match = matchService.Like(matchId, CallerId);
-        return match == null
-            ? NotFound(ApiResponse<MatchRecord>.Fail("MATCH_NOT_FOUND", "找不到這筆配對。"))
-            : ApiResponse<MatchRecord>.Ok(match);
+        var result = matchService.Like(matchId, CallerId);
+        return result == null
+            ? NotFound(ApiResponse<LikeResult>.Fail("MATCH_NOT_FOUND", "找不到這筆配對。"))
+            : ApiResponse<LikeResult>.Ok(result);
+    }
+
+    /// <summary>
+    /// 左滑（略過）。與 like 分開，因為 like 還要判互相、開聊天室、發通知、
+    /// 回 LikeResult，塞進同一支會讓回傳型別變成可空的大雜燴。
+    /// </summary>
+    [EnableRateLimiting("write")]
+    [HttpPost("{matchId}/pass")]
+    public ActionResult<ApiResponse<bool>> Pass(string matchId)
+    {
+        return matchService.Pass(matchId, CallerId)
+            ? ApiResponse<bool>.Ok(true)
+            : NotFound(ApiResponse<bool>.Fail("MATCH_NOT_FOUND", "找不到這筆配對。"));
     }
 }

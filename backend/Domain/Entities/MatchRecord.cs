@@ -15,5 +15,11 @@ public sealed class MatchRecord
     public string Icebreaker { get; set; } = "";
     public bool UserLiked { get; set; }
     public bool MatchedUserLiked { get; set; }
+
+    /// <summary>
+    /// 左滑略過的時間。null 代表還沒略過過。
+    /// 與 UserLiked 一起構成「已表態」：右滑永久排除，左滑只排除冷卻期內。
+    /// </summary>
+    public DateTimeOffset? PassedAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

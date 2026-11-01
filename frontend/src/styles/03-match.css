@@ -505,3 +505,139 @@
 /* 配對偏好 sheet：說明這裡的欄位會同步寫回個人檔案 */
 .pref-sheet-note { margin: 2px 0 0; font-size: 12px; line-height: 1.6; color: #a2937f; }
 [data-theme="dark"] .pref-sheet-note { color: rgba(168, 212, 204, 0.55); }
+
+/* ── 配對成功的慶祝畫面 ─────────────────────────────
+   只在雙方都按下同頻時出現。兩個頭像從左右滑進來、中間愛心彈一下。
+   覆蓋整個視窗（含底部導覽），所以用 position: fixed 而不是 absolute。 */
+.match-celebrate-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(60, 42, 32, 0.55);
+  backdrop-filter: blur(3px);
+  animation: match-celebrate-fade 0.25s ease-out;
+}
+
+.match-celebrate {
+  width: min(100%, 330px);
+  padding: 30px 24px 22px;
+  border-radius: 26px;
+  background: linear-gradient(170deg, #fffdf9 0%, #fdf2e9 100%);
+  box-shadow: 0 20px 48px rgba(90, 60, 40, 0.3);
+  text-align: center;
+  animation: match-celebrate-pop 0.42s cubic-bezier(0.22, 1.2, 0.36, 1);
+}
+
+.match-celebrate-avatars {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.match-celebrate-avatar {
+  display: grid;
+  place-items: center;
+  width: 74px;
+  height: 74px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  background: #ead3bf;
+  overflow: hidden;
+  box-shadow: 0 6px 16px rgba(120, 74, 42, 0.22);
+}
+
+.match-celebrate-avatar.from-left { animation: match-slide-left 0.5s cubic-bezier(0.22, 1.2, 0.36, 1); }
+.match-celebrate-avatar.from-right { animation: match-slide-right 0.5s cubic-bezier(0.22, 1.2, 0.36, 1); }
+
+.match-celebrate-avatar-inner {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  font-weight: 800;
+  color: #8a5a3c;
+}
+
+.match-celebrate-avatar-inner.you { background: #dcebe4; color: #4a7c59; }
+
+.match-celebrate-heart {
+  font-size: 26px;
+  color: #e0654a;
+  /* 等兩個頭像滑到定位（0.34s）才彈出來 */
+  animation: match-heart-pop 0.46s cubic-bezier(0.22, 1.4, 0.36, 1) 0.34s both;
+}
+
+.match-celebrate-title {
+  margin: 0 0 6px;
+  font-size: 21px;
+  font-weight: 800;
+  color: #4a3f35;
+}
+
+.match-celebrate-sub {
+  margin: 0 0 22px;
+  font-size: 14px;
+  color: #8a705f;
+}
+
+.match-celebrate-chat {
+  width: 100%;
+  height: 50px;
+  border: none;
+  border-radius: 16px;
+  background: #e0654a;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.match-celebrate-later {
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px;
+  border: none;
+  background: none;
+  color: #9a8574;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+@keyframes match-celebrate-fade { from { opacity: 0 } }
+@keyframes match-celebrate-pop {
+  from { opacity: 0; transform: translateY(14px) scale(0.94) }
+}
+@keyframes match-slide-left {
+  from { opacity: 0; transform: translateX(-46px) rotate(-10deg) }
+}
+@keyframes match-slide-right {
+  from { opacity: 0; transform: translateX(46px) rotate(10deg) }
+}
+@keyframes match-heart-pop {
+  from { opacity: 0; transform: scale(0.2) }
+  60%  { transform: scale(1.35) }
+  to   { opacity: 1; transform: scale(1) }
+}
+
+/* 要求減少動態時只保留淡入，不做位移與彈跳 */
+@media (prefers-reduced-motion: reduce) {
+  .match-celebrate,
+  .match-celebrate-avatar.from-left,
+  .match-celebrate-avatar.from-right,
+  .match-celebrate-heart { animation: match-celebrate-fade 0.2s ease-out both }
+}
+
+[data-theme="dark"] .match-celebrate {
+  background: linear-gradient(170deg, #16281e 0%, #1d3328 100%);
+}
+[data-theme="dark"] .match-celebrate-title { color: #e8f5f0 }
+[data-theme="dark"] .match-celebrate-sub { color: #9ec4b4 }
+[data-theme="dark"] .match-celebrate-chat { background: #4caf7d }

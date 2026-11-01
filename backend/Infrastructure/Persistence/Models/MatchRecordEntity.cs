@@ -12,5 +12,6 @@ public sealed class MatchRecordEntity
     public string Icebreaker { get; set; } = "";
     public bool UserLiked { get; set; }
     public bool MatchedUserLiked { get; set; }
+    public DateTimeOffset? PassedAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
