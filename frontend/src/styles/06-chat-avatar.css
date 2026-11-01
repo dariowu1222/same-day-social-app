@@ -150,23 +150,92 @@
   padding: 0 12px;
 }
 
+/* 外層從 button 改成容器：右側要再放一顆 ⋮ 按鈕，互動元素不能巢狀 */
 .chat-list-card {
-  display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 11px;
+  position: relative;
+  display: flex;
+  align-items: stretch;
   width: 100%;
-  padding: 12px 13px;
   border: 0.5px solid #ece2d4;
   border-radius: 16px;
   background: #ffffff;
   color: #3a3028;
-  text-align: left;
   box-shadow: none;
 }
 
-.chat-list-card:active {
+/* 卡片的主要點擊區，接手原本 .chat-list-card 的版面 */
+.chat-card-open {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  padding: 12px 4px 12px 13px;
+  border: none;
+  border-radius: 16px 0 0 16px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.chat-card-open:active {
   background: #fdfbf7;
+}
+
+.chat-card-more {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  padding: 0;
+  border: none;
+  border-radius: 0 16px 16px 0;
+  background: transparent;
+  color: #b4a899;
+  cursor: pointer;
+}
+
+.chat-card-more:active {
+  background: #fdfbf7;
+}
+
+/* 名字前的釘選小圖示 */
+.chat-card-pin {
+  margin-right: 4px;
+  vertical-align: -1px;
+  color: #c8785a;
+}
+
+/* 點 ⋮ 跳出的下拉選單。蓋在遮罩之上，點畫面任何地方都關得掉 */
+.chat-card-menu {
+  position: absolute;
+  top: calc(100% - 8px);
+  right: 10px;
+  z-index: 30;
+  min-width: 170px;
+  padding: 6px 0;
+  border: 0.5px solid #ece2d4;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 10px 28px rgba(60, 48, 36, 0.16);
+}
+
+.chat-card-menu .cr-menu-item {
+  padding: 11px 16px;
+}
+
+/* 下方空間不夠時往上開，否則會被 .chat-list-scroll 的 overflow 裁掉 */
+.chat-card-menu.drop-up {
+  top: auto;
+  bottom: calc(100% - 8px);
+}
+
+.chat-menu-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
 }
 
 .chat-avatar {

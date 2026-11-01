@@ -6,6 +6,7 @@ import ThemeTransitionOverlay, { GlobalNightEffects } from '../shared/ui/ThemeTr
 import { useTheme } from '../shared/theme/ThemeContext'
 import { onboardingKey } from '../shared/lib/storageKeys'
 import { useAuth } from '../features/auth/AuthContext'
+import { useChatRealtime } from '../features/chat/ChatRealtimeContext'
 import { ensureSocialInit } from '../features/auth/googleAuth'
 import type { DemoUser } from '../features/auth/types'
 import LoginPage from '../features/auth/LoginPage'
@@ -31,6 +32,7 @@ function App() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, authenticate } = useAuth()
+  const { totalUnread } = useChatRealtime()
   const [showMatchResult, setShowMatchResult] = useState(false)
   const [selectedMoodLabel, setSelectedMoodLabel] = useState<string>('')
   const [onboardingDone, setOnboardingDone] = useState(true)
@@ -124,7 +126,7 @@ function App() {
           <Route path="/settings/feedback" element={<FeedbackPage />} />
           <Route path="/notifications" element={<NotificationCenterPage />} />
         </Routes>
-        {!isDetail && <BottomNav activePage={activePage} onChange={setActivePage} />}
+        {!isDetail && <BottomNav activePage={activePage} onChange={setActivePage} chatUnread={totalUnread} />}
       </main>
       {mode === 'night' && <GlobalNightEffects />}
       <ThemeTransitionOverlay />

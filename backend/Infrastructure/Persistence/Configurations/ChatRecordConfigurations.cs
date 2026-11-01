@@ -28,6 +28,7 @@ public sealed class ChatRoomUserRecordConfiguration : IEntityTypeConfiguration<C
         builder.Property(x => x.ChatRoomId).HasColumnName("chat_room_id").HasMaxLength(64).IsRequired();
         builder.Property(x => x.UserId).HasColumnName("user_id").HasMaxLength(64).IsRequired();
         builder.Property(x => x.JoinedAt).HasColumnName("joined_at");
+        builder.Property(x => x.LastReadAt).HasColumnName("last_read_at");
         builder.HasIndex(x => new { x.ChatRoomId, x.UserId }).IsUnique();
     }
 }
@@ -63,6 +64,7 @@ public sealed class ChatMemberSettingRecordConfiguration : IEntityTypeConfigurat
         builder.Property(x => x.NoteName).HasColumnName("note_name").HasMaxLength(100);
         builder.Property(x => x.Pinned).HasColumnName("pinned").HasDefaultValue(false);
         builder.Property(x => x.Muted).HasColumnName("muted").HasDefaultValue(false);
+        builder.Property(x => x.PinnedAt).HasColumnName("pinned_at");
         builder.Property(x => x.UpdatedAt).HasColumnName("updated_at");
         builder.HasIndex(x => new { x.UserId, x.ChatRoomId }).IsUnique();
     }

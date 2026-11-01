@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.SignalR;
 using SameDaySocialApp.Application.Dto;
 using SameDaySocialApp.Application.Services;
@@ -57,6 +58,21 @@ public sealed class ChatsController(ChatService chatService, IHubContext<ChatHub
             chatRoomId, CallerId, request.Content,
             request.QuotedMessageId, request.QuotedSenderName, request.QuotedContent);
         await chatHub.Clients.Group(ChatHub.RoomGroup(chatRoomId)).SendAsync("messageReceived", message);
+
+        // 房間群組只有在聊天頁才 join，但未讀徽章在任何分頁都要會動。
+        // 所以對「除了自己以外的成員」的個人群組再推一則極小的事件——
+        // 收件端不需要知道任何 room id，也不必為此 join 房間。
+        var peerIds = chatService.GetRoomMemberIds(chatRoomId)
+            .Where(id => id != CallerId)
+            .Distinct()
+            .ToList();
+        if (peerIds.Count > 0)
+        {
+            await chatHub.Clients
+                .Groups(peerIds.Select(ChatHub.UserGroup).ToList())
+                .SendAsync("roomActivity", new { roomId = chatRoomId, senderId = CallerId });
+        }
+
         return ApiResponse<ChatMessage>.Ok(message);
     }
 
@@ -68,6 +84,25 @@ public sealed class ChatsController(ChatService chatService, IHubContext<ChatHub
         if (recalled == null) return BadRequest(ApiResponse<ChatMessage>.Fail("MESSAGE_RECALL_DENIED", "訊息無法收回（僅限本人發出後 2 分鐘內）。"));
         await chatHub.Clients.Group(ChatHub.RoomGroup(chatRoomId)).SendAsync("messageRecalled", recalled);
         return ApiResponse<ChatMessage>.Ok(recalled);
+    }
+
+    /// <summary>每間有未讀的房間與其未讀數。沒有未讀的房間不會出現在結果裡。</summary>
+    [HttpGet("user/{userId}/unread")]
+    public ActionResult<ApiResponse<Dictionary<string, int>>> Unread(string userId)
+    {
+        if (CallerId != userId) return Forbid();
+        return ApiResponse<Dictionary<string, int>>.Ok(chatService.GetUnreadCounts(userId));
+    }
+
+    /// <summary>
+    /// 把一間房標成已讀。冪等，而且水位只前進不後退，所以重複呼叫安全。
+    /// </summary>
+    [EnableRateLimiting("write")]
+    [HttpPost("{chatRoomId}/read")]
+    public ActionResult<ApiResponse<bool>> MarkRead(string chatRoomId)
+    {
+        if (!IsMember(chatRoomId)) return Forbid();
+        return ApiResponse<bool>.Ok(chatService.MarkRoomRead(chatRoomId, CallerId));
     }
 
     // 房間個人設定（備註名 / 釘選 / 靜音）

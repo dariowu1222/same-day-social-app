@@ -61,6 +61,10 @@ export default function NotificationCenterPage() {
 
   function open(n: AppNotification) {
     if (n.linkType === 'rant' && n.linkId) navigate(`/rant/${n.linkId}`)
+    // 配對成功的通知帶的是 chat + 房號（MatchService.CompleteMatch）。
+    // 先前這裡只認得 rant，點下去會跳回首頁，等於通知沒有作用。
+    else if (n.linkType === 'chat' && n.linkId) navigate(`/chat?room=${encodeURIComponent(n.linkId)}`)
+    else if (n.linkType === 'chat') navigate('/chat')
     else navigate('/')
   }
 

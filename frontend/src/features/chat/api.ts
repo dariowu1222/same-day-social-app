@@ -10,6 +10,16 @@ export async function getChatOverview(userId: string) {
   return request<ChatRoomOverview[]>(`/api/chats/user/${userId}/overview`)
 }
 
+/** 每間有未讀的房間與其未讀數。沒有未讀的房間不會出現在結果裡。 */
+export async function getChatUnread(userId: string) {
+  return request<Record<string, number>>(`/api/chats/user/${userId}/unread`)
+}
+
+/** 把一間房標成已讀。後端冪等，水位只前進不後退。 */
+export async function markChatRead(chatRoomId: string) {
+  return request<boolean>(`/api/chats/${chatRoomId}/read`, { method: 'POST' })
+}
+
 export async function createChatRoom(payload: { userIds: string[]; sourceType: string; sourceId: string }) {
   return request<ChatRoom>('/api/chats', { method: 'POST', body: JSON.stringify(payload) })
 }

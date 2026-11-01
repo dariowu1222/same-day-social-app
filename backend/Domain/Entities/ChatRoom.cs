@@ -28,4 +28,7 @@ public sealed class ChatMemberSetting
     public string? NoteName { get; set; }
     public bool Pinned { get; set; }
     public bool Muted { get; set; }
+
+    /// <summary>釘選的時間，null 代表沒釘。聊天列表用它決定釘選區的先後。</summary>
+    public DateTimeOffset? PinnedAt { get; set; }
 }

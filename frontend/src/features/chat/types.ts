@@ -7,6 +7,8 @@ export type ChatRoom = {
 }
 
 export type ChatMemberSetting = {
+  /** 釘選的時間（ISO 字串），null 代表沒釘。列表用它決定釘選區的先後。 */
+  pinnedAt?: string | null
   chatRoomId: string
   noteName?: string | null
   pinned: boolean

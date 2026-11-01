@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { Search, X } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Search, X, MoreVertical, Pin, PinOff, LogOut, Flag } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import {
   getChatOverview, getMessages, sendMessage, recallMessage,
@@ -10,18 +11,32 @@ import type { ChatMessage, ChatRoom as ChatRoomType, ChatMemberSetting, ChatPeer
 import { getProfile } from '../profile/api'
 import type { UserProfile } from '../profile/types'
 import ChatRoom from './ChatRoom'
+import ReportSheet from '../report/ReportSheet'
 import Avatar from '../../shared/ui/Avatar'
 import { testAvatarPhoto } from '../../shared/lib/userDisplay'
-import { createChatConnection, joinChatRooms } from './realtime'
+import { useChatRealtime } from './ChatRealtimeContext'
 import { readChatCache, writeChatCache } from './chatCache'
 
 export default function ChatPage() {
   const { user } = useAuth()
+  // 連線與未讀數都住在 App 層的 Provider，切分頁不會斷。
+  const { unreadByRoom, joinRooms, setActiveRoom, subscribe, forgetRoom } = useChatRealtime()
   // 切分頁會讓本元件被 Router 銷毀，state 全歸零。用模組層級快取當初始值，
   // 切回來先把上次的內容放上畫面，再於背景刷新（見 chatCache.ts）。
   const restored = readChatCache(user?.userId)
   const [rooms, setRooms] = useState<ChatRoomType[]>(restored?.rooms ?? [])
-  const [activeRoomId, setActiveRoomId] = useState<string | null>(null)
+  // 開著哪間房直接由網址決定，不另外存一份 state。
+  //
+  // 本來是 useState(searchParams.get('room'))，只在掛載時讀一次。那會漏掉
+  // 「App 已經停在聊天頁時點推播通知」——元件不重新掛載，?room= 就被忽略了。
+  // 由網址驅動還順便拿到：重新整理不會掉出房間、網址可以直接分享。
+  const [searchParams, setSearchParams] = useSearchParams()
+  const activeRoomId = searchParams.get('room')
+  // 用 replace 不累積瀏覽歷史，維持改動前的返回行為
+  const setActiveRoomId = useCallback(
+    (roomId: string | null) => setSearchParams(roomId ? { room: roomId } : {}, { replace: true }),
+    [setSearchParams],
+  )
   const [roomMessages, setRoomMessages] = useState<Record<string, ChatMessage[]>>(restored?.roomMessages ?? {})
   // 列表只需要暱稱與頭像，由 overview 一次帶回；完整 profile 進房才抓
   const [peers, setPeers] = useState<Record<string, ChatPeer>>(restored?.peers ?? {})
@@ -34,7 +49,22 @@ export default function ChatPage() {
   const [draft, setDraft] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   const [search, setSearch] = useState('')
-  const connectionRef = useRef<ReturnType<typeof createChatConnection> | null>(null)
+  // 列表頁每一列的 ⋮ 選單：同時只開一個
+  const [menuRoomId, setMenuRoomId] = useState<string | null>(null)
+  // 離開類動作的二次確認，與房內用同一套措辭與樣式
+  const [confirm, setConfirm] = useState<{ title: string; desc: string; onYes: () => void } | null>(null)
+  // 列表頁的檢舉：選完原因送出後才真的離開那間房
+  const [listReport, setListReport] = useState<{ roomId: string; userId: string } | null>(null)
+  const listReportedRef = useRef(false)
+  // 操作失敗時給一句話。沒有提示的話使用者分不出是沒點到還是真的失敗了。
+  const [toast, setToast] = useState('')
+  // toast 自己消失。房內用的是同一套（ChatRoom.tsx 的 toastTimer）。
+  useEffect(() => {
+    if (!toast) return
+    const timer = setTimeout(() => setToast(''), 3000)
+    return () => clearTimeout(timer)
+  }, [toast])
+
   const roomsRef = useRef<ChatRoomType[]>(restored?.rooms ?? [])
   const activeRoomIdRef = useRef<string | null>(null)
   // 開房時要立即讀到已快取的訊息，但不能把 roomMessages 放進 effect deps（會無限重跑）。
@@ -66,49 +96,41 @@ export default function ChatPage() {
     loadRooms().catch(() => {}).finally(() => setLoaded(true))
   }, [])
 
+
+  // 訊息處理器每次 render 都是新的函式，但行為固定（只讀 ref、只呼叫 setState），
+  // 所以透過 ref 轉接，訂閱本身只做一次。
+  const applyRef = useRef(applyIncomingMessage)
+  useEffect(() => { applyRef.current = applyIncomingMessage })
+
+  useEffect(() => subscribe({
+    onMessageReceived: (message) => applyRef.current(message),
+    onMessageRecalled: (message) => applyRef.current(message),
+  }), [subscribe])
+
+  // 房間清單變了就重新加入群組。連線還沒好也沒關係，Provider 會在連上與重連後重放。
   useEffect(() => {
-    if (!user) return
+    joinRooms(rooms.map((room) => room.id))
+  }, [rooms, joinRooms])
 
-    const connection = createChatConnection({
-      onMessageReceived: (message) => {
-        applyIncomingMessage(message)
-      },
-      onMessageRecalled: (message) => {
-        applyIncomingMessage(message)
-      },
-    })
-    connectionRef.current = connection
+  // 開著哪間房由 Provider 決定未讀要不要加——人正在看的那間不該亮紅點。
+  // 進房同時把這間標成已讀。
+  useEffect(() => {
+    setActiveRoom(activeRoomId)
+    return () => setActiveRoom(null)
+  }, [activeRoomId, setActiveRoom])
 
-    // StrictMode 開發模式會 mount → unmount → mount。若在 start() 還在 negotiate 時就 stop()，
-    // 連線會以「The connection was stopped during negotiation」失敗且不會重連 → 收不到即時訊息。
-    // 因此 cleanup 不直接 stop，而是等 start() 這輪走完再收，並用 cancelled 擋掉過期的後續動作。
-    let cancelled = false
-
-    const startPromise = connection
-      .start()
-      .then(() => {
-        if (cancelled) return
-        return joinChatRooms(connection, roomsRef.current.map((room) => room.id))
-      })
-      .catch(() => {
-        if (!cancelled) connectionRef.current = null
-      })
-
-    connection.onreconnected(() => {
-      joinChatRooms(connection, roomsRef.current.map((room) => room.id)).catch(() => {})
-    })
-
-    return () => {
-      cancelled = true
-      connectionRef.current = null
-      startPromise.finally(() => connection.stop().catch(() => {}))
+  // 鎖屏或切到別的 App 期間 SignalR 會斷，那段時間的訊息不會被推過來。
+  // 回到前景時補抓一次——Provider 這時會把房間標成已讀，不補的話就變成
+  // 「紅點消失了，但訊息根本沒出現在畫面上」。
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return
+      const roomId = activeRoomIdRef.current
+      if (roomId) void loadMessages(roomId)
     }
-  }, [user?.userId])
-
-  useEffect(() => {
-    if (!connectionRef.current) return
-    joinChatRooms(connectionRef.current, rooms.map((room) => room.id)).catch(() => {})
-  }, [rooms])
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [])
 
   useEffect(() => {
     if (!activeRoomId) return
@@ -116,16 +138,22 @@ export default function ChatPage() {
     setMessages(roomMessagesRef.current[activeRoomId] ?? [])
     loadMessages(activeRoomId)
 
-    // 完整 profile 只有 peek sheet 用得到，所以進房才抓、而且只抓這一位。
-    // 列表本身用 overview 帶回的 peers（暱稱＋頭像）就夠了。
-    const room = roomsRef.current.find((r) => r.id === activeRoomId)
-    const peerId = room?.userIds.find((id) => id !== user?.userId)
-    if (peerId && !profilesRef.current[peerId]) {
-      getProfile(peerId)
-        .then((res) => setProfiles((prev) => ({ ...prev, [peerId]: res.data })))
-        .catch(() => {})
-    }
   }, [activeRoomId])
+
+  // 完整 profile 只有 peek sheet 與房內抬頭用得到，所以進房才抓、只抓這一位。
+  // 相依要包含 rooms：從配對慶祝畫面用 /chat?room=xxx 直接進房時，
+  // 這個 effect 第一次跑的當下 rooms 還是空的（loadRooms 還沒回來），
+  // 找不到對方是誰。等列表到位再跑一次才補得到，否則抬頭會一直停在
+  // 退場值「同頻對話 xxxx」。
+  useEffect(() => {
+    if (!activeRoomId) return
+    const room = rooms.find((r) => r.id === activeRoomId)
+    const peerId = room?.userIds.find((id) => id !== user?.userId)
+    if (!peerId || profilesRef.current[peerId]) return
+    getProfile(peerId)
+      .then((res) => setProfiles((prev) => ({ ...prev, [peerId]: res.data })))
+      .catch(() => {})
+  }, [activeRoomId, rooms, user?.userId])
 
   async function loadRooms() {
     if (!user) return
@@ -238,17 +266,71 @@ export default function ChatPage() {
     }
   }
 
+  async function updateRoomSetting(
+    roomId: string,
+    patch: { noteName?: string | null; pinned?: boolean; muted?: boolean },
+  ) {
+    const res = await updateChatSetting(roomId, patch)
+    setSettings((prev) => ({ ...prev, [roomId]: res.data }))
+  }
+
   async function updateSetting(patch: { noteName?: string | null; pinned?: boolean; muted?: boolean }) {
     if (!activeRoomId) return
-    const res = await updateChatSetting(activeRoomId, patch)
-    setSettings((prev) => ({ ...prev, [activeRoomId]: res.data }))
+    await updateRoomSetting(activeRoomId, patch)
+  }
+
+  /** 離開一間房。從列表的 ⋮ 或房內選單都走這裡。 */
+  async function leaveRoom(roomId: string) {
+    await leaveChatRoom(roomId)
+    // 後端把你移出成員，但 SignalR 的房間群組綁在連線上、不會自己掉；
+    // 未讀數也要一起清，否則底部紅點會留下一個點不進去的幽靈數字。
+    forgetRoom(roomId)
+    if (activeRoomId === roomId) setActiveRoomId(null)
+    await loadRooms()
   }
 
   async function leaveActiveRoom() {
     if (!activeRoomId) return
-    await leaveChatRoom(activeRoomId)
-    setActiveRoomId(null)
-    await loadRooms()
+    await leaveRoom(activeRoomId)
+  }
+
+  /**
+   * 列表頁 ⋮ 的動作。
+   * 釘選是可逆的，直接做；離開與檢舉不可逆，先問過。
+   * 檢舉走 ReportSheet 選原因，送出成功才離開——沒送出就不該把對話弄不見。
+   */
+  function handleRoomAction(summary: ChatSummary, action: 'pin' | 'leave' | 'report') {
+    setMenuRoomId(null)
+
+    if (action === 'pin') {
+      void updateRoomSetting(summary.room.id, { pinned: !summary.pinned })
+        .catch(() => setToast(summary.pinned ? '取消釘選失敗，請再試一次' : '釘選失敗，請再試一次'))
+      return
+    }
+
+    if (action === 'leave') {
+      setConfirm({
+        title: '離開聊天室',
+        // 這個動作實際上是把你移出房間，對話與對方都不會再出現，
+        // 不是「只是從列表隱藏」。文案要講清楚，不然使用者會以為還救得回來。
+        desc: `離開後就看不到與「${summary.title}」的對話了，而且無法復原。`,
+        onYes: () => {
+          setConfirm(null)
+          void leaveRoom(summary.room.id).catch(() => setToast('離開失敗，請再試一次'))
+        },
+      })
+      return
+    }
+
+    setConfirm({
+      title: '檢舉並離開',
+      desc: `檢舉送出後會一併離開與「${summary.title}」的對話。`,
+      onYes: () => {
+        setConfirm(null)
+        listReportedRef.current = false
+        setListReport({ roomId: summary.room.id, userId: summary.otherUserId })
+      },
+    })
   }
 
   async function blockActiveRoom() {
@@ -271,14 +353,30 @@ export default function ChatPage() {
       .map((room) => {
         const base = buildRoomSummary(room, roomMessages[room.id] ?? [], peers, user?.userId ?? '')
         const setting = settings[room.id]
-        return { ...base, title: setting?.noteName?.trim() || base.title, pinned: !!setting?.pinned }
+        return {
+          ...base,
+          title: setting?.noteName?.trim() || base.title,
+          pinned: !!setting?.pinned,
+          pinnedAt: setting?.pinnedAt ? new Date(setting.pinnedAt) : null,
+          unreadCount: unreadByRoom[room.id] ?? 0,
+        }
       })
-      // 釘選優先，其次依最後訊息時間新到舊
-      .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.lastAt.getTime() - a.lastAt.getTime()),
-    [rooms, roomMessages, profiles, settings, user?.userId],
+      .sort((a, b) => {
+        // 釘選永遠壓過未讀：有新訊息的一般對話也不能插到釘選的前面
+        if (a.pinned !== b.pinned) return a.pinned ? -1 : 1
+        // 同一群之內，有未讀的排前面
+        const aUnread = a.unreadCount > 0
+        const bUnread = b.unreadCount > 0
+        if (aUnread !== bUnread) return aUnread ? -1 : 1
+        // 釘選區依釘選時間（先釘的在上，順序穩定）；一般區依最後訊息新到舊
+        if (a.pinned) return (a.pinnedAt?.getTime() ?? 0) - (b.pinnedAt?.getTime() ?? 0)
+        return b.lastAt.getTime() - a.lastAt.getTime()
+      }),
+    [rooms, roomMessages, peers, settings, unreadByRoom, user?.userId],
   )
-  const todayRooms = roomSummaries.filter((summary) => isToday(summary.room.createdAt))
-  const previousRooms = roomSummaries.filter((summary) => !isToday(summary.room.createdAt))
+  // 不分組，一個平的列表。分組會跟排序打架：釘一個舊對話，它只會在自己那組裡
+  // 浮起來，仍被「今天聊起的」整組壓在下面，看起來等於沒釘。
+  // 釘選狀態改用名字前的圖示標示。
 
   // 名字搜尋：連續片段(contains)、不分大小寫，僅比對對話對象名字
   const query = search.trim().toLowerCase()
@@ -347,7 +445,15 @@ export default function ChatPage() {
             searchResults.length > 0 ? (
               <div className="chat-card-list chat-search-results">
                 {searchResults.map((summary) => (
-                  <ChatCard key={summary.room.id} summary={summary} onOpen={setActiveRoomId} highlight={query} />
+                  <ChatCard
+                    key={summary.room.id}
+                    summary={summary}
+                    onOpen={setActiveRoomId}
+                    highlight={query}
+                    menuOpen={menuRoomId === summary.room.id}
+                    onToggleMenu={setMenuRoomId}
+                    onAction={handleRoomAction}
+                  />
                 ))}
               </div>
             ) : (
@@ -357,12 +463,63 @@ export default function ChatPage() {
               </div>
             )
           ) : (
-            <>
-              <ChatSection title="今天聊起的" rooms={todayRooms} onOpen={setActiveRoomId} />
-              <ChatSection title="先前的對話" rooms={previousRooms} onOpen={setActiveRoomId} />
-            </>
+            <div className="chat-card-list">
+              {roomSummaries.map((summary) => (
+                <ChatCard
+                  key={summary.room.id}
+                  summary={summary}
+                  onOpen={setActiveRoomId}
+                  menuOpen={menuRoomId === summary.room.id}
+                  onToggleMenu={setMenuRoomId}
+                  onAction={handleRoomAction}
+                />
+              ))}
+            </div>
           )}
         </section>
+
+        {/* 選單開著時蓋一層透明遮罩。它會吃掉捲動手勢，所以捲動＝關閉選單，
+            否則使用者會以為畫面卡住了。 */}
+        {menuRoomId && (
+          <div
+            className="chat-menu-mask"
+            onClick={() => setMenuRoomId(null)}
+            onWheel={() => setMenuRoomId(null)}
+            onTouchMove={() => setMenuRoomId(null)}
+          />
+        )}
+
+        {toast && <div className="cr-toast" role="status">{toast}</div>}
+
+        {confirm && (
+          <div className="cr-confirm-mask" onClick={() => setConfirm(null)}>
+            <div className="cr-confirm" role="alertdialog" onClick={(e) => e.stopPropagation()}>
+              <div className="cr-confirm-title">{confirm.title}</div>
+              <div className="cr-confirm-desc">{confirm.desc}</div>
+              <div className="cr-confirm-actions">
+                <button className="cr-confirm-cancel" type="button" onClick={() => setConfirm(null)}>取消</button>
+                <button className="cr-confirm-ok danger" type="button" onClick={confirm.onYes}>確認</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 檢舉送出成功才離開那間房：沒送出就把對話弄不見，使用者會以為自己誤觸 */}
+        {listReport && (
+          <ReportSheet
+            targetType="USER"
+            targetId={listReport.userId}
+            title="檢舉對方"
+            onClose={() => {
+              const roomId = listReport.roomId
+              setListReport(null)
+              if (!listReportedRef.current) return
+              listReportedRef.current = false
+              void leaveRoom(roomId).catch(() => setToast('檢舉已送出，但離開聊天室失敗'))
+            }}
+            onDone={() => { listReportedRef.current = true }}
+          />
+        )}
       </div>
     )
   }
@@ -379,10 +536,14 @@ export default function ChatPage() {
         <div className="chat-card-list">
           {[0, 1, 2, 3].map((i) => (
             <div key={i} className="chat-list-card chat-card-skeleton" aria-hidden="true">
-              <span className="chat-avatar skeleton-block" />
-              <span className="chat-card-main">
-                <span className="skeleton-line skeleton-line-name" />
-                <span className="skeleton-line skeleton-line-preview" />
+              {/* 版面住在 .chat-card-open（真卡片的點擊區），骨架少了這層
+                  就會失去 padding 與 grid，列高比真卡片矮一截，資料回來時畫面會跳 */}
+              <span className="chat-card-open">
+                <span className="chat-avatar skeleton-block" />
+                <span className="chat-card-main">
+                  <span className="skeleton-line skeleton-line-name" />
+                  <span className="skeleton-line skeleton-line-preview" />
+                </span>
               </span>
             </div>
           ))}
@@ -402,38 +563,89 @@ type ChatSummary = {
   timeLabel: string
   unreadCount: number
   pinned: boolean
+  pinnedAt: Date | null
 }
 
-function ChatSection({ title, rooms, onOpen }: { title: string; rooms: ChatSummary[]; onOpen: (roomId: string) => void }) {
-  if (rooms.length === 0) return null
+type RoomAction = 'pin' | 'leave' | 'report'
 
-  return (
-    <section className="chat-section">
-      <h2>{title}</h2>
-      <div className="chat-card-list">
-        {rooms.map((summary) => (
-          <ChatCard key={summary.room.id} summary={summary} onOpen={onOpen} />
-        ))}
-      </div>
-    </section>
-  )
+type CardProps = {
+  summary: ChatSummary
+  onOpen: (roomId: string) => void
+  highlight?: string
+  menuOpen: boolean
+  onToggleMenu: (roomId: string | null) => void
+  onAction: (summary: ChatSummary, action: RoomAction) => void
 }
 
-function ChatCard({ summary, onOpen, highlight }: { summary: ChatSummary; onOpen: (roomId: string) => void; highlight?: string }) {
+/** 選單展開後的大約高度（三個項目＋分隔線＋內距），用來決定往上還是往下開。 */
+const MENU_HEIGHT = 152
+
+function ChatCard({ summary, onOpen, highlight, menuOpen, onToggleMenu, onAction }: CardProps) {
+  const cardRef = useRef<HTMLDivElement>(null)
+  const [dropUp, setDropUp] = useState(false)
+
+  function toggleMenu() {
+    if (!menuOpen) {
+      // 列表是個 overflow:auto 的捲動容器，往下開會被它的下緣裁掉。
+      // 下方空間不夠就往上開——不然最後幾列的「離開」「檢舉」永遠點不到。
+      const card = cardRef.current
+      const scroller = card?.closest('.chat-list-scroll')
+      const limit = scroller?.getBoundingClientRect().bottom ?? window.innerHeight
+      const cardBottom = card?.getBoundingClientRect().bottom ?? 0
+      setDropUp(limit - cardBottom < MENU_HEIGHT)
+    }
+    onToggleMenu(menuOpen ? null : summary.room.id)
+  }
+
+  // 外層從 button 改成 div：裡面要再放一顆 ⋮ 按鈕，互動元素不能巢狀
+  // （巢狀的點擊目標在螢幕閱讀器與觸控裝置上行為都不可預期）。
   return (
-    <button className="chat-list-card" type="button" onClick={() => onOpen(summary.room.id)}>
-      <Avatar photo={summary.avatarPhoto} seed={summary.otherUserId} className="chat-avatar" />
-      <span className="chat-card-main">
-        <span className="chat-card-name-row">
-          <strong>{highlight ? <HighlightName name={summary.title} query={highlight} /> : summary.title}</strong>
-          <time>{summary.timeLabel}</time>
+    <div className={`chat-list-card${menuOpen ? ' menu-open' : ''}`} ref={cardRef}>
+      <button className="chat-card-open" type="button" onClick={() => onOpen(summary.room.id)}>
+        <Avatar photo={summary.avatarPhoto} seed={summary.otherUserId} className="chat-avatar" />
+        <span className="chat-card-main">
+          <span className="chat-card-name-row">
+            <strong>
+              {summary.pinned && <Pin size={12} strokeWidth={2.2} className="chat-card-pin" aria-label="已釘選" />}
+              {highlight ? <HighlightName name={summary.title} query={highlight} /> : summary.title}
+            </strong>
+            <time>{summary.timeLabel}</time>
+          </span>
+          <span className={`chat-card-preview${summary.unreadCount > 0 ? ' unread' : ''}`}>{summary.preview}</span>
         </span>
-        <span className={`chat-card-preview${summary.unreadCount > 0 ? ' unread' : ''}`}>{summary.preview}</span>
-      </span>
-      {summary.unreadCount > 0 && (
-        <span className="chat-unread-badge">{summary.unreadCount > 99 ? '99+' : summary.unreadCount}</span>
+        {summary.unreadCount > 0 && (
+          <span className="chat-unread-badge">{summary.unreadCount > 99 ? '99+' : summary.unreadCount}</span>
+        )}
+      </button>
+
+      <button
+        className="chat-card-more"
+        type="button"
+        aria-label={`${summary.title} 的更多操作`}
+        aria-expanded={menuOpen}
+        onClick={toggleMenu}
+      >
+        <MoreVertical size={18} strokeWidth={2} />
+      </button>
+
+      {menuOpen && (
+        <div className={`chat-card-menu${dropUp ? ' drop-up' : ''}`} role="menu">
+          <button className="cr-menu-item" type="button" role="menuitem" onClick={() => onAction(summary, 'pin')}>
+            {summary.pinned
+              ? <PinOff size={18} strokeWidth={1.8} className="cr-menu-ic" />
+              : <Pin size={18} strokeWidth={1.8} className="cr-menu-ic" />}
+            <span>{summary.pinned ? '取消釘選' : '釘選對話'}</span>
+          </button>
+          <div className="cr-menu-divider" />
+          <button className="cr-menu-item danger" type="button" role="menuitem" onClick={() => onAction(summary, 'leave')}>
+            <LogOut size={18} strokeWidth={1.8} className="cr-menu-ic" /><span>離開聊天室</span>
+          </button>
+          <button className="cr-menu-item danger" type="button" role="menuitem" onClick={() => onAction(summary, 'report')}>
+            <Flag size={18} strokeWidth={1.8} className="cr-menu-ic" /><span>檢舉並離開</span>
+          </button>
+        </div>
       )}
-    </button>
+    </div>
   )
 }
 
@@ -468,6 +680,7 @@ function buildRoomSummary(room: ChatRoomType, messages: ChatMessage[], peers: Re
     timeLabel: formatRelativeTime(lastAt),
     unreadCount: 0,
     pinned: false,
+    pinnedAt: null,
   }
 }
 

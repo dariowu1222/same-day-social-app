@@ -248,7 +248,14 @@ public sealed class ChatService
         void Apply(ChatMemberSettingRecord r)
         {
             if (noteName != null) r.NoteName = string.IsNullOrWhiteSpace(noteName) ? null : noteName.Trim();
-            if (pinned.HasValue) r.Pinned = pinned.Value;
+            if (pinned.HasValue)
+            {
+                // 只有「從沒釘變成釘」才記時間，重複送 pinned=true 不會把自己頂到最前面。
+                // 取消釘選時清空，下次再釘就是新的時間。
+                if (pinned.Value && !r.Pinned) r.PinnedAt = DateTimeOffset.UtcNow;
+                else if (!pinned.Value) r.PinnedAt = null;
+                r.Pinned = pinned.Value;
+            }
             if (muted.HasValue) r.Muted = muted.Value;
             r.UpdatedAt = DateTimeOffset.UtcNow;
         }
@@ -337,7 +344,8 @@ public sealed class ChatService
         ChatRoomId = r.ChatRoomId,
         NoteName = r.NoteName,
         Pinned = r.Pinned,
-        Muted = r.Muted
+        Muted = r.Muted,
+        PinnedAt = r.PinnedAt
     };
 
     /// <summary>
@@ -408,6 +416,139 @@ public sealed class ChatService
                 peer.Photo,
                 ToPreview(lastMessages.GetValueOrDefault(room.Id)));
         }).ToList();
+    }
+
+    /// <summary>
+    /// 一次算完所有房間的未讀數。
+    ///
+    /// 水位是 COALESCE(last_read_at, joined_at)：沒標記過的房從加入時間起算。
+    /// 自己發的不算、已收回的不算——收回後內容已清空，為它亮紅點沒有意義。
+    ///
+    /// 刻意拆成兩句單純的查詢，而不是一句 join + group by：後者要賭 EF 的
+    /// 關聯聚合翻譯，翻不出來就退化成客戶端評估，把整張表拉進記憶體；
+    /// 幾個並發請求就足以把執行緒池堵死（實測過）。
+    /// 這裡兩句都吃得到既有索引，而且第二句只取兩個欄位。
+    /// </summary>
+    public Dictionary<string, int> CountUnread(string userId, List<string> roomIds)
+    {
+        if (db == null || roomIds.Count == 0)
+        {
+            return [];
+        }
+
+        var watermarks = db.ChatRoomUsers.AsNoTracking()
+            .Where(u => u.UserId == userId && roomIds.Contains(u.ChatRoomId))
+            .Select(u => new { u.ChatRoomId, At = u.LastReadAt ?? u.JoinedAt })
+            .ToList()
+            .ToDictionary(x => x.ChatRoomId, x => x.At);
+
+        if (watermarks.Count == 0)
+        {
+            return [];
+        }
+
+        // 每間房各自受自己的水位限制，組成 (房號 = X AND 時間 > X 的水位) OR (...) 。
+        //
+        // 不能用「所有房間裡最早的水位」當共同下限：只要有一間房從沒被打開過
+        // （水位退回 joined_at），那個下限就永遠不會前進，於是每次查詢都把這個人
+        // 名下所有房間的全部歷史訊息撈回記憶體——而 /unread 在掛載、連上、重連、
+        // 回前景都會被呼叫。
+        var predicate = PredicateFalse<ChatMessageRecord>();
+        foreach (var (roomId, watermark) in watermarks)
+        {
+            var id = roomId;
+            var at = watermark;
+            predicate = Or(predicate, m => m.ChatRoomId == id && m.CreatedAt > at);
+        }
+
+        return db.ChatMessages.AsNoTracking()
+            .Where(m => m.SenderId != userId && !m.IsRecalled)
+            .Where(predicate)
+            .GroupBy(m => m.ChatRoomId)
+            .Select(g => new { RoomId = g.Key, Count = g.Count() })
+            .ToList()
+            .ToDictionary(x => x.RoomId, x => x.Count);
+    }
+
+    /// <summary>一間房的成員 id。廣播「某房有新訊息」時要用來找收件人。</summary>
+    public List<string> GetRoomMemberIds(string chatRoomId)
+    {
+        if (db != null)
+        {
+            return db.ChatRoomUsers.AsNoTracking()
+                .Where(x => x.ChatRoomId == chatRoomId)
+                .Select(x => x.UserId)
+                .ToList();
+        }
+
+        return storage.ReadCollection<ChatRoom>("chatRooms")
+            .FirstOrDefault(x => x.Id == chatRoomId)?.UserIds ?? [];
+    }
+
+    private static System.Linq.Expressions.Expression<Func<T, bool>> PredicateFalse<T>() => _ => false;
+
+    /// <summary>把兩個述詞用 OR 接起來，參數重新繫結到同一個，EF 才翻得出單一 WHERE。</summary>
+    private static System.Linq.Expressions.Expression<Func<T, bool>> Or<T>(
+        System.Linq.Expressions.Expression<Func<T, bool>> left,
+        System.Linq.Expressions.Expression<Func<T, bool>> right)
+    {
+        var parameter = System.Linq.Expressions.Expression.Parameter(typeof(T), "x");
+        var body = System.Linq.Expressions.Expression.OrElse(
+            new ParameterRebinder(left.Parameters[0], parameter).Visit(left.Body),
+            new ParameterRebinder(right.Parameters[0], parameter).Visit(right.Body));
+        return System.Linq.Expressions.Expression.Lambda<Func<T, bool>>(body, parameter);
+    }
+
+    private sealed class ParameterRebinder(
+        System.Linq.Expressions.ParameterExpression from,
+        System.Linq.Expressions.ParameterExpression to) : System.Linq.Expressions.ExpressionVisitor
+    {
+        protected override System.Linq.Expressions.Expression VisitParameter(
+            System.Linq.Expressions.ParameterExpression node) => node == from ? to : base.VisitParameter(node);
+    }
+
+    /// <summary>每個有未讀的房間與其未讀數。沒有未讀的房間不會出現在結果裡。</summary>
+    public Dictionary<string, int> GetUnreadCounts(string userId)
+    {
+        if (db == null)
+        {
+            return [];
+        }
+
+        var roomIds = GetRoomsByUser(userId).Select(x => x.Id).ToList();
+        return CountUnread(userId, roomIds);
+    }
+
+    /// <summary>
+    /// 把一間房標成已讀。
+    ///
+    /// 水位取「這間房目前最後一則訊息的時間」而不是 now()：還在寫入途中、
+    /// 尚未 commit 的訊息不會被誤標成已讀（它的 created_at 會大於這個水位）。
+    /// 水位只前進不後退，所以重複呼叫、亂序抵達都安全。
+    /// </summary>
+    public bool MarkRoomRead(string chatRoomId, string userId)
+    {
+        if (db == null)
+        {
+            return true;
+        }
+
+        var watermark = db.ChatMessages.AsNoTracking()
+            .Where(m => m.ChatRoomId == chatRoomId)
+            .Max(m => (DateTimeOffset?)m.CreatedAt);
+
+        if (watermark == null)
+        {
+            return true;
+        }
+
+        db.ChatRoomUsers
+            .Where(x => x.ChatRoomId == chatRoomId
+                        && x.UserId == userId
+                        && (x.LastReadAt == null || x.LastReadAt < watermark))
+            .ExecuteUpdate(s => s.SetProperty(x => x.LastReadAt, watermark));
+
+        return true;
     }
 
     /// <summary>
