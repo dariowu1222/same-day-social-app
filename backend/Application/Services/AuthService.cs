@@ -14,12 +14,14 @@ public sealed class AuthService
     private readonly JsonStorageService storage;
     private readonly IEmailSender emailSender;
     private readonly AppDbContext? db;
+    private readonly AccountStateService? accountState;
 
     public AuthService(JsonStorageService storage, IEmailSender emailSender, IServiceProvider services)
     {
         this.storage = storage;
         this.emailSender = emailSender;
         db = services.GetService<AppDbContext>();
+        accountState = services.GetService<AccountStateService>();
     }
 
     public async Task<AuthServiceResult<RegistrationStartResponse>> RegisterAsync(RegisterCommand command, CancellationToken cancellationToken)
@@ -320,8 +322,18 @@ public sealed class AuthService
                 user.Nickname = "已離開的使用者";
                 user.Bio = "";
                 user.PhotoDataUrls = [];
+                // users.status 也要改。auth_accounts.is_disabled 只有登入路徑會讀，
+                // 而每個已認證請求是看 users.status（見 AccountStateService 與
+                // Program.cs 的帳號狀態中介軟體）。先前只設 is_disabled，等於
+                // 自助註銷之後手上那顆 token 還能用到過期為止——最長七天，期間
+                // 照樣讀對話、傳訊息，只是暱稱變成「已離開的使用者」。
+                // 後台封鎖那條路（ChangeStatus）早就處理了，自助這條漏掉。
+                user.Status = AccountStatus.DELETED.ToString();
+                user.UpdatedAt = DateTimeOffset.UtcNow;
             }
             db.SaveChanges();
+            // 快取有 60 秒，不清的話註銷完還有一分鐘的空窗
+            accountState?.Invalidate(userId);
             return true;
         }
 
@@ -332,6 +344,7 @@ public sealed class AuthService
             u.Nickname = "已離開的使用者";
             u.Bio = "";
             u.PhotoDataUrls = [];
+            u.Status = AccountStatus.DELETED;
         });
         return true;
     }
