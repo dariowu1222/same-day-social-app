@@ -88,10 +88,15 @@ public sealed class ChatService
     }
 
     /// <summary>
-    /// 已檢舉對方、因此凍結成唯讀的房間。
+    /// 檢舉已成立、因此凍結成唯讀的房間。
+    ///
+    /// 觸發點是「後台審核認定成立」（ReportStatus.RESOLVED），不是「送出檢舉」。
+    /// 差別很重要：按送出就凍結的話，任何人都能用一次誤報把對話鎖死，而被檢舉
+    /// 的人連申辯的機會都沒有。送出之後到審核之前，兩個人照常聊天。
+    /// 審核駁回（DISMISSED）則什麼都不會發生。
     ///
     /// 檢舉的對象是「人」不是「房間」，所以同一個人的每一間房都會一起凍結——
-    /// 不然檢舉完換一間房又能繼續聊，等於沒有檢舉。
+    /// 不然換一間房又能繼續聊，等於沒有處置。
     ///
     /// 凍結只對檢舉人生效：被檢舉的人照常傳得進來，不會從「訊息送不出去」
     /// 反推自己被檢舉了。檢舉人那側不顯示未讀、也不推播。
@@ -104,11 +109,13 @@ public sealed class ChatService
         }
 
         var userTarget = ReportTargetType.USER.ToString();
+        var resolved = ReportStatus.RESOLVED.ToString();
         var query = db.ChatRoomUsers.AsNoTracking()
             .Where(peer => peer.UserId != userId
                            && db.ChatRoomUsers.Any(me => me.ChatRoomId == peer.ChatRoomId && me.UserId == userId)
                            && db.Reports.Any(r => r.ReporterId == userId
                                                   && r.TargetType == userTarget
+                                                  && r.Status == resolved
                                                   && r.ReportedUserId == peer.UserId));
 
         if (scope != null)
@@ -607,7 +614,7 @@ public sealed class ChatService
         }
 
         // 凍結的房間不算未讀：回不了的對話亮紅點，只會逼使用者一再點進去
-        // 看同一句「你已檢舉這個人」。
+        // 看同一句「對方已經被處置」。
         var roomIds = GetRoomIdsByUser(userId);
         var frozen = GetFrozenRoomIds(userId, roomIds);
         if (frozen.Count > 0)

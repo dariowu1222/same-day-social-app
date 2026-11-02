@@ -30,7 +30,8 @@ type Props = {
   onSendContent: (content: string, quote?: QuoteInfo) => void | Promise<void>
   onRecall?: (messageId: string) => void
   setting?: ChatMemberSetting
-  /** 已檢舉對方：對話唯讀，輸入列換成說明與「退出聊天室」。 */
+  /** 檢舉已成立（後台認定）：對話唯讀，輸入列換成說明與「退出聊天室」。
+      送出檢舉但尚未審核時為 false，兩人照常聊天。 */
   reported?: boolean
   onUpdateSetting?: (patch: { noteName?: string | null; pinned?: boolean; muted?: boolean }) => void
   onLeave?: () => void
@@ -113,7 +114,7 @@ export default function ChatRoom({
   // 安全：人身攻擊措辭提醒（送出前，不阻擋）
   const [wordingDialog, setWordingDialog] = useState<{ onProceed: () => void } | null>(null)
   const [wordingMuted, setWordingMuted] = useState(false)
-  // 檢舉要等真的送出才算數；中途取消不該讓對話變成唯讀
+  // 檢舉要等真的送出才算數；中途取消什麼都不該發生
   const reportedRef = useRef(false)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -180,7 +181,7 @@ export default function ChatRoom({
   }
   function confirmReport() {
     setMenuOpen(false)
-    setConfirm({ title: '檢舉對方', desc: '接著會請你選擇原因。送出後這段對話會關閉，你還看得到先前的訊息，但不能再傳送。', danger: true, onYes: () => { setConfirm(null); setReportTarget({ type: 'USER', id: otherUserId }) } })
+    setConfirm({ title: '檢舉對方', desc: '接著會請你選擇原因。我們會盡快查看，處理完成會通知你；在那之前你們仍然可以繼續對話。', danger: true, onYes: () => { setConfirm(null); setReportTarget({ type: 'USER', id: otherUserId }) } })
   }
 
   // ── 長按 / 右鍵訊息 → 操作列 ──
@@ -498,11 +499,13 @@ export default function ChatRoom({
         </div>
       )}
 
-      {/* 檢舉過的對話唯讀：不自動把房間移除——使用者常常還要回頭看對方說過
-          什麼，而且對話憑空消失會讓人以為自己誤觸。退不退由他自己決定。 */}
+      {/* 檢舉成立後的唯讀狀態。觸發點是後台認定成立，不是送出檢舉——
+          按送出就關對話的話，一次誤報就能把別人的對話鎖死。
+          也不自動把房間移除：使用者常常還要回頭看對方說過什麼，而且對話
+          憑空消失會讓人以為自己誤觸。退不退由他自己決定。 */}
       {reported ? (
         <div className="cr-frozen">
-          <p className="cr-frozen-title">你已檢舉這位使用者，我們會盡快查看。</p>
+          <p className="cr-frozen-title">你檢舉的對象已經被處置。</p>
           <p className="cr-frozen-desc">這段對話已經關閉，先前的訊息還看得到，但不能再傳送。</p>
           <button className="cr-frozen-leave" type="button" onClick={confirmLeave}>
             <LogOut size={17} strokeWidth={2} />退出聊天室
@@ -583,7 +586,7 @@ export default function ChatRoom({
         <button className="cr-menu-item danger" type="button" onClick={confirmBlock}>
           <Ban size={19} strokeWidth={1.8} className="cr-menu-ic" /><span>離開並封鎖對方</span>
         </button>
-        {/* 已經檢舉過就不再給：再送一次對審核沒有幫助，而使用者按下去只會
+        {/* 已經處置過就不再給：再送一次對審核沒有幫助，而使用者按下去只會
             看到同一張面板，像是上一次沒成功 */}
         {!reported && (
           <button className="cr-menu-item danger" type="button" onClick={confirmReport}>
@@ -608,7 +611,7 @@ export default function ChatRoom({
 
       {toast && <div className="cr-toast">{toast}</div>}
 
-      {/* 檢舉面板：單則訊息、或對方本人（檢舉對方時，送出後這間房才變成唯讀） */}
+      {/* 檢舉面板：單則訊息、或對方本人（送出後畫面不變，要等後台認定成立才唯讀） */}
       {reportTarget && (
         <ReportSheet
           targetType={reportTarget.type}

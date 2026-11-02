@@ -276,6 +276,21 @@ public sealed class ReportService
 
         db.SaveChanges();
 
+        // 檢舉成立才通知檢舉人。這是整條流程對他唯一的回音——沒有它，
+        // 他不會知道自己的檢舉有沒有被看過，而聊天室也會在他毫無預期時變成唯讀。
+        // 駁回不通知：那多半只會變成爭論的起點，而且「沒有處置」本身就是結果。
+        if (status == ReportStatus.RESOLVED
+            && record.TargetType == ReportTargetType.USER.ToString()
+            && !string.IsNullOrWhiteSpace(record.ReporterId))
+        {
+            notifications?.Add(
+                record.ReporterId,
+                "REPORT",
+                "你的檢舉已處理",
+                "我們確認了你的檢舉並對該帳號做出處置。與對方的對話已經關閉，你可以隨時退出。",
+                "chat");
+        }
+
         LogAudit(actorId, $"REVIEW_{status}", reportId,
             hideTarget switch
             {

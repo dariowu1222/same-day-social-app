@@ -41,7 +41,8 @@ export type ChatRoomOverview = {
   peerNickname?: string | null
   peerPhotoUrl?: string | null
   lastMessage?: ChatMessage | null
-  /** 已檢舉對方：這間房對你唯讀，只剩「退出聊天室」。 */
+  /** 檢舉已成立（後台審核認定）：這間房對你唯讀，只剩「退出聊天室」。
+      送出檢舉但還沒審核時為 false。 */
   reported?: boolean
 }
 

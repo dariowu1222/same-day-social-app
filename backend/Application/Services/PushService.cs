@@ -127,13 +127,16 @@ public sealed class PushService(
             .GroupBy(x => x.ChatRoomId)
             .ToDictionary(g => g.Key, g => g.ToList());
 
-        // 檢舉過對方之後那間房就唯讀了，回不了訊息。既然回不了，就不該再為
-        // 那個人的新訊息推播——被檢舉的人還傳得進來（他不會知道自己被檢舉），
+        // 檢舉成立之後那間房就唯讀了，回不了訊息。既然回不了，就不該再為
+        // 那個人的新訊息推播——被處置的人還傳得進來（他不會知道對方檢舉過他），
         // 推播會變成繞過唯讀的另一條騷擾管道。
+        // 跟著唯讀的條件走：只看審核成立（RESOLVED）的檢舉。還在排隊審的不算，
+        // 否則一封誤報就能讓對方的訊息從此不再通知，等於未審先判。
         // 整張表一次撈：USER 類型的檢舉在小規模下只有幾列，比每人各查一次便宜。
         var userTarget = ReportTargetType.USER.ToString();
+        var resolved = ReportStatus.RESOLVED.ToString();
         var reportedPairs = db.Reports.AsNoTracking()
-            .Where(r => r.TargetType == userTarget)
+            .Where(r => r.TargetType == userTarget && r.Status == resolved)
             .Select(r => new { r.ReporterId, r.ReportedUserId })
             .ToList()
             .Select(r => (Reporter: r.ReporterId, Reported: r.ReportedUserId))
