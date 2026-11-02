@@ -602,7 +602,7 @@ type CardProps = {
 }
 
 /** 選單展開後的大約高度（三個項目＋分隔線＋內距），用來決定往上還是往下開。 */
-const MENU_HEIGHT = 152
+const MENU_HEIGHT = 164
 
 function ChatCard({ summary, onOpen, highlight, menuOpen, onToggleMenu, onAction }: CardProps) {
   const cardRef = useRef<HTMLDivElement>(null)
@@ -610,11 +610,21 @@ function ChatCard({ summary, onOpen, highlight, menuOpen, onToggleMenu, onAction
 
   function toggleMenu() {
     if (!menuOpen) {
-      // 列表是個 overflow:auto 的捲動容器，往下開會被它的下緣裁掉。
       // 下方空間不夠就往上開——不然最後幾列的「離開」「檢舉」永遠點不到。
+      //
+      // 可用空間要取「真的看得到的下緣」，有兩個東西會吃掉它：
+      // 捲動容器的 rect 是整份內容的高度（這份列表量到 2380px），不是可視區；
+      // 底部導覽列又會再蓋掉最後 64px。先前只看捲動容器的下緣，算出來永遠
+      // 有上千 px 的空間，往上開因此一次都沒觸發過，最後一列的選單整個開在
+      // 畫面外。
       const card = cardRef.current
       const scroller = card?.closest('.chat-list-scroll')
-      const limit = scroller?.getBoundingClientRect().bottom ?? window.innerHeight
+      const navTop = document.querySelector('.bottom-nav')?.getBoundingClientRect().top ?? window.innerHeight
+      const limit = Math.min(
+        scroller?.getBoundingClientRect().bottom ?? window.innerHeight,
+        window.innerHeight,
+        navTop,
+      )
       const cardBottom = card?.getBoundingClientRect().bottom ?? 0
       setDropUp(limit - cardBottom < MENU_HEIGHT)
     }
