@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.Connections;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using SameDaySocialApp.Application.Dto;
@@ -118,6 +119,9 @@ builder.Services.AddScoped<SameDaySocialApp.Application.Services.NotificationSer
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.ReportService>();
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.AdminUserService>();
 builder.Services.AddSingleton<SameDaySocialApp.Application.Services.AdminAccessService>();
+// 後台登入：信箱驗證碼 + 可撤銷的 session（見 AdminSessionService 的說明）
+builder.Services.AddScoped<SameDaySocialApp.Application.Services.AdminSessionService>();
+builder.Services.AddScoped<SameDaySocialApp.Infrastructure.Security.AdminSessionFilter>();
 // FirebaseApp 是行程層級單例，PushSender 跟著做成 Singleton
 builder.Services.AddSingleton<SameDaySocialApp.Application.Services.PushSender>();
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.PushService>();
@@ -160,8 +164,91 @@ app.UseAppObservability();
 //     app.MapOpenApi(); // requires .NET 9+
 // }
 
+// Render 把服務放在反向代理後面，真實來源 IP 在 X-Forwarded-For。
+// 不處理的話 RemoteIpAddress 對所有外部請求都是同一個代理位址，於是：
+//   1. 速率限制的分區鍵對匿名端點變成全站共用一個桶——任何人用一行 curl
+//      每分鐘打 10 次登入，就能讓所有人的登入／註冊／忘記密碼一起 429。
+//   2. admin_sessions.created_ip 永遠記到代理 IP，事後查不到來源。
+// 必須在速率限制與任何讀 IP 的東西之前。
+var forwardedHeaders = new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+    ForwardLimit = 1,
+};
+// 預設只信任 loopback，在容器裡等於整個中介軟體不作用。
+// 容器只接受來自平台代理的流量，所以這裡清空限制。
+forwardedHeaders.KnownNetworks.Clear();
+forwardedHeaders.KnownProxies.Clear();
+app.UseForwardedHeaders(forwardedHeaders);
+
+// 安全標頭。擺在最前面，連錯誤回應與靜態檔案都要帶上。
+//
+// 後台頁面看得到所有人的私訊，所以 frame-ancestors 一定要有：沒有它，
+// 別人可以把後台嵌進自己的頁面、疊一層透明按鈕騙管理者點下去（點擊劫持）。
+// X-Frame-Options 是給還不認得 CSP 的舊瀏覽器的同一道防線。
+app.Use(async (context, next) =>
+{
+    var headers = context.Response.Headers;
+    headers["X-Content-Type-Options"] = "nosniff";
+    headers["X-Frame-Options"] = "DENY";
+    headers["Referrer-Policy"] = "no-referrer";
+    headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()";
+    headers["Content-Security-Policy"] =
+        "default-src 'self'; " +
+        "img-src 'self' data: https:; " +
+        "style-src 'self' 'unsafe-inline'; " +
+        "script-src 'self'; " +
+        "connect-src 'self'; " +
+        "frame-ancestors 'none'; " +
+        "base-uri 'self'; " +
+        "form-action 'self'";
+
+    // 後台的回應一律不給快取：共用電腦上按上一頁不該還看得到別人的私訊
+    if (context.Request.Path.StartsWithSegments("/api/admin")
+        || context.Request.Path.StartsWithSegments("/api/moderation")
+        || context.Request.Path.StartsWithSegments("/admin"))
+    {
+        headers["Cache-Control"] = "no-store, no-cache, must-revalidate";
+        headers["Pragma"] = "no-cache";
+    }
+
+    await next();
+});
+
+if (!app.Environment.IsDevelopment())
+{
+    // 本機是 http，開了會讓瀏覽器把 localhost 記成只能走 https
+    app.UseHsts();
+}
+
+// 審核後台的靜態檔案。由 Dockerfile 的 node 階段建進 wwwroot/admin，
+// 本機開發時這個資料夾不存在，後台走它自己的 dev server（:5174）。
+app.UseStaticFiles();
+
 app.UseCors("Frontend");
 app.UseAuthentication();
+
+// 後台 token 只能用在後台。它和 App token 是同一個 issuer/audience，
+// 所以撤銷 session 之後那顆 token 對一般端點仍然驗得過——除非在這裡擋掉。
+app.Use(async (context, next) =>
+{
+    var isAdminToken = context.User?.FindFirst(SameDaySocialApp.Application.Services.JwtService.AdminScopeClaim)?.Value
+                       == SameDaySocialApp.Application.Services.JwtService.AdminScopeValue;
+    var isAdminPath = context.Request.Path.StartsWithSegments("/api/admin")
+                      || context.Request.Path.StartsWithSegments("/api/moderation");
+
+    if (isAdminToken && !isAdminPath)
+    {
+        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+        await context.Response.WriteAsJsonAsync(
+            SameDaySocialApp.Application.Dto.ApiResponse<object>.Fail(
+                "ADMIN_TOKEN_SCOPE", "後台憑證不能用於一般功能。"));
+        return;
+    }
+
+    await next();
+});
+
 app.UseAuthorization();
 app.UseRateLimiter();
 
@@ -169,7 +256,23 @@ app.MapControllers();
 
 // 健康檢查：託管平台（Render / Railway / Cloud Run）用來判斷服務是否存活。
 // 刻意不碰資料庫，避免 DB 短暫不可用時整個服務被判定失敗而重啟。
+// 白名單沒設 = 後台對所有人回 404。那個行為是對的（預設拒絕），
+// 但從外面看起來像「後台壞了」而不是「設定漏了」，所以啟動時先喊一聲。
+if (!app.Environment.IsDevelopment())
+{
+    var adminAccess = app.Services.GetRequiredService<SameDaySocialApp.Application.Services.AdminAccessService>();
+    if (!adminAccess.IsConfigured)
+    {
+        app.Logger.LogWarning(
+            "Moderation__AdminUserIds 未設定：審核後台對所有人回 404，沒有任何帳號進得去。");
+    }
+}
+
 app.MapGet("/health", () => Results.Json(new { status = "ok" }));
+
+// 後台是用 BrowserRouter 的 SPA：/admin/users/xxx 這種深層路徑要交回 index.html，
+// 否則重新整理會變成 404。
+app.MapFallbackToFile("/admin/{*path}", "admin/index.html");
 app.MapHub<ChatHub>("/hubs/chat", options =>
 {
     options.Transports = HttpTransportType.WebSockets | HttpTransportType.ServerSentEvents | HttpTransportType.LongPolling;

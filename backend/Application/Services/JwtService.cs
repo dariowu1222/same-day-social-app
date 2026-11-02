@@ -56,6 +56,40 @@ public sealed class JwtService
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
+    /// <summary>
+    /// 後台專用 token。
+    ///
+    /// 刻意和一般 App token 分開簽，而且帶 scope=admin：後台端點只認這個 scope，
+    /// 所以手機上那顆七天有效的 App token 就算外流，也打不開後台的任何一扇門。
+    ///
+    /// sid 指向 admin_sessions 的一列。真正的有效期由那一列決定（可撤銷、可閒置逾時），
+    /// JWT 自己的 exp 只是最後一道保險，設得比 session 的絕對上限略寬。
+    /// </summary>
+    public string IssueAdminToken(string userId, string nickname, string sessionId, TimeSpan expiry)
+    {
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_secret));
+        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        var claims = new[]
+        {
+            new Claim(JwtRegisteredClaimNames.Sub, userId),
+            new Claim("nickname", nickname),
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N")),
+            new Claim(AdminScopeClaim, AdminScopeValue),
+            new Claim(AdminSessionClaim, sessionId),
+        };
+        var token = new JwtSecurityToken(
+            issuer: Issuer,
+            audience: Audience,
+            claims: claims,
+            expires: DateTime.UtcNow.Add(expiry),
+            signingCredentials: creds);
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    public const string AdminScopeClaim = "scope";
+    public const string AdminScopeValue = "admin";
+    public const string AdminSessionClaim = "sid";
+
     public TokenValidationParameters ValidationParameters => new()
     {
         ValidateIssuer = true,

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
-  getUserDetail, sanctionUser, updateUser,
+  getUserDetail, sanctionUser, updateUser, reverify, requestReverifyCode, ApiError,
   type MembershipTier, type SanctionAction, type UserDetail,
 } from '../api'
 import { CATEGORY_LABEL, REPORT_STATUS_LABEL, SANCTION_LABEL, SeverityBadge, StatusBadge, TARGET_LABEL, formatDate } from '../ui'
@@ -74,10 +74,52 @@ export default function UserDetailPage() {
       setReason('')
       await load()
     } catch (e) {
+      // 封鎖與註銷不可逆，後端要求驗證碼是最近十分鐘內通過的。
+      // 過期的話不是失敗，是請你再驗一次——驗完就地重跑同一個動作。
+      if (e instanceof ApiError && e.code === 'ADMIN_REVERIFY_REQUIRED') {
+        // busy 維持 true：寄碼要等網路往返，期間不該讓人再點一次按鈕，
+        // 不然會連續寄出好幾組碼（而且每組都會作廢前一組）。
+        await reverifyThenRetry(action)
+        return
+      }
       setError(e instanceof Error ? e.message : '處置失敗')
     } finally {
       setBusy(false)
     }
+  }
+
+  /** 要一組新的驗證碼、請使用者輸入，通過後重跑原本的處置。 */
+  async function reverifyThenRetry(action: SanctionAction) {
+    setError('')
+    setNotice('正在寄出確認碼…')
+    let masked: string
+    try {
+      masked = await requestReverifyCode()
+    } catch (e) {
+      setBusy(false)
+      setNotice('')
+      setError(e instanceof Error ? e.message : '無法寄出驗證碼')
+      return
+    }
+    setNotice('')
+
+    const code = window.prompt(
+      `這個動作無法復原。
+已寄一組六位數確認碼到 ${masked}，請輸入以繼續：`)
+    if (!code) {
+      setBusy(false)
+      return
+    }
+
+    try {
+      await reverify(code.trim())
+    } catch (e) {
+      setBusy(false)
+      setError(e instanceof Error ? e.message : '驗證失敗')
+      return
+    }
+    setBusy(false)
+    await doSanction(action)
   }
 
   if (error && !user) return <div className="msg msg-error">{error}</div>

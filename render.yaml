@@ -13,7 +13,10 @@ services:
     plan: free
     region: singapore                 # 離台灣最近的免費區域
     dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
+    # context 是整個 repo 而不是 backend/：映像要同時包含後台 SPA 的原始碼。
+    # 根目錄的 .dockerignore 負責把 frontend/、node_modules、本機機密擋在外面，
+    # 沒有它的話 build context 會大到拖垮部署時間。
+    dockerContext: .
     healthCheckPath: /health
     autoDeployTrigger: commit         # push 到 main 就自動重新部署
 
@@ -65,4 +68,19 @@ services:
 
       # Facebook 登入（App ID 已在 appsettings.json，非機密；Secret 才是機密）
       - key: Authentication__Facebook__AppSecret
+        sync: false
+
+      # 審核後台的白名單：逗號分隔的 userId。
+      # 沒設 = 一個人都進不去（預設拒絕），所以正式環境一定要在 Render 的
+      # Environment 分頁填上，否則部署出去的後台等於沒有人能用。
+      # 改這個值要重新部署才會生效（啟動時讀一次）。
+      - key: Moderation__AdminUserIds
+        sync: false
+
+      # 彙總推播：FCM 服務帳戶金鑰（base64）與排程觸發密鑰。
+      # 兩者都沒設時整條推播鏈路自動停用（端點回 404、workflow 自己跳過），
+      # 所以漏填不會壞掉，但也不會送出任何推播。
+      - key: Push__FirebaseServiceAccountJsonBase64
+        sync: false
+      - key: Push__TriggerSecret
         sync: false

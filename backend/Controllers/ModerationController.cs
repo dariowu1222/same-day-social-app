@@ -3,18 +3,21 @@ using Microsoft.AspNetCore.Mvc;
 using SameDaySocialApp.Application.Dto;
 using SameDaySocialApp.Application.Services;
 using SameDaySocialApp.Domain.Enums;
+using SameDaySocialApp.Infrastructure.Security;
 
 namespace SameDaySocialApp.Controllers;
 
 /// <summary>
 /// 審核後台。這裡讀得到使用者的貼文與私訊內容，因此：
-///  1. 每個動作都先過 AdminAccessService（預設拒絕）
-///  2. 回傳欄位刻意最小化，只給審核判斷需要的內容
-///  3. 查看與處置都寫入審核軌跡
+///  1. 只接受後台專用 token（AdminSessionFilter）——一般 App token 一律 404
+///  2. 每個動作仍再過一次 AdminAccessService（預設拒絕），不靠單一道防線
+///  3. 回傳欄位刻意最小化，只給審核判斷需要的內容
+///  4. 查看與處置都寫入審核軌跡
 /// </summary>
 [ApiController]
 [Route("api/moderation")]
 [Authorize]
+[ServiceFilter(typeof(AdminSessionFilter))]
 public sealed class ModerationController(ReportService reports, AdminAccessService admin) : ControllerBase
 {
     private string CallerId => User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value

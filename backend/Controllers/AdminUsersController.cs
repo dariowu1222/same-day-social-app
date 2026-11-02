@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using SameDaySocialApp.Application.Dto;
 using SameDaySocialApp.Application.Services;
 using SameDaySocialApp.Domain.Enums;
+using SameDaySocialApp.Infrastructure.Security;
 
 namespace SameDaySocialApp.Controllers;
 
@@ -13,6 +14,7 @@ namespace SameDaySocialApp.Controllers;
 [ApiController]
 [Route("api/admin")]
 [Authorize]
+[ServiceFilter(typeof(AdminSessionFilter))]
 public sealed class AdminUsersController(
     AdminUserService users,
     ReportService reports,
@@ -21,7 +23,14 @@ public sealed class AdminUsersController(
     private string CallerId => User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
                                ?? User.FindFirst("sub")?.Value!;
 
+    // filter 已經擋過一次，這裡再擋一次是刻意的：守門邏輯不該只有一個地方知道，
+    // 哪天 filter 被誰從類別上拿掉，端點也不會就這樣敞開。
     private bool Denied() => !admin.IsAdmin(CallerId);
+
+    /// <summary>這次請求的驗證碼是否夠新。封鎖／註銷要求它是 true。</summary>
+    private bool RecentlyVerified()
+        => HttpContext.Items.TryGetValue(AdminSessionFilter.RecentlyVerifiedKey, out var value)
+           && value is true;
 
     [HttpGet("dashboard")]
     public ActionResult<ApiResponse<AdminUserService.Dashboard>> Dashboard()
@@ -82,6 +91,19 @@ public sealed class AdminUsersController(
         if (userId == CallerId)
         {
             return BadRequest(ApiResponse<bool>.Fail("SANCTION_SELF", "無法對自己的帳號執行處置。"));
+        }
+
+        // 用「實際效果」而不是「動作名稱」判斷要不要再驗證。
+        //
+        // SUSPEND 不帶到期日時走的是和 BAN 完全相同的程式路徑（ChangeStatus 的
+        // disableLogin: true，而且註解自己就寫著「需人工解除」），也就是永久停權。
+        // 只列 BAN/DELETE 的話，把 request body 改一個字就繞過去了。
+        var permanentSuspend = request.Action == SanctionAction.SUSPEND && request.ExpiresAt == null;
+        var destructive = request.Action is SanctionAction.BAN or SanctionAction.DELETE || permanentSuspend;
+        if (destructive && !RecentlyVerified())
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, ApiResponse<bool>.Fail(
+                "ADMIN_REVERIFY_REQUIRED", "這個動作無法復原，請重新輸入信箱驗證碼。"));
         }
 
         var ok = request.Action switch

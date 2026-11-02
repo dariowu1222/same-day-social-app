@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { BrowserRouter, NavLink, Navigate, Route, Routes } from 'react-router-dom'
-import { clearToken, getToken, type AuthUser } from './api'
+import { clearToken, getToken, logout, type AuthUser } from './api'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import UsersPage from './pages/UsersPage'
@@ -29,7 +29,24 @@ export default function App() {
     setUser(next)
   }
 
-  function handleLogout() {
+  const [loggingOut, setLoggingOut] = useState(false)
+
+  async function handleLogout() {
+    if (loggingOut) return
+    setLoggingOut(true)
+    // 要等後端真的把 session 撤銷再切畫面。不等的話，使用者按完就關分頁，
+    // 請求可能根本沒送出去，token 會一直活到過期。
+    await logout()
+    try {
+      sessionStorage.removeItem(USER_KEY)
+    } catch { /* ignore */ }
+    setLoggingOut(false)
+    setUser(null)
+  }
+
+  // session 過期（閒置超時、被撤銷、或絕對上限到了）時，api.ts 會清掉 token
+  // 並丟 401。這裡把畫面退回登入頁，不要讓使用者對著一堆錯誤訊息猜發生什麼事。
+  function handleExpired() {
     clearToken()
     try {
       sessionStorage.removeItem(USER_KEY)
@@ -37,12 +54,18 @@ export default function App() {
     setUser(null)
   }
 
+  useEffect(() => {
+    window.addEventListener('admin-session-expired', handleExpired)
+    return () => window.removeEventListener('admin-session-expired', handleExpired)
+  })
+
   if (!user) {
     return <LoginPage onLogin={handleLogin} />
   }
 
   return (
-    <BrowserRouter>
+    // basename：後台部署在後端的 /admin 子路徑底下，少了它所有連結都會指到根目錄
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <div className="shell">
         <aside className="sidebar">
           <div className="sidebar-brand">同頻 Today 後台</div>
@@ -59,7 +82,9 @@ export default function App() {
           </nav>
           <div className="sidebar-foot">
             <div className="sidebar-user">{user.nickname}<br />{user.email}</div>
-            <button className="btn btn-sm" onClick={handleLogout}>登出</button>
+            <button className="btn btn-sm" onClick={() => void handleLogout()} disabled={loggingOut}>
+              {loggingOut ? '登出中…' : '登出'}
+            </button>
           </div>
         </aside>
 

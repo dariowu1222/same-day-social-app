@@ -247,7 +247,18 @@ public sealed class AdminUserService
             account.UpdatedAt = DateTimeOffset.UtcNow;
         }
 
+        // 停用登入只擋「下次登入」。如果這個人手上有還活著的後台 session，
+        // 不撤銷的話他照樣能用到 8 小時上限——而被處置的人剛好最可能是
+        // 「帳號被盜、現在正在用後台」的那個。資料庫層級直接撤，不繞服務。
+        if (disableLogin)
+        {
+            db.AdminSessions
+                .Where(x => x.UserId == userId && x.RevokedAt == null)
+                .ExecuteUpdate(set => set.SetProperty(x => x.RevokedAt, DateTimeOffset.UtcNow));
+        }
+
         db.SaveChanges();
+
         AddSanction(userId, actorId, action, reason, until, reportId);
         return true;
     }
@@ -284,6 +295,7 @@ public sealed class AdminUserService
         }
 
         db.SaveChanges();
+
         return expired.Count;
     }
 

@@ -1,0 +1,39 @@
+# Docker build context 是 repo 根目錄（見 render.yaml），所以這裡要負責
+# backend/.dockerignore 原本做的事，再加上把使用者端 App 整個擋掉。
+#
+# 不擋的話每次部署都會把幾百 MB 的 node_modules 與 Android 建置產物送進 daemon，
+# 而且 frontend/ 改一個字就會讓後端映像的快取失效。
+
+# 使用者端 App：它是 Capacitor，出貨在 APK 裡，不進後端映像
+frontend/
+
+# 套件與建置產物
+**/node_modules
+**/dist
+**/bin
+**/obj
+*.user
+
+# 本機資料（JsonStorageService 的檔案儲存）
+backend/Data/
+backend/data/
+
+# 機密：正式環境一律用環境變數提供，不進映像
+backend/appsettings.Development.json
+**/secrets.json
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.device.example
+
+# 開發環境雜物
+.git/
+.github/
+.vs/
+.vscode/
+.claude/
+.idea/
+docs/
+**/*.log
+backend/Properties/launchSettings.json
+docker-compose.observability.yml

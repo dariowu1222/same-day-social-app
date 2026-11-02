@@ -177,6 +177,19 @@ tbody tr:hover { background: #fafbfc; }
 .btn-danger:hover { background: #a5301f; }
 .btn-sm { padding: 5px 10px; font-size: 12.5px; }
 
+/* 純文字的次要動作（重寄驗證碼、改用其他帳號）。不做成按鈕外觀，
+   免得和「進入後台」那顆主要動作搶注意力。 */
+.btn-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: 12.5px;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.btn-link:disabled { opacity: 0.5; cursor: not-allowed; }
+
 .link-btn {
   background: none;
   border: none;

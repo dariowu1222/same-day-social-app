@@ -27,6 +27,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<NotificationRecord> Notifications => Set<NotificationRecord>();
     public DbSet<ReportRecord> Reports => Set<ReportRecord>();
     public DbSet<ModerationAuditRecord> ModerationAudits => Set<ModerationAuditRecord>();
+    public DbSet<AdminLoginCodeRecord> AdminLoginCodes => Set<AdminLoginCodeRecord>();
+    public DbSet<AdminSessionRecord> AdminSessions => Set<AdminSessionRecord>();
     public DbSet<AccountSanctionRecord> AccountSanctions => Set<AccountSanctionRecord>();
     public DbSet<DeviceTokenRecord> DeviceTokens => Set<DeviceTokenRecord>();
     public DbSet<PushDigestStateRecord> PushDigestStates => Set<PushDigestStateRecord>();
