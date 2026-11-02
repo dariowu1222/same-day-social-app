@@ -601,7 +601,11 @@ type CardProps = {
   onAction: (summary: ChatSummary, action: RoomAction) => void
 }
 
-/** 選單展開後的大約高度（三個項目＋分隔線＋內距），用來決定往上還是往下開。 */
+/**
+ * 選單展開後的大約高度（三個項目＋分隔線＋內距），用來決定往上還是往下開。
+ * 已處置的房間少一項「檢舉使用者」，實際高度會比這個小——這裡故意取大的那個，
+ * 寧可早一點翻上去；底下的 above > below 那道保險會擋掉翻錯邊的情況。
+ */
 const MENU_HEIGHT = 164
 
 function ChatCard({ summary, onOpen, highlight, menuOpen, onToggleMenu, onAction }: CardProps) {
@@ -612,21 +616,34 @@ function ChatCard({ summary, onOpen, highlight, menuOpen, onToggleMenu, onAction
     if (!menuOpen) {
       // 下方空間不夠就往上開——不然最後幾列的「離開」「檢舉」永遠點不到。
       //
-      // 可用空間要取「真的看得到的下緣」，有兩個東西會吃掉它：
-      // 捲動容器的 rect 是整份內容的高度（這份列表量到 2380px），不是可視區；
-      // 底部導覽列又會再蓋掉最後 64px。先前只看捲動容器的下緣，算出來永遠
-      // 有上千 px 的空間，往上開因此一次都沒觸發過，最後一列的選單整個開在
-      // 畫面外。
+      // 兩邊的可用空間都要取「真的看得到的範圍」，而不是元素自己的 rect：
+      // 捲動容器的 rect 是整份內容的高度（這份列表量到 2380px），超出的部分
+      // 被它自己的 overflow 裁掉，往上溢出的更是捲都捲不回來。
       const card = cardRef.current
-      const scroller = card?.closest('.chat-list-scroll')
-      const navTop = document.querySelector('.bottom-nav')?.getBoundingClientRect().top ?? window.innerHeight
-      const limit = Math.min(
-        scroller?.getBoundingClientRect().bottom ?? window.innerHeight,
+      const cardRect = card?.getBoundingClientRect()
+      const scrollerRect = card?.closest('.chat-list-scroll')?.getBoundingClientRect()
+
+      // 導覽列在手機是底部橫條，桌面（>=1024px）被 17-desktop.css 改成左側直欄。
+      // 只有橫條會從下方吃掉空間；直欄跟卡片在水平方向完全不重疊，它的 top 是 0，
+      // 當成下緣用的話可用空間會變成 0，於是每一列都往上開，最上面那幾列的選單
+      // 反而整個溢出到捲動容器上方，三個項目一個都點不到。所以先問「它跟這張卡
+      // 在水平方向有沒有交集」，沒有交集就不是障礙物。
+      const navRect = document.querySelector('.bottom-nav')?.getBoundingClientRect()
+      const navBlocksBottom = !!navRect && !!cardRect
+        && navRect.right > cardRect.left && navRect.left < cardRect.right
+
+      const visibleBottom = Math.min(
+        scrollerRect?.bottom ?? window.innerHeight,
         window.innerHeight,
-        navTop,
+        navBlocksBottom ? navRect.top : window.innerHeight,
       )
-      const cardBottom = card?.getBoundingClientRect().bottom ?? 0
-      setDropUp(limit - cardBottom < MENU_HEIGHT)
+      const visibleTop = Math.max(scrollerRect?.top ?? 0, 0)
+      const below = visibleBottom - (cardRect?.bottom ?? 0)
+      const above = (cardRect?.top ?? 0) - visibleTop
+
+      // 下面放不下才翻上去，而且要上面真的比較寬裕才翻。往下開最糟是被裁掉一截、
+      // 捲一下還看得到；往上溢出的部分是捲不出來的，所以翻錯邊的代價不對等。
+      setDropUp(below < MENU_HEIGHT && above > below)
     }
     onToggleMenu(menuOpen ? null : summary.room.id)
   }
