@@ -119,6 +119,9 @@ builder.Services.AddScoped<SameDaySocialApp.Application.Services.NotificationSer
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.ReportService>();
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.AdminUserService>();
 builder.Services.AddSingleton<SameDaySocialApp.Application.Services.AdminAccessService>();
+// 帳號狀態的即時判斷（封鎖／停權要能當場生效，而不是等 token 過期）
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<SameDaySocialApp.Application.Services.AccountStateService>();
 // 後台登入：信箱驗證碼 + 可撤銷的 session（見 AdminSessionService 的說明）
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.AdminSessionService>();
 builder.Services.AddScoped<SameDaySocialApp.Infrastructure.Security.AdminSessionFilter>();
@@ -227,6 +230,37 @@ app.UseStaticFiles();
 
 app.UseCors("Frontend");
 app.UseAuthentication();
+
+// 帳號被封鎖／停權／註銷之後，手上那顆還沒過期的 token 必須當場失效。
+//
+// 原本的處置只把 auth_accounts.is_disabled 設成 true，而那個欄位只有登入路徑
+// 會讀——所以被封鎖的人可以繼續用舊 token 傳訊息、讀對話，最長七天。
+// 「永久封鎖」對正在騷擾人的帳號形同虛設，而那正是最需要它生效的場合。
+//
+// 狀態有 60 秒的記憶體快取（見 AccountStateService），但後台處置時會主動清掉，
+// 所以從後台按下去是當場生效，不是等一分鐘。
+app.Use(async (context, next) =>
+{
+    var userId = context.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                 ?? context.User?.FindFirst("sub")?.Value;
+
+    if (!string.IsNullOrWhiteSpace(userId))
+    {
+        var accountState = context.RequestServices
+            .GetRequiredService<SameDaySocialApp.Application.Services.AccountStateService>();
+
+        if (!await accountState.IsActiveAsync(userId, context.RequestAborted))
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            await context.Response.WriteAsJsonAsync(
+                SameDaySocialApp.Application.Dto.ApiResponse<object>.Fail(
+                    "ACCOUNT_DISABLED", "這個帳號目前無法使用。"));
+            return;
+        }
+    }
+
+    await next();
+});
 
 // 後台 token 只能用在後台。它和 App token 是同一個 issuer/audience，
 // 所以撤銷 session 之後那顆 token 對一般端點仍然驗得過——除非在這裡擋掉。

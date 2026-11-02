@@ -16,10 +16,12 @@ namespace SameDaySocialApp.Application.Services;
 public sealed class AdminUserService
 {
     private readonly AppDbContext? db;
+    private readonly AccountStateService? accountState;
 
     public AdminUserService(IServiceProvider services)
     {
         db = services.GetService<AppDbContext>();
+        accountState = services.GetService<AccountStateService>();
     }
 
     public sealed record UserSummary(
@@ -259,6 +261,10 @@ public sealed class AdminUserService
 
         db.SaveChanges();
 
+        // 狀態變了就把快取清掉，讓下一個請求立刻看到。沒有這一行的話，
+        // 處置要等快取過期才生效，而那正是最不該有延遲的時刻。
+        accountState?.Invalidate(userId);
+
         AddSanction(userId, actorId, action, reason, until, reportId);
         return true;
     }
@@ -295,6 +301,12 @@ public sealed class AdminUserService
         }
 
         db.SaveChanges();
+
+        // 停權到期恢復也要清快取，否則人已經解禁了卻還要等快取過期才能用
+        foreach (var u in expired)
+        {
+            accountState?.Invalidate(u.Id);
+        }
 
         return expired.Count;
     }
