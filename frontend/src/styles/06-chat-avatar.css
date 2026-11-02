@@ -1642,51 +1642,6 @@
   background: #e8e0d4;
 }
 
-.demo-login-block {
-  display: flex;
-  gap: 8px;
-  width: 100%;
-}
-
-.demo-nickname-input {
-  flex: 1;
-  height: 44px;
-  padding: 0 14px;
-  border: 1.5px solid #e8c8b0;
-  border-radius: 12px;
-  background: rgba(255,255,255,0.7);
-  font-size: 15px;
-  color: #4a3f35;
-  outline: none;
-}
-.demo-nickname-input:focus {
-  border-color: #d86c4e;
-}
-.demo-nickname-input::placeholder {
-  color: #c0b0a0;
-}
-
-.demo-login-button {
-  height: 44px;
-  padding: 0 18px;
-  border-radius: 12px;
-  border: none;
-  background: #f0e4d8;
-  color: #7a5a45;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.15s;
-}
-.demo-login-button:hover:not(:disabled) {
-  background: #e8d4c4;
-}
-.demo-login-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
 /* ── 歡迎頁（輕觸開始）+ 登入方式 Bottom Sheet ── */
 /* 歡迎頁內容整體垂直置中（扣掉 .login-screen 上下 padding 18+26）。只用於 welcome，不影響登入/註冊長表單。 */
 .login-content--center {

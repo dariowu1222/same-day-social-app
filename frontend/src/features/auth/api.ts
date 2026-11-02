@@ -51,15 +51,6 @@ export async function facebookLogin(accessToken: string, remember: boolean) {
   return response.data
 }
 
-export async function demoLogin(nickname: string) {
-  const response = await request<{ userId: string; nickname: string; token?: string }>('/api/auth/demo-login', {
-    method: 'POST',
-    body: JSON.stringify({ nickname }),
-  })
-  if (response.data.token) setAuthToken(response.data.token, false)
-  return response.data
-}
-
 export async function deleteAccount() {
   return request<boolean>('/api/account', { method: 'DELETE' })
 }

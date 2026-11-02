@@ -23,18 +23,6 @@ Base URL：`http://localhost:5000`
 
 ## Auth
 
-### POST /api/auth/demo-login
-
-Demo 用假登入，不驗證密碼。
-
-Request:
-
-```json
-{
-  "nickname": "使用者名稱"
-}
-```
-
 ### POST /api/auth/register
 
 正式註冊，會寫入 `users` 與 `auth_accounts`。

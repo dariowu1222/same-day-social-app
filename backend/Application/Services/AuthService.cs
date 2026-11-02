@@ -22,45 +22,6 @@ public sealed class AuthService
         db = services.GetService<AppDbContext>();
     }
 
-    public User DemoLogin(string nickname)
-    {
-        var cleanNickname = string.IsNullOrWhiteSpace(nickname) ? "同頻使用者" : nickname.Trim();
-
-        if (db != null)
-        {
-            // demo 帳號的特徵是沒有對應的登入帳號（auth_accounts）。
-            // 同暱稱就沿用既有的那個，否則每點一次「快速體驗」都會多一個孤兒帳號，
-            // 正式 DB 很快被測試資料淹沒，後台的會員列表也會被灌滿。
-            var active = AccountStatus.ACTIVE.ToString();
-            var existing = db.Users
-                .Where(u => u.Nickname == cleanNickname
-                            && u.Status == active
-                            && !db.AuthAccounts.Any(a => a.UserId == u.Id))
-                .OrderBy(u => u.CreatedAt)
-                .FirstOrDefault();
-            if (existing != null)
-            {
-                return existing.ToDomain();
-            }
-        }
-
-        var user = new User
-        {
-            Id = $"user_{Guid.NewGuid():N}",
-            Nickname = cleanNickname,
-            Bio = "先用 demo 身分體驗同頻 Today"
-        };
-
-        if (db != null)
-        {
-            db.Users.Add(user.ToRecord());
-            db.SaveChanges();
-            return user;
-        }
-
-        return storage.InsertOne("users", user);
-    }
-
     public async Task<AuthServiceResult<RegistrationStartResponse>> RegisterAsync(RegisterCommand command, CancellationToken cancellationToken)
     {
         if (db == null)

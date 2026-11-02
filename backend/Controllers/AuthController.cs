@@ -9,22 +9,8 @@ namespace SameDaySocialApp.Controllers;
 [ApiController]
 [Route("api/auth")]
 [EnableRateLimiting("auth")]
-public sealed class AuthController(AuthService authService, JwtService jwtService, IHostEnvironment env) : ControllerBase
+public sealed class AuthController(AuthService authService, JwtService jwtService) : ControllerBase
 {
-    [HttpPost("demo-login")]
-    public ActionResult<ApiResponse<object>> DemoLogin([FromBody] DemoLoginRequest request)
-    {
-        // 僅限開發環境：正式環境一律拒絕，避免匿名換 token
-        if (!env.IsDevelopment())
-        {
-            return NotFound(ApiResponse<object>.Fail("NOT_FOUND", "找不到此資源。"));
-        }
-
-        var user = authService.DemoLogin(request.Nickname);
-        var token = jwtService.IssueToken(user.Id, user.Nickname, TimeSpan.FromDays(1));
-        return ApiResponse<object>.Ok(new { userId = user.Id, user.Nickname, token });
-    }
-
     [HttpPost("register")]
     public async Task<ActionResult<ApiResponse<RegistrationStartResponse>>> Register([FromBody] RegisterRequest request, CancellationToken cancellationToken)
     {
@@ -138,7 +124,6 @@ public sealed class AuthController(AuthService authService, JwtService jwtServic
     }
 }
 
-public sealed record DemoLoginRequest(string Nickname);
 public sealed record RegisterRequest(string Nickname, string Email, string Password, string ConfirmPassword, string BirthYear, string Gender, bool TermsAccepted);
 public sealed record RegistrationConfirmRequest(string Email, string Code);
 public sealed record LoginRequest(string Email, string Password);

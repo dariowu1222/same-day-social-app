@@ -5,7 +5,6 @@ import { ensureSocialInit, GOOGLE_WEB_CLIENT_ID, FACEBOOK_APP_ID } from './googl
 import {
   confirmRegistration,
   confirmPasswordReset,
-  demoLogin,
   googleLogin,
   facebookLogin,
   loginAccount,
@@ -339,13 +338,6 @@ export default function LoginPage({ onAuthenticated }: Props) {
     })
   }
 
-  async function submitDemoLogin() {
-    await runAuthAction(async () => {
-      const user = await demoLogin('同頻使用者')
-      onAuthenticated(user, false)
-    })
-  }
-
   // 社群登入：原生喚起 → 取得憑證（Google idToken / Facebook accessToken）→ 後端驗證後簽發 JWT。
   function handleSocialLogin(provider: 'google' | 'facebook') {
     if (provider === 'facebook') {
@@ -369,7 +361,7 @@ export default function LoginPage({ onAuthenticated }: Props) {
 
     if (!GOOGLE_WEB_CLIENT_ID) {
       setAuthMessage('')
-      setAuthError('Google 登入尚未設定（缺少 Web Client ID），請先用 Email 登入或快速體驗。')
+      setAuthError('Google 登入尚未設定（缺少 Web Client ID），請先用 Email 登入。')
       return
     }
 
@@ -537,10 +529,6 @@ export default function LoginPage({ onAuthenticated }: Props) {
           <div className="auth-options-foot">
             <button type="button" onClick={() => { resetStatus(); setOptionsOpen(false); setMode('register') }}>
               建立帳號
-            </button>
-            <span className="dot" aria-hidden="true">·</span>
-            <button type="button" onClick={submitDemoLogin} disabled={submitting}>
-              {submitting ? '進入中…' : '快速體驗'}
             </button>
           </div>
         </div>
