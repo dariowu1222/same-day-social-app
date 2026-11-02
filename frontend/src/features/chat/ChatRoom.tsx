@@ -30,6 +30,8 @@ type Props = {
   onSendContent: (content: string, quote?: QuoteInfo) => void | Promise<void>
   onRecall?: (messageId: string) => void
   setting?: ChatMemberSetting
+  /** 已檢舉對方：對話唯讀，輸入列換成說明與「退出聊天室」。 */
+  reported?: boolean
   onUpdateSetting?: (patch: { noteName?: string | null; pinned?: boolean; muted?: boolean }) => void
   onLeave?: () => void
   onBlock?: () => void
@@ -61,7 +63,7 @@ type RenderRow =
 export default function ChatRoom({
   room, otherProfile, otherUserId, currentUserId,
   messages, draft, onDraftChange, onSendContent, onRecall,
-  setting, onUpdateSetting, onLeave, onBlock, onReport, onBack,
+  setting, reported = false, onUpdateSetting, onLeave, onBlock, onReport, onBack,
 }: Props) {
   // const navigate = useNavigate() // 任務功能暫時下架（後端保留）
   const [sheet, setSheet] = useState<SheetState>('closed')
@@ -111,7 +113,7 @@ export default function ChatRoom({
   // 安全：人身攻擊措辭提醒（送出前，不阻擋）
   const [wordingDialog, setWordingDialog] = useState<{ onProceed: () => void } | null>(null)
   const [wordingMuted, setWordingMuted] = useState(false)
-  // 「離開並檢舉」要等真的送出才離開；中途取消不該把對話移除
+  // 檢舉要等真的送出才算數；中途取消不該讓對話變成唯讀
   const reportedRef = useRef(false)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -178,7 +180,7 @@ export default function ChatRoom({
   }
   function confirmReport() {
     setMenuOpen(false)
-    setConfirm({ title: '離開並檢舉對方', desc: '接著會請你選擇原因；送出後此對話也會移除。', danger: true, onYes: () => { setConfirm(null); setReportTarget({ type: 'USER', id: otherUserId }) } })
+    setConfirm({ title: '檢舉對方', desc: '接著會請你選擇原因。送出後這段對話會關閉，你還看得到先前的訊息，但不能再傳送。', danger: true, onYes: () => { setConfirm(null); setReportTarget({ type: 'USER', id: otherUserId }) } })
   }
 
   // ── 長按 / 右鍵訊息 → 操作列 ──
@@ -446,7 +448,7 @@ export default function ChatRoom({
       </div>
 
       {/* 引用回覆條 */}
-      {quote && (
+      {quote && !reported && (
         <div className="cr-quote-bar">
           <div className="cr-quote-bar-body">
             <span className="cr-quote-bar-name">回覆 {quoteName(quote)}</span>
@@ -496,7 +498,17 @@ export default function ChatRoom({
         </div>
       )}
 
-      {/* 輸入列：圖片 / 語音 / 輸入框 / 送出 */}
+      {/* 檢舉過的對話唯讀：不自動把房間移除——使用者常常還要回頭看對方說過
+          什麼，而且對話憑空消失會讓人以為自己誤觸。退不退由他自己決定。 */}
+      {reported ? (
+        <div className="cr-frozen">
+          <p className="cr-frozen-title">你已檢舉這位使用者，我們會盡快查看。</p>
+          <p className="cr-frozen-desc">這段對話已經關閉，先前的訊息還看得到，但不能再傳送。</p>
+          <button className="cr-frozen-leave" type="button" onClick={confirmLeave}>
+            <LogOut size={17} strokeWidth={2} />退出聊天室
+          </button>
+        </div>
+      ) : (
       <div className="cr-input">
         <button
           className="cr-input-icon cr-img"
@@ -529,6 +541,7 @@ export default function ChatRoom({
         </button>
         <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={handlePickImage} />
       </div>
+      )}
 
       {/* 更多選單 action sheet */}
       <div className={`cr-menu-mask${menuOpen ? ' show' : ''}`} onClick={() => setMenuOpen(false)} />
@@ -570,9 +583,13 @@ export default function ChatRoom({
         <button className="cr-menu-item danger" type="button" onClick={confirmBlock}>
           <Ban size={19} strokeWidth={1.8} className="cr-menu-ic" /><span>離開並封鎖對方</span>
         </button>
-        <button className="cr-menu-item danger" type="button" onClick={confirmReport}>
-          <Flag size={19} strokeWidth={1.8} className="cr-menu-ic" /><span>離開並檢舉對方</span>
-        </button>
+        {/* 已經檢舉過就不再給：再送一次對審核沒有幫助，而使用者按下去只會
+            看到同一張面板，像是上一次沒成功 */}
+        {!reported && (
+          <button className="cr-menu-item danger" type="button" onClick={confirmReport}>
+            <Flag size={19} strokeWidth={1.8} className="cr-menu-ic" /><span>檢舉對方</span>
+          </button>
+        )}
       </div>
 
       {/* 離開類動作二次確認 */}
@@ -591,7 +608,7 @@ export default function ChatRoom({
 
       {toast && <div className="cr-toast">{toast}</div>}
 
-      {/* 檢舉面板：單則訊息、或對方本人（走「離開並檢舉」時，送出後才真的離開對話） */}
+      {/* 檢舉面板：單則訊息、或對方本人（檢舉對方時，送出後這間房才變成唯讀） */}
       {reportTarget && (
         <ReportSheet
           targetType={reportTarget.type}
@@ -686,9 +703,11 @@ export default function ChatRoom({
             className={`cr-action-bar${action.isOut ? ' out' : ''}`}
             style={{ left: action.x, top: action.y }}
           >
-            <button className="cr-action-btn" type="button" onClick={actReply}>
-              <Reply size={17} strokeWidth={1.9} /><span>回覆</span>
-            </button>
+            {!reported && (
+              <button className="cr-action-btn" type="button" onClick={actReply}>
+                <Reply size={17} strokeWidth={1.9} /><span>回覆</span>
+              </button>
+            )}
             <button className="cr-action-btn" type="button" onClick={actCopy}>
               <Copy size={17} strokeWidth={1.9} /><span>複製</span>
             </button>

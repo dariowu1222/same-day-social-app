@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 using Microsoft.Extensions.Logging;
 using SameDaySocialApp.Domain.Entities;
 using SameDaySocialApp.Domain.Enums;
@@ -73,14 +74,11 @@ public sealed class ReportService
             return new SubmitResult(null, false, "REPORT_SELF");
         }
 
-        // 同一人對同一標的只記一次（DB 也有唯一索引把關）
-        var existing = db.Reports.AsNoTracking().FirstOrDefault(x =>
-            x.TargetType == targetType.ToString() &&
-            x.TargetId == targetId &&
-            x.ReporterId == reporterId);
+        // 同一人對同一標的只記一次
+        var existing = FindExisting(reporterId, targetType, targetId);
         if (existing != null)
         {
-            return new SubmitResult(existing.ToDomain(), true, null);
+            return new SubmitResult(existing, true, null);
         }
 
         var report = new Report
@@ -98,8 +96,26 @@ public sealed class ReportService
             ContextSnapshot = Truncate(target.Value.Snapshot, 2000),
         };
 
-        db.Reports.Add(report.ToRecord());
-        db.SaveChanges();
+        var record = report.ToRecord();
+        db.Reports.Add(record);
+
+        try
+        {
+            db.SaveChanges();
+        }
+        catch (DbUpdateException ex) when (IsDuplicateReport(ex))
+        {
+            // 上面的「有沒有送過」是先讀再寫，兩發同時進來會雙雙讀到沒有、雙雙寫入，
+            // 由唯一索引擋下第二發。這不是錯誤，是「已經檢舉過了」——使用者按兩下
+            // 送出鈕、或手機上連點，都會走到這裡，不該回 500。
+            db.Entry(record).State = EntityState.Detached;
+            var saved = FindExisting(reporterId, targetType, targetId);
+            if (saved != null)
+            {
+                return new SubmitResult(saved, true, null);
+            }
+            throw;
+        }
 
         if (category == ReportCategory.SELF_HARM)
         {
@@ -112,6 +128,19 @@ public sealed class ReportService
 
         return new SubmitResult(report, false, null);
     }
+
+    private Report? FindExisting(string reporterId, ReportTargetType targetType, string targetId)
+    {
+        var record = db!.Reports.AsNoTracking().FirstOrDefault(x =>
+            x.TargetType == targetType.ToString() &&
+            x.TargetId == targetId &&
+            x.ReporterId == reporterId);
+        return record?.ToDomain();
+    }
+
+    /// <summary>唯一索引 ux_reports_target_reporter 擋下的重複檢舉。</summary>
+    private static bool IsDuplicateReport(DbUpdateException ex)
+        => ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
 
     /// <summary>
     /// 依權重總和決定是否暫時隱藏。SELF_HARM 不計入——

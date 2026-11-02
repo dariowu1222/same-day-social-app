@@ -54,11 +54,13 @@ export default function ChatPage() {
   const [menuRoomId, setMenuRoomId] = useState<string | null>(null)
   // 離開類動作的二次確認，與房內用同一套措辭與樣式
   const [confirm, setConfirm] = useState<{ title: string; desc: string; onYes: () => void } | null>(null)
-  // 列表頁的檢舉：選完原因送出後才真的離開那間房
+  // 列表頁的檢舉：選完原因真的送出之後，才把那間房標成已檢舉（唯讀）
   const [listReport, setListReport] = useState<{ roomId: string; userId: string } | null>(null)
   const listReportedRef = useRef(false)
   // 操作失敗時給一句話。沒有提示的話使用者分不出是沒點到還是真的失敗了。
   const [toast, setToast] = useState('')
+  // 已檢舉對方的房間。檢舉的對象是人，所以後端會把同一個人的每一間房都算進來。
+  const [reportedRooms, setReportedRooms] = useState<Set<string>>(() => new Set())
   // toast 自己消失。房內用的是同一套（ChatRoom.tsx 的 toastTimer）。
   useEffect(() => {
     if (!toast) return
@@ -199,6 +201,7 @@ export default function ChatPage() {
     }
     setPeers(nextPeers)
     setRoomMessages(nextMessages)
+    setReportedRooms(new Set(overviewRes.data.filter((item) => item.reported).map((item) => item.room.id)))
   }
 
   async function loadMessages(roomId: string) {
@@ -307,7 +310,8 @@ export default function ChatPage() {
   /**
    * 列表頁 ⋮ 的動作。
    * 釘選是可逆的，直接做；離開與檢舉不可逆，先問過。
-   * 檢舉走 ReportSheet 選原因，送出成功才離開——沒送出就不該把對話弄不見。
+   * 檢舉走 ReportSheet 選原因。送出成功後房間變成唯讀，但不代為離開——
+   * 使用者常常還要回頭看對方說過什麼，而且對話憑空消失會讓人以為自己誤觸。
    */
   function handleRoomAction(summary: ChatSummary, action: 'pin' | 'leave' | 'report') {
     setMenuRoomId(null)
@@ -333,8 +337,8 @@ export default function ChatPage() {
     }
 
     setConfirm({
-      title: '檢舉並離開',
-      desc: `檢舉送出後會一併離開與「${summary.title}」的對話。`,
+      title: '檢舉對方',
+      desc: `接著會請你選擇原因。送出後與「${summary.title}」的對話會關閉，你還看得到先前的訊息，但不能再傳送。`,
       onYes: () => {
         setConfirm(null)
         listReportedRef.current = false
@@ -352,8 +356,10 @@ export default function ChatPage() {
 
   async function reportActiveRoom() {
     if (!activeRoomId) return
-    await reportChatUser(activeRoomId)
-    setActiveRoomId(null)
+    // ReportSheet 已經送出檢舉本體（POST /api/reports），這一發是補記房號，
+    // 讓後台審核時看得到是哪一段對話。失敗不擋——檢舉本身已經成立了。
+    await reportChatUser(activeRoomId).catch(() => {})
+    // 停在房裡：重抓之後這間房會變成唯讀，底部直接告訴使用者下一步。
     await loadRooms()
   }
 
@@ -369,6 +375,7 @@ export default function ChatPage() {
           pinned: !!setting?.pinned,
           pinnedAt: setting?.pinnedAt ? new Date(setting.pinnedAt) : null,
           unreadCount: unreadByRoom[room.id] ?? 0,
+          reported: reportedRooms.has(room.id),
         }
       })
       .sort((a, b) => {
@@ -416,6 +423,7 @@ export default function ChatPage() {
         onSendContent={submitContent}
         onRecall={recallMsg}
         setting={settings[activeRoom.id]}
+        reported={reportedRooms.has(activeRoom.id)}
         onUpdateSetting={updateSetting}
         onLeave={leaveActiveRoom}
         onBlock={blockActiveRoom}
@@ -514,7 +522,7 @@ export default function ChatPage() {
           </div>
         )}
 
-        {/* 檢舉送出成功才離開那間房：沒送出就把對話弄不見，使用者會以為自己誤觸 */}
+        {/* 真的送出才把房間標成已檢舉；中途取消什麼都不該發生 */}
         {listReport && (
           <ReportSheet
             targetType="USER"
@@ -525,7 +533,10 @@ export default function ChatPage() {
               setListReport(null)
               if (!listReportedRef.current) return
               listReportedRef.current = false
-              void leaveRoom(roomId).catch(() => setToast('檢舉已送出，但離開聊天室失敗'))
+              // 不代為離開：把對話直接弄不見，使用者會以為自己誤觸，而且檢舉後
+              // 常常還需要回頭看對方說過什麼。改成重抓列表讓那間房變成唯讀，
+              // 由使用者自己按房內的「退出聊天室」。
+              void reportChatUser(roomId).catch(() => {}).then(() => loadRooms())
             }}
             onDone={() => { listReportedRef.current = true }}
           />
@@ -574,6 +585,7 @@ type ChatSummary = {
   unreadCount: number
   pinned: boolean
   pinnedAt: Date | null
+  reported: boolean
 }
 
 type RoomAction = 'pin' | 'leave' | 'report'
@@ -621,7 +633,12 @@ function ChatCard({ summary, onOpen, highlight, menuOpen, onToggleMenu, onAction
             </strong>
             <time>{summary.timeLabel}</time>
           </span>
-          <span className={`chat-card-preview${summary.unreadCount > 0 ? ' unread' : ''}`}>{summary.preview}</span>
+          <span className={`chat-card-preview${summary.unreadCount > 0 ? ' unread' : ''}`}>
+            {/* 檢舉過的房間點進去只剩「退出聊天室」，列表上就先講，
+                不然使用者得一間一間點開才知道是哪一間 */}
+            {summary.reported && <span className="chat-card-tag">已檢舉</span>}
+            {summary.preview}
+          </span>
         </span>
         {summary.unreadCount > 0 && (
           <span className="chat-unread-badge">{summary.unreadCount > 99 ? '99+' : summary.unreadCount}</span>
@@ -650,9 +667,13 @@ function ChatCard({ summary, onOpen, highlight, menuOpen, onToggleMenu, onAction
           <button className="cr-menu-item danger" type="button" role="menuitem" onClick={() => onAction(summary, 'leave')}>
             <LogOut size={18} strokeWidth={1.8} className="cr-menu-ic" /><span>離開聊天室</span>
           </button>
-          <button className="cr-menu-item danger" type="button" role="menuitem" onClick={() => onAction(summary, 'report')}>
-            <Flag size={18} strokeWidth={1.8} className="cr-menu-ic" /><span>檢舉並離開</span>
-          </button>
+          {/* 已經檢舉過就不再給這一項：再送一次對審核沒有幫助，
+              而使用者按下去只會看到同一張面板，像是上一次沒成功 */}
+          {!summary.reported && (
+            <button className="cr-menu-item danger" type="button" role="menuitem" onClick={() => onAction(summary, 'report')}>
+              <Flag size={18} strokeWidth={1.8} className="cr-menu-ic" /><span>檢舉使用者</span>
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -691,6 +712,8 @@ function buildRoomSummary(room: ChatRoomType, messages: ChatMessage[], peers: Re
     unreadCount: 0,
     pinned: false,
     pinnedAt: null,
+    // 這三個預設值由呼叫端用 settings / unreadByRoom / reportedRooms 覆寫
+    reported: false,
   }
 }
 

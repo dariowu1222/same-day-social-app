@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using SameDaySocialApp.Domain.Enums;
 using SameDaySocialApp.Infrastructure.Persistence;
 using SameDaySocialApp.Infrastructure.Persistence.Models;
 
@@ -126,6 +127,18 @@ public sealed class PushService(
             .GroupBy(x => x.ChatRoomId)
             .ToDictionary(g => g.Key, g => g.ToList());
 
+        // 檢舉過對方之後那間房就唯讀了，回不了訊息。既然回不了，就不該再為
+        // 那個人的新訊息推播——被檢舉的人還傳得進來（他不會知道自己被檢舉），
+        // 推播會變成繞過唯讀的另一條騷擾管道。
+        // 整張表一次撈：USER 類型的檢舉在小規模下只有幾列，比每人各查一次便宜。
+        var userTarget = ReportTargetType.USER.ToString();
+        var reportedPairs = db.Reports.AsNoTracking()
+            .Where(r => r.TargetType == userTarget)
+            .Select(r => new { r.ReporterId, r.ReportedUserId })
+            .ToList()
+            .Select(r => (Reporter: r.ReporterId, Reported: r.ReportedUserId))
+            .ToHashSet();
+
         var perUser = new Dictionary<string, MessageAccumulator>();
         foreach (var message in recentMessages)
         {
@@ -135,6 +148,7 @@ public sealed class PushService(
             {
                 if (member.UserId == message.SenderId) continue;
                 if (message.CreatedAt <= member.At) continue;
+                if (reportedPairs.Contains((member.UserId, message.SenderId))) continue;
 
                 if (!perUser.TryGetValue(member.UserId, out var acc))
                 {

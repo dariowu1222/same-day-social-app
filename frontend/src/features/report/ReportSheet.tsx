@@ -1,7 +1,7 @@
 // 檢舉面板：樹洞貼文／回應、聊天訊息、使用者共用。
 // 選到「擔心對方想傷害自己」時，整個面板會換成關懷的語氣並列出求助資源——
 // 那不是舉發違規，是替人求救，用同一套「檢舉」措辭會讓想幫忙的人猶豫。
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import { submitReport } from './api'
 import { REPORT_OPTIONS, SUPPORT_LINES, type ReportCategory, type ReportTargetType } from './types'
@@ -22,11 +22,18 @@ export default function ReportSheet({ targetType, targetId, title = '檢舉', on
   // 送出後停在完成畫面，而不是直接關閉：
   // 自我傷害的回覆包含求助資源，用一閃即逝的 toast 會讓人來不及看。
   const [doneMessage, setDoneMessage] = useState<string | null>(null)
+  // 成功之後不解除：面板會換成完成畫面，不該再有第二發
+  const sendingRef = useRef(false)
 
   const isSelfHarm = category === 'SELF_HARM'
 
   async function send() {
-    if (!category || sending) return
+    if (!category) return
+    // sending 是 state，setState 要等下一次 render 才看得到。同一輪事件裡連點兩下
+    // （手機上很容易）兩發都會通過檢查，第二發撞上資料庫的唯一索引。
+    // 後端已經把那種情況視為「已檢舉過」而不是錯誤，但請求本身就不該送出去。
+    if (sendingRef.current) return
+    sendingRef.current = true
     setSending(true)
     setError('')
     try {
@@ -37,6 +44,7 @@ export default function ReportSheet({ targetType, targetId, title = '檢舉', on
     } catch {
       setError('送出失敗，請稍後再試。')
       setSending(false)
+      sendingRef.current = false
     }
   }
 

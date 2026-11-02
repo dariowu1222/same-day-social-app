@@ -41,6 +41,8 @@ export type ChatRoomOverview = {
   peerNickname?: string | null
   peerPhotoUrl?: string | null
   lastMessage?: ChatMessage | null
+  /** 已檢舉對方：這間房對你唯讀，只剩「退出聊天室」。 */
+  reported?: boolean
 }
 
 /** 列表用的精簡對方資料。完整 profile 只在進房時才抓（peek sheet 需要）。 */

@@ -208,6 +208,19 @@
   color: #c8785a;
 }
 
+/* 列表上的狀態標籤（目前只有「已檢舉」） */
+.chat-card-tag {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(200, 120, 90, 0.14);
+  color: #b35c3c;
+  font-size: 11px;
+  font-weight: 600;
+  vertical-align: 1px;
+}
+
 /* 點 ⋮ 跳出的下拉選單。蓋在遮罩之上，點畫面任何地方都關得掉 */
 .chat-card-menu {
   position: absolute;
@@ -648,6 +661,47 @@
   border-top: 0.5px solid rgba(120, 150, 120, 0.18);
   flex-shrink: 0;
 }
+
+/* 檢舉後取代輸入列的說明區。高度與輸入列相近，不會讓訊息區忽然跳一段。 */
+.cr-frozen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 14px 20px 18px;
+  background: rgba(251, 247, 240, 0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-top: 0.5px solid rgba(120, 150, 120, 0.18);
+  flex-shrink: 0;
+  text-align: center;
+}
+.cr-frozen-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #4a4038;
+}
+.cr-frozen-desc {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #8c8176;
+}
+.cr-frozen-leave {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 9px 20px;
+  border: 0.5px solid rgba(179, 92, 60, 0.4);
+  border-radius: 999px;
+  background: transparent;
+  font-size: 14px;
+  color: #b35c3c;
+  cursor: pointer;
+}
+.cr-frozen-leave:active { background: rgba(200, 120, 90, 0.1); }
 
 .cr-input-icon {
   flex-shrink: 0;

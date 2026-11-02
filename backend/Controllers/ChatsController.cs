@@ -54,6 +54,15 @@ public sealed class ChatsController(ChatService chatService, IHubContext<ChatHub
     public async Task<ActionResult<ApiResponse<ChatMessage>>> SendMessage(string chatRoomId, [FromBody] SendMessageRequest request)
     {
         if (!IsMember(chatRoomId)) return Forbid();
+
+        // 檢舉過對方之後這間房就唯讀了。前端已經把輸入列換成說明，
+        // 但那只是畫面——舊的分頁、送到一半的請求都還是會打進來。
+        if (chatService.GetFrozenRoomIds(CallerId, [chatRoomId]).Count > 0)
+        {
+            return BadRequest(ApiResponse<ChatMessage>.Fail(
+                "CHAT_ROOM_REPORTED", "你已檢舉這位使用者，這段對話無法再傳送訊息。"));
+        }
+
         var message = chatService.SendMessage(
             chatRoomId, CallerId, request.Content,
             request.QuotedMessageId, request.QuotedSenderName, request.QuotedContent);
@@ -141,14 +150,15 @@ public sealed class ChatsController(ChatService chatService, IHubContext<ChatHub
         return ApiResponse<bool>.Ok(true);
     }
 
-    // 離開並檢舉對方
+    // 檢舉對方。刻意不代為離開：把對話直接弄不見，使用者會以為自己誤觸，
+    // 而且檢舉後常常還需要回頭看對方說過什麼。改成把房間凍結成唯讀，
+    // 由使用者自己按「退出聊天室」。
     [HttpPost("{chatRoomId}/report")]
     public ActionResult<ApiResponse<bool>> Report(string chatRoomId, [FromBody] ReportChatRequest? request)
     {
         var other = OtherUserId(chatRoomId);
         if (other == null) return Forbid();
         chatService.ReportUser(CallerId, other, chatRoomId, request?.Reason);
-        chatService.LeaveRoom(CallerId, chatRoomId);
         return ApiResponse<bool>.Ok(true);
     }
 

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using SameDaySocialApp.Domain.Entities;
+using SameDaySocialApp.Domain.Enums;
 using SameDaySocialApp.Infrastructure.Persistence;
 using SameDaySocialApp.Infrastructure.Persistence.Models;
 
@@ -67,6 +68,55 @@ public sealed class ChatService
             .Where(x => x.UserIds.Contains(userId))
             .OrderByDescending(x => x.CreatedAt)
             .ToList();
+    }
+
+    /// <summary>
+    /// 只要房號時走這支。GetRoomsByUser 為了組出完整的 ChatRoom 會再查房間本身
+    /// 與所有成員（共 3 句），只為了拿一串 id 的話那兩句是白跑的。
+    /// </summary>
+    public List<string> GetRoomIdsByUser(string userId)
+    {
+        if (db == null)
+        {
+            return GetRoomsByUser(userId).Select(x => x.Id).ToList();
+        }
+
+        return db.ChatRoomUsers.AsNoTracking()
+            .Where(x => x.UserId == userId)
+            .Select(x => x.ChatRoomId)
+            .ToList();
+    }
+
+    /// <summary>
+    /// 已檢舉對方、因此凍結成唯讀的房間。
+    ///
+    /// 檢舉的對象是「人」不是「房間」，所以同一個人的每一間房都會一起凍結——
+    /// 不然檢舉完換一間房又能繼續聊，等於沒有檢舉。
+    ///
+    /// 凍結只對檢舉人生效：被檢舉的人照常傳得進來，不會從「訊息送不出去」
+    /// 反推自己被檢舉了。檢舉人那側不顯示未讀、也不推播。
+    /// </summary>
+    public HashSet<string> GetFrozenRoomIds(string userId, ICollection<string>? scope = null)
+    {
+        if (db == null)
+        {
+            return [];
+        }
+
+        var userTarget = ReportTargetType.USER.ToString();
+        var query = db.ChatRoomUsers.AsNoTracking()
+            .Where(peer => peer.UserId != userId
+                           && db.ChatRoomUsers.Any(me => me.ChatRoomId == peer.ChatRoomId && me.UserId == userId)
+                           && db.Reports.Any(r => r.ReporterId == userId
+                                                  && r.TargetType == userTarget
+                                                  && r.ReportedUserId == peer.UserId));
+
+        if (scope != null)
+        {
+            query = query.Where(peer => scope.Contains(peer.ChatRoomId));
+        }
+
+        return query.Select(peer => peer.ChatRoomId).Distinct().ToHashSet();
     }
 
     public ChatRoom CreateRoom(List<string> userIds, string sourceType, string sourceId)
@@ -364,7 +414,7 @@ public sealed class ChatService
         if (db == null)
         {
             return GetRoomsByUser(userId)
-                .Select(room => new ChatRoomOverview(room, PeerOf(room, userId), null, null, null))
+                .Select(room => new ChatRoomOverview(room, PeerOf(room, userId), null, null, null, false))
                 .ToList();
         }
 
@@ -375,6 +425,9 @@ public sealed class ChatService
         }
 
         var roomIds = rooms.Select(x => x.Id).ToList();
+
+        // 檢舉過的對象：那幾間房在列表上要標出來，點進去也只能唯讀
+        var frozen = GetFrozenRoomIds(userId, roomIds);
 
         // 每間房的最後一則：用相關子查詢比對該房的最大 created_at，
         // 吃得到既有的 ix_chat_messages_room_created 索引。
@@ -414,7 +467,8 @@ public sealed class ChatService
                 peerId,
                 peer.Nickname,
                 peer.Photo,
-                ToPreview(lastMessages.GetValueOrDefault(room.Id)));
+                ToPreview(lastMessages.GetValueOrDefault(room.Id)),
+                frozen.Contains(room.Id));
         }).ToList();
     }
 
@@ -424,10 +478,13 @@ public sealed class ChatService
     /// 水位是 COALESCE(last_read_at, joined_at)：沒標記過的房從加入時間起算。
     /// 自己發的不算、已收回的不算——收回後內容已清空，為它亮紅點沒有意義。
     ///
-    /// 刻意拆成兩句單純的查詢，而不是一句 join + group by：後者要賭 EF 的
-    /// 關聯聚合翻譯，翻不出來就退化成客戶端評估，把整張表拉進記憶體；
-    /// 幾個並發請求就足以把執行緒池堵死（實測過）。
-    /// 這裡兩句都吃得到既有索引，而且第二句只取兩個欄位。
+    /// 拆成兩句：先取每間房的水位，再用「(房號 = X AND 時間 > X 的水位) OR …」
+    /// 一次數完。不能改用所有房間裡最早的水位當共同下限——只要有一間房從沒被
+    /// 打開過，那個下限就永遠停在 joined_at，每次查詢都把這個人名下所有房間的
+    /// 全部歷史訊息撈回來，而 /unread 在掛載、連上、重連、回前景都會被呼叫。
+    ///
+    /// 第二句的 WHERE 與 GROUP BY 實際產生的 SQL 已確認整句下到 Postgres
+    /// （Observability__EfCommandLogging=true 可以自己看）。
     /// </summary>
     public Dictionary<string, int> CountUnread(string userId, List<string> roomIds)
     {
@@ -515,7 +572,15 @@ public sealed class ChatService
             return [];
         }
 
-        var roomIds = GetRoomsByUser(userId).Select(x => x.Id).ToList();
+        // 凍結的房間不算未讀：回不了的對話亮紅點，只會逼使用者一再點進去
+        // 看同一句「你已檢舉這個人」。
+        var roomIds = GetRoomIdsByUser(userId);
+        var frozen = GetFrozenRoomIds(userId, roomIds);
+        if (frozen.Count > 0)
+        {
+            roomIds = roomIds.Where(id => !frozen.Contains(id)).ToList();
+        }
+
         return CountUnread(userId, roomIds);
     }
 
@@ -639,4 +704,6 @@ public sealed record ChatRoomOverview(
     string? PeerUserId,
     string? PeerNickname,
     string? PeerPhotoUrl,
-    ChatMessage? LastMessage);
+    ChatMessage? LastMessage,
+    /// <summary>已檢舉對方，這間房對檢舉人唯讀。</summary>
+    bool Reported);

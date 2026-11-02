@@ -1022,10 +1022,16 @@
 }
 [data-theme="dark"] .cr-time { color: rgba(168, 212, 204, 0.5); }
 
-[data-theme="dark"] .cr-input {
+[data-theme="dark"] .cr-input,
+[data-theme="dark"] .cr-frozen {
   background: rgba(5, 15, 10, 0.96);
   border-top-color: rgba(168, 212, 204, 0.1);
 }
+[data-theme="dark"] .cr-frozen-title { color: #e8f5f0; }
+[data-theme="dark"] .cr-frozen-desc { color: rgba(168, 212, 204, 0.62); }
+[data-theme="dark"] .cr-frozen-leave { border-color: rgba(232, 169, 140, 0.42); color: #e8a98c; }
+[data-theme="dark"] .cr-frozen-leave:active { background: rgba(232, 169, 140, 0.12); }
+[data-theme="dark"] .chat-card-tag { background: rgba(232, 169, 140, 0.16); color: #e8a98c; }
 [data-theme="dark"] .cr-input-box {
   background: rgba(22, 40, 32, 0.6);
   border-color: rgba(168, 212, 204, 0.14);
