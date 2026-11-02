@@ -95,6 +95,12 @@ public sealed class ChatService
     /// 的人連申辯的機會都沒有。送出之後到審核之前，兩個人照常聊天。
     /// 審核駁回（DISMISSED）則什麼都不會發生。
     ///
+    /// SELF_HARM 不算在內。那個選項在畫面上寫的是「擔心對方想傷害自己」，
+    /// 不是舉發違規——按下去的人是在替朋友求救。把他們的對話切斷，等於在
+    /// 當事人最需要有人說話的時候把唯一那條線剪掉，而且關心的那一方還會收到
+    /// 一則「已對該帳號做出處置」。ApplyAutoModeration 早就把 SELF_HARM 排除在
+    /// 自動隱藏之外，理由一樣。
+    ///
     /// 檢舉的對象是「人」不是「房間」，所以同一個人的每一間房都會一起凍結——
     /// 不然換一間房又能繼續聊，等於沒有處置。
     ///
@@ -110,12 +116,14 @@ public sealed class ChatService
 
         var userTarget = ReportTargetType.USER.ToString();
         var resolved = ReportStatus.RESOLVED.ToString();
+        var selfHarm = ReportCategory.SELF_HARM.ToString();
         var query = db.ChatRoomUsers.AsNoTracking()
             .Where(peer => peer.UserId != userId
                            && db.ChatRoomUsers.Any(me => me.ChatRoomId == peer.ChatRoomId && me.UserId == userId)
                            && db.Reports.Any(r => r.ReporterId == userId
                                                   && r.TargetType == userTarget
                                                   && r.Status == resolved
+                                                  && r.Category != selfHarm
                                                   && r.ReportedUserId == peer.UserId));
 
         if (scope != null)
@@ -403,6 +411,18 @@ public sealed class ChatService
         }
     }
 
+    /// <summary>
+    /// 把「這筆檢舉是在哪一間房發生的」記進 chat_reports。
+    ///
+    /// 要知道的事：目前沒有任何程式碼讀這張表。統一檢舉流程（Report.cs）本來就是
+    /// 設計來取代 rant_reports / chat_reports 的，後台只查 reports 那一張，而
+    /// reports 對 USER 標的存的快照只有「暱稱：某某」——所以審核的人看不到任何
+    /// 對話內容。檢舉成立會讓對話變成唯讀、通常也伴隨停權，那個判斷目前是在
+    /// 沒有證據的情況下做的。
+    ///
+    /// 留著這支是因為房號是日後把證據接上去的唯一線索（reports.context_snapshot
+    /// 已經存在，後台也已經會顯示它，缺的是把對話寫進去這一步）。
+    /// </summary>
     public void ReportUser(string reporterId, string reportedUserId, string chatRoomId, string? reason)
     {
         var rec = new ChatReportRecord
@@ -746,5 +766,5 @@ public sealed record ChatRoomOverview(
     string? PeerNickname,
     string? PeerPhotoUrl,
     ChatMessage? LastMessage,
-    /// <summary>已檢舉對方，這間房對檢舉人唯讀。</summary>
+    /// <summary>檢舉已經後台認定成立，這間房對檢舉人唯讀。送出但還沒審的不算。</summary>
     bool Reported);

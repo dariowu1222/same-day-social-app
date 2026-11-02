@@ -264,6 +264,13 @@ public sealed class ReportService
         var record = db.Reports.FirstOrDefault(x => x.Id == reportId);
         if (record == null) return null;
 
+        // 先記下原本的狀態。下面那則通知只能在「這一次才變成成立」時發，而讀完
+        // 就覆蓋的話，PENDING→RESOLVED 跟 RESOLVED→RESOLVED 在後面看起來一模一樣。
+        // 後台的結案按鈕在送出期間沒有 disabled，連點兩下就是兩個請求；「已處理」
+        // 清單裡也還給得出「處理這筆」。NotificationService.Add 沒有去重，
+        // 所以少了這一行，檢舉人會為同一筆檢舉收到兩則一樣的通知。
+        var wasResolved = record.Status == ReportStatus.RESOLVED.ToString();
+
         record.Status = status.ToString();
         record.ReviewedBy = actorId;
         record.ReviewedAt = DateTimeOffset.UtcNow;
@@ -279,8 +286,14 @@ public sealed class ReportService
         // 檢舉成立才通知檢舉人。這是整條流程對他唯一的回音——沒有它，
         // 他不會知道自己的檢舉有沒有被看過，而聊天室也會在他毫無預期時變成唯讀。
         // 駁回不通知：那多半只會變成爭論的起點，而且「沒有處置」本身就是結果。
+        //
+        // SELF_HARM 也不通知，而且那種單子不會讓對話變成唯讀
+        // （見 ChatService.GetFrozenRoomIds）。替朋友求救的人不該收到一則
+        // 「已對該帳號做出處置」——那不是他按下去的意思。
         if (status == ReportStatus.RESOLVED
+            && !wasResolved
             && record.TargetType == ReportTargetType.USER.ToString()
+            && record.Category != ReportCategory.SELF_HARM.ToString()
             && !string.IsNullOrWhiteSpace(record.ReporterId))
         {
             notifications?.Add(

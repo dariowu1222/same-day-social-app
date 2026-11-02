@@ -133,10 +133,13 @@ public sealed class PushService(
         // 跟著唯讀的條件走：只看審核成立（RESOLVED）的檢舉。還在排隊審的不算，
         // 否則一封誤報就能讓對方的訊息從此不再通知，等於未審先判。
         // 整張表一次撈：USER 類型的檢舉在小規模下只有幾列，比每人各查一次便宜。
+        // SELF_HARM 不算：那種單子不會讓對話變成唯讀，自然也不該停掉推播。
+        // 停掉的話，擔心朋友的人會完全不知道對方回了什麼——正好相反。
         var userTarget = ReportTargetType.USER.ToString();
         var resolved = ReportStatus.RESOLVED.ToString();
+        var selfHarm = ReportCategory.SELF_HARM.ToString();
         var reportedPairs = db.Reports.AsNoTracking()
-            .Where(r => r.TargetType == userTarget && r.Status == resolved)
+            .Where(r => r.TargetType == userTarget && r.Status == resolved && r.Category != selfHarm)
             .Select(r => new { r.ReporterId, r.ReportedUserId })
             .ToList()
             .Select(r => (Reporter: r.ReporterId, Reported: r.ReportedUserId))
