@@ -18,7 +18,16 @@ const ASKED_KEY = 'push-permission-asked'
 
 export type PushPermission = 'granted' | 'denied' | 'prompt' | 'unsupported'
 
+/** 建置時注入：android/app/google-services.json 存在才是 true（見 vite.config.ts）。 */
+declare const __PUSH_ENABLED__: boolean
+
 function supported() {
+  // 沒有 Firebase 設定就一步都不要踏進外掛。它的 register() 第一行是
+  // FirebaseMessaging.getInstance()，缺設定時丟 IllegalStateException 而且沒人接，
+  // 整個 app 當場結束——1.0.5 在已登入的裝置上一過開場畫面就閃退就是這個。
+  // 這裡擋住等於所有進入點（啟動時的 syncPushRegistration、進對話時的 enablePush、
+  // 通知設定頁）全部一起停用。補上 google-services.json 之後自動恢復。
+  if (!__PUSH_ENABLED__) return false
   return Capacitor.isNativePlatform()
 }
 
