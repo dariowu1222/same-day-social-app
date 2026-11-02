@@ -11,6 +11,12 @@ export type TodayQuickEntry = {
 
 export type SoulNote = {
   quote: string
+  /**
+   * 原文。這些句子都是翻譯過來的，譯法一變語氣就跟著變，
+   * 所以把作者真正寫下的那一句也放上去，讀的人自己判斷。
+   * 本來就以中文寫成的句子不需要這欄。
+   */
+  original?: string
   author: string
   source: string
   note: string
@@ -148,8 +154,18 @@ export default function TodayEntryForm({
           </button>
           <div className="soul-note-body">
             <div>
-              <blockquote>{soulNote.quote}</blockquote>
-              <p className="soul-note-author">--{soulNote.author}</p>
+              <blockquote>
+                <p>{soulNote.quote}</p>
+                {soulNote.original && (
+                  <p className="soul-note-original" lang="en">{soulNote.original}</p>
+                )}
+              </blockquote>
+              <p className="soul-note-author">
+                --{soulNote.author}
+                {/* 書名用 <cite>：它就是為作品名稱而存在的標籤，螢幕閱讀器
+                    也會把它念成引用來源，而不是跟作者頭銜混在一起 */}
+                {soulNote.source && <cite className="soul-note-source">《{soulNote.source}》</cite>}
+              </p>
               <p className="soul-note-text">{soulNote.note}</p>
             </div>
           </div>

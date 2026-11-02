@@ -266,6 +266,21 @@
   letter-spacing: 0.01em;
 }
 
+/* 原文跟中譯共用左邊那條線，讀起來是同一段引言的兩種語言，
+   而不是另一則小語。字級與粗細都降一階，視線還是先落在中文上。 */
+.soul-note blockquote p {
+  margin: 0;
+}
+
+.soul-note blockquote .soul-note-original {
+  margin-top: 7px;
+  color: #7f9b96;
+  font-size: 13px;
+  font-weight: 400;
+  font-style: italic;
+  line-height: 1.6;
+  letter-spacing: 0;
+}
 
 .soul-note-author {
   margin: 14px 0 0;
@@ -273,6 +288,14 @@
   font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.04em;
+}
+
+/* <cite> 預設是斜體，但上面的原文已經用斜體了，再斜一次兩者就分不開。
+   書名改用《》界定，和作者之間留一點空隙，長行才斷得好看。 */
+.soul-note-source {
+  margin-left: 3px;
+  font-style: normal;
+  opacity: 0.8;
 }
 
 .soul-note-text {

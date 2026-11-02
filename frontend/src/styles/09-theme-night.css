@@ -336,6 +336,10 @@
   border-left-color: #4caf7d;
 }
 
+[data-theme="dark"] .soul-note blockquote .soul-note-original {
+  color: #7fae90;
+}
+
 [data-theme="dark"] .soul-note-author {
   color: #6b9e80;
 }
