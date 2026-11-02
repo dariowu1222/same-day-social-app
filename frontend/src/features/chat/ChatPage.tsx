@@ -13,6 +13,7 @@ import type { UserProfile } from '../profile/types'
 import ChatRoom from './ChatRoom'
 import ReportSheet from '../report/ReportSheet'
 import Avatar from '../../shared/ui/Avatar'
+import { ApiError } from '../../shared/api/httpClient'
 import { testAvatarPhoto } from '../../shared/lib/userDisplay'
 import { useChatRealtime } from './ChatRealtimeContext'
 import { enablePush } from '../../shared/push/push'
@@ -237,8 +238,15 @@ export default function ChatPage() {
       const response = await sendMessage(roomId, content, quote)
       // 換成伺服器版本（拿到真 id / 時間）。SignalR 廣播若先到也無妨，upsert 依 id 收斂。
       replaceMessage(roomId, tempId, response.data)
-    } catch {
+    } catch (error) {
       markMessageFailed(roomId, tempId)
+      // 後台剛認定檢舉成立的話，這間房在伺服器那端已經唯讀了，但使用者畫面還
+      // 停在舊狀態——他會看到「傳送失敗」然後一直重送。重抓一次房間，輸入列
+      // 就會換成說明與「退出聊天室」。這是目前唯一讓凍結即時反映到畫面上的
+      // 路徑（沒有為此推 SignalR 事件，那會讓被檢舉的那側推得出凍結的存在）。
+      if (error instanceof ApiError && error.code === 'CHAT_ROOM_REPORTED') {
+        void loadRooms()
+      }
     }
   }
 
@@ -358,11 +366,14 @@ export default function ChatPage() {
 
   async function reportActiveRoom() {
     if (!activeRoomId) return
-    // ReportSheet 已經送出檢舉本體（POST /api/reports），這一發是補記房號，
-    // 讓後台審核時看得到是哪一段對話。失敗不擋——檢舉本身已經成立了。
+    // ReportSheet 已經送出檢舉本體（POST /api/reports），這一發只是把房號記進
+    // chat_reports。注意：目前沒有任何地方讀那張表，所以後台審核時其實看不到
+    // 這段對話（ChatService.ReportUser 有同樣的註記）。留著是因為房號本身是
+    // 日後補上證據的唯一線索。失敗不擋——檢舉本身已經成立了。
     await reportChatUser(activeRoomId).catch(() => {})
-    // 停在房裡：重抓之後這間房會變成唯讀，底部直接告訴使用者下一步。
-    await loadRooms()
+    // 這裡不重抓：送出檢舉之後畫面本來就不該有任何變化，要等後台認定成立
+    // 那間房才會變成唯讀。先前這裡的 loadRooms() 是為了立刻翻成唯讀，
+    // 現在那件事不會發生，整支 overview 白撈一次。
   }
 
   const activeRoom = rooms.find((room) => room.id === activeRoomId) ?? null
@@ -536,9 +547,9 @@ export default function ChatPage() {
               if (!listReportedRef.current) return
               listReportedRef.current = false
               // 送出檢舉之後畫面不該有任何變化：兩人照常聊天，要等後台認定成立
-              // 那間房才會變成唯讀（並且會發通知）。這一發是補記房號，讓後台
-              // 審核時看得到是哪一段對話。
-              void reportChatUser(roomId).catch(() => {}).then(() => loadRooms())
+              // 那間房才會變成唯讀（並且會發通知）。所以這裡只補記房號，
+              // 不重抓列表——重抓也不會有任何差別。
+              void reportChatUser(roomId).catch(() => {})
             }}
             onDone={() => { listReportedRef.current = true }}
           />

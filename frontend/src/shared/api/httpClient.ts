@@ -23,6 +23,25 @@ export type ApiResponse<T> = {
   data: T
 }
 
+/**
+ * 帶著錯誤碼的失敗。
+ *
+ * 先前一律 throw new Error(翻譯後的訊息)，code 在這裡就被丟掉了，所以呼叫端
+ * 只能一視同仁顯示「失敗」。有些碼需要的不只是一句話——例如聊天室在使用者
+ * 還開著的時候被後台凍結，送出會回 CHAT_ROOM_REPORTED，這時該做的是重抓
+ * 房間狀態把輸入列換掉，而不是叫他再試一次。
+ *
+ * 繼承 Error，所以既有的 catch 與 err.message 都不受影響。
+ */
+export class ApiError extends Error {
+  readonly code?: string
+  constructor(message: string, code?: string) {
+    super(message)
+    this.name = 'ApiError'
+    this.code = code
+  }
+}
+
 // Render 免費方案閒置 15 分鐘會休眠，喚醒實測 13.6 秒、官方說最長約一分鐘。
 // 逾時原本寫死 30 秒，休眠後的第一個請求常常還沒醒就被中斷，使用者看到的
 // 就是「傳送失敗」。放寬到 75 秒讓冷啟動跑得完。
@@ -93,7 +112,7 @@ export async function request<T>(path: string, options?: RequestInit): Promise<A
   }
 
   if (!response.ok || !body.success) {
-    throw new Error(toUserMessage(body.code, body.message))
+    throw new ApiError(toUserMessage(body.code, body.message), body.code)
   }
   return body
 }

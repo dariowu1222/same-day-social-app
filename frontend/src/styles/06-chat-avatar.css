@@ -208,7 +208,7 @@
   color: #c8785a;
 }
 
-/* 列表上的狀態標籤（目前只有「已檢舉」） */
+/* 列表上的狀態標籤（目前只有「已處置」） */
 .chat-card-tag {
   display: inline-block;
   margin-right: 6px;
@@ -667,7 +667,7 @@
   flex-shrink: 0;
 }
 
-/* 檢舉後取代輸入列的說明區。高度與輸入列相近，不會讓訊息區忽然跳一段。 */
+/* 檢舉成立後取代輸入列的說明區。高度與輸入列相近，不會讓訊息區忽然跳一段。 */
 .cr-frozen {
   display: flex;
   flex-direction: column;

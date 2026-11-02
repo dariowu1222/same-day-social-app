@@ -163,10 +163,6 @@ Request:
 
 取得使用者聊天室。
 
-### POST /api/chats
-
-建立聊天室。
-
 ### GET /api/chats/:chatRoomId/messages
 
 取得聊天室訊息。
