@@ -21,9 +21,6 @@ public sealed class MatchService
     /// </summary>
     private const int PassCooldownDays = 30;
 
-    /// <summary>嚴格候選湊不滿一副牌時，年齡範圍往外放寬的歲數。性別偏好永不放寬。</summary>
-    private const int RelaxedAgeSlack = 5;
-
     private readonly JsonStorageService storage;
     private readonly AppDbContext? db;
     private readonly NotificationService? notifications;
@@ -70,20 +67,12 @@ public sealed class MatchService
             .Select(g => g.MaxBy(x => x.CreatedAt)!)
             .ToList();
 
-        // 兩輪分開排序、分開取。不能把放寬年齡補進來的人跟嚴格候選丟進同一個
-        // OrderByDescending——分數只看事件／情緒／價值／興趣的交集，與年齡無關，
-        // 混在一起排會讓超出年齡範圍的人把「使用者明確想看的人」擠出牌堆。
-        var deck = RankCandidates(pool, current, users, me, ageSlack: 0)
+        // 年齡範圍是硬界線：湊不滿一副牌就發幾張算幾張，不放寬來補。
+        // 放寬過的卡片在畫面上和其他人長得一模一樣，使用者只會看到自己
+        // 明明設了 25–30 卻跑出 33 歲的人，結論是偏好設定沒有用。
+        var deck = RankCandidates(pool, current, users, me)
             .Take(DeckSize)
             .ToList();
-
-        if (deck.Count < DeckSize)
-        {
-            var picked = deck.Select(x => x.Entry.UserId).ToHashSet();
-            deck.AddRange(RankCandidates(pool, current, users, me, ageSlack: RelaxedAgeSlack)
-                .Where(x => !picked.Contains(x.Entry.UserId))
-                .Take(DeckSize - deck.Count));
-        }
 
         // 落地只發生在這裡，而且只對真的要發出去的這幾張。
         // 先前是在算分階段對「每一位候選」寫一列，所以 matches 有列不代表
@@ -92,10 +81,10 @@ public sealed class MatchService
     }
 
     // 依登入者交友意圖篩選候選：想認識的對象（性別）+ 年齡範圍。
+    // 兩者都是硬界線，不因為候選不足而放寬——使用者明說不想看的人硬塞進去，
+    // 比沒卡可滑更糟。
     // 資料缺漏（候選沒填性別/生日、或本人沒設偏好）一律不排除，避免真實用戶被濾光。
-    // ageSlack 是年齡範圍往外放寬的歲數，只有在嚴格候選湊不滿一副牌時才給值；
-    // 性別偏好永遠不放寬——把使用者明說不想看的性別硬塞進去，比沒卡可滑更糟。
-    private static bool MatchesPreferences(User? me, User? candidate, int ageSlack = 0)
+    private static bool MatchesPreferences(User? me, User? candidate)
     {
         if (me == null || candidate == null) return true;
 
@@ -108,8 +97,8 @@ public sealed class MatchService
         var age = AgeOf(candidate.Birthday);
         if (age != null)
         {
-            if (me.AgeMin != null && age < me.AgeMin - ageSlack) return false;
-            if (me.AgeMax != null && age > me.AgeMax + ageSlack) return false;
+            if (me.AgeMin != null && age < me.AgeMin) return false;
+            if (me.AgeMax != null && age > me.AgeMax) return false;
         }
         return true;
     }
@@ -359,10 +348,10 @@ public sealed class MatchService
     private sealed record Candidate(TodayEntry Entry, int Score, MatchType Type, List<string> SharedTags);
 
     private static List<Candidate> RankCandidates(
-        List<TodayEntry> pool, TodayEntry current, List<User> users, User? me, int ageSlack)
+        List<TodayEntry> pool, TodayEntry current, List<User> users, User? me)
     {
         return pool
-            .Where(entry => MatchesPreferences(me, users.FirstOrDefault(u => u.Id == entry.UserId), ageSlack))
+            .Where(entry => MatchesPreferences(me, users.FirstOrDefault(u => u.Id == entry.UserId)))
             .Select(entry => ScoreCandidate(current, entry))
             .OrderByDescending(x => x.Score)
             .ToList();
