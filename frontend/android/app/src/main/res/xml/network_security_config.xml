@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
     <!-- 實機測試：允許 http 連到開發電腦的後端（http://<電腦IP>:5000） -->
-    <!-- 上架正式版（後端部署 https 後）應移除 base-config、只保留 domain-config -->
+    <!-- 這份只套用在 debug 建置。release 另有 src/release/res/xml/ 同名檔案蓋過去，
+         那份不給 base-config，只准 HTTPS——所以上架包不會帶著這個例外出門。 -->
     <base-config cleartextTrafficPermitted="true" />
     <!-- 允許 Android 模擬器存取宿主機的開發伺服器 -->
     <domain-config cleartextTrafficPermitted="true">

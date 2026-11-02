@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Release 版專用，蓋過 src/main 那一份。
+
+  main 那份為了實機測試開著 base-config cleartextTrafficPermitted="true"，
+  讓 app 連得到開發電腦的 http://<區網IP>:5000。那個設定一旦跟著 release 包
+  出去，裝到測試者手機上的 app 就會接受連到任何主機的明文 HTTP——在公共
+  Wi-Fi 上等於把流量攤開給中間人。
+
+  這裡不給 base-config，預設就是「只准 HTTPS」。正式後端在 Render 上本來就是
+  https，所以 release 不需要任何例外。區網實機測試走的是 debug 建置，仍然用
+  main 那份，流程不受影響。
+-->
+<network-security-config>
+    <!-- 明確寫出來而不是留空：留空會沿用系統預設，而系統預設會隨 targetSdk 改變 -->
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>
