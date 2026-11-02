@@ -114,7 +114,10 @@ export default function ChatRoom({
   // 安全：人身攻擊措辭提醒（送出前，不阻擋）
   const [wordingDialog, setWordingDialog] = useState<{ onProceed: () => void } | null>(null)
   const [wordingMuted, setWordingMuted] = useState(false)
-  // 檢舉要等真的送出才算數；中途取消什麼都不該發生
+  // 檢舉要等真的送出才算數；中途取消什麼都不該發生。
+  // 這個旗標的壽命只有一張面板，所以開面板時歸零、關面板時也歸零——兩邊都要。
+  // 只靠關閉那一邊不夠：ReportSheet 送出成功後不會自己關，而是換成「已送出」
+  // 畫面，這時標的若被換掉（開另一張面板），onClose 根本沒機會跑。
   const reportedRef = useRef(false)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -181,7 +184,7 @@ export default function ChatRoom({
   }
   function confirmReport() {
     setMenuOpen(false)
-    setConfirm({ title: '檢舉對方', desc: '接著會請你選擇原因。我們會盡快查看，處理完成會通知你；在那之前你們仍然可以繼續對話。', danger: true, onYes: () => { setConfirm(null); setReportTarget({ type: 'USER', id: otherUserId }) } })
+    setConfirm({ title: '檢舉對方', desc: '接著會請你選擇原因。我們會盡快查看，處理完成會通知你；在那之前你們仍然可以繼續對話。', danger: true, onYes: () => { setConfirm(null); reportedRef.current = false; setReportTarget({ type: 'USER', id: otherUserId }) } })
   }
 
   // ── 長按 / 右鍵訊息 → 操作列 ──
@@ -214,7 +217,10 @@ export default function ChatRoom({
   function actReport() {
     const target = action?.msg.id
     setAction(null)
-    if (target) setReportTarget({ type: 'CHAT_MESSAGE', id: target })
+    if (target) {
+      reportedRef.current = false
+      setReportTarget({ type: 'CHAT_MESSAGE', id: target })
+    }
   }
   function actRecall() {
     if (action) onRecall?.(action.msg.id)
@@ -619,9 +625,14 @@ export default function ChatRoom({
           title={reportTarget.type === 'USER' ? '檢舉對方' : '檢舉這則訊息'}
           onClose={() => {
             const wasUserReport = reportTarget.type === 'USER'
+            // 不管這次檢舉的是訊息還是人，旗標的壽命都只到這張面板關上為止。
+            // 先前只有 USER 那一支會歸零，於是「檢舉一則訊息 → 送出」之後旗標
+            // 一直留著 true，接下來開「檢舉對方」再按取消，這裡會誤判成送出過，
+            // 替使用者補送一筆 POST /api/chats/{id}/report——他明明按的是取消。
+            const didSubmit = reportedRef.current
+            reportedRef.current = false
             setReportTarget(null)
-            if (wasUserReport && reportedRef.current) {
-              reportedRef.current = false
+            if (wasUserReport && didSubmit) {
               onReport ? onReport() : onBack()
             }
           }}
