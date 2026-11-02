@@ -34,3 +34,6 @@ docs/business-plan.html
 docs/tech-whitepaper.html
 docs/同頻_ClaudeCode紀錄_*/
 合夥人文件/
+
+# 上架包：每次建置都會產生，不進版控
+*.aab
