@@ -20,10 +20,6 @@ export async function markChatRead(chatRoomId: string) {
   return request<boolean>(`/api/chats/${chatRoomId}/read`, { method: 'POST' })
 }
 
-export async function createChatRoom(payload: { userIds: string[]; sourceType: string; sourceId: string }) {
-  return request<ChatRoom>('/api/chats', { method: 'POST', body: JSON.stringify(payload) })
-}
-
 export async function getMessages(chatRoomId: string) {
   return request<ChatMessage[]>(`/api/chats/${chatRoomId}/messages`)
 }

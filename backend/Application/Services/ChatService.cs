@@ -119,9 +119,43 @@ public sealed class ChatService
         return query.Select(peer => peer.ChatRoomId).Distinct().ToHashSet();
     }
 
+    /// <summary>
+    /// 開一間聊天室。
+    ///
+    /// 這支只由 MatchService.CompleteMatch 在「雙方都按了同頻」之後呼叫。
+    /// 先前另外有一支 POST /api/chats 讓呼叫者自己決定成員，而它只檢查
+    /// 「清單裡有沒有你自己」——任何人從公開的樹洞撈到 user id 就能直接
+    /// 私訊任何人，被封鎖的人換一個 sourceId 就能開新房間繼續騷擾，
+    /// 還能把第三個人硬拉進同一間房。那支端點已經移除。
+    ///
+    /// 不變條件寫在這裡而不是呼叫端：呼叫端會增加，而這些條件一旦被繞過，
+    /// 代價是使用者被騷擾。
+    /// </summary>
     public ChatRoom CreateRoom(List<string> userIds, string sourceType, string sourceId)
     {
         var orderedUserIds = userIds.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().Order().ToList();
+
+        // 一對一。多人房沒有任何合法來源，出現就代表呼叫端有問題。
+        if (orderedUserIds.Count != 2)
+        {
+            throw new InvalidOperationException(
+                $"聊天室只能是一對一，收到 {orderedUserIds.Count} 位成員。");
+        }
+
+        // 任一方封鎖過對方就不開。配對那側已經把互相封鎖的人排除在候選之外，
+        // 所以正常流程走不到這裡——這是防止日後新增的呼叫端繞過封鎖。
+        if (db != null)
+        {
+            var a = orderedUserIds[0];
+            var b = orderedUserIds[1];
+            var blocked = db.UserBlocks.AsNoTracking().Any(x =>
+                (x.BlockerId == a && x.BlockedId == b) ||
+                (x.BlockerId == b && x.BlockedId == a));
+            if (blocked)
+            {
+                throw new InvalidOperationException("雙方之間存在封鎖關係，不開聊天室。");
+            }
+        }
 
         if (db != null)
         {

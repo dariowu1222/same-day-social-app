@@ -35,13 +35,6 @@ public sealed class ChatsController(ChatService chatService, IHubContext<ChatHub
         return ApiResponse<List<ChatRoomOverview>>.Ok(chatService.GetRoomOverviews(userId));
     }
 
-    [HttpPost]
-    public ActionResult<ApiResponse<ChatRoom>> Create([FromBody] CreateChatRoomRequest request)
-    {
-        if (!request.UserIds.Contains(CallerId)) return Forbid();
-        return ApiResponse<ChatRoom>.Ok(chatService.CreateRoom(request.UserIds, request.SourceType, request.SourceId));
-    }
-
     [HttpGet("{chatRoomId}/messages")]
     public ActionResult<ApiResponse<List<ChatMessage>>> GetMessages(string chatRoomId, [FromQuery] int? limit = null)
     {
@@ -171,7 +164,6 @@ public sealed class ChatsController(ChatService chatService, IHubContext<ChatHub
             .UserIds.FirstOrDefault(u => u != CallerId);
 }
 
-public sealed record CreateChatRoomRequest(List<string> UserIds, string SourceType, string SourceId);
 public sealed record SendMessageRequest(string Content, string? QuotedMessageId = null, string? QuotedSenderName = null, string? QuotedContent = null);
 public sealed record UpdateChatSettingRequest(string? NoteName = null, bool? Pinned = null, bool? Muted = null);
 public sealed record ReportChatRequest(string? Reason = null);
