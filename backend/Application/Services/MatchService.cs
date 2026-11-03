@@ -150,7 +150,7 @@ public sealed class MatchService
     /// 右滑就是 100 則一模一樣的「有人對你有共鳴」，而且收到的人也不知道是誰、
     /// 沒有任何可執行的動作。現在只在真的配對成功時通知，數量等於實際配對數。
     /// </summary>
-    public LikeResult? Like(string matchId, string callerId)
+    public LikeOutcome Like(string matchId, string callerId)
     {
         if (db != null)
         {
@@ -158,7 +158,12 @@ public sealed class MatchService
             // 所有權驗證：這筆配對必須屬於目前登入者
             if (record == null || record.UserId != callerId)
             {
-                return null;
+                return LikeOutcome.NotFound;
+            }
+
+            if (!CandidateStillThere(record.MatchedUserId))
+            {
+                return LikeOutcome.CandidateUnavailable;
             }
 
             // 冪等：已經右滑過的就不要再跑一次 CompleteMatch。
@@ -169,9 +174,9 @@ public sealed class MatchService
             {
                 var prior = db.Matches.AsNoTracking()
                     .FirstOrDefault(x => x.UserId == record.MatchedUserId && x.MatchedUserId == callerId);
-                return prior is { UserLiked: true }
+                return LikeOutcome.Ok(prior is { UserLiked: true }
                     ? CompleteMatch(record.ToDomain(), callerId, record.MatchedUserId, notify: false)
-                    : new LikeResult(record.ToDomain(), false, null);
+                    : new LikeResult(record.ToDomain(), false, null));
             }
 
             record.UserLiked = true;
@@ -191,15 +196,20 @@ public sealed class MatchService
 
             db.SaveChanges();
 
-            return mutual
+            return LikeOutcome.Ok(mutual
                 ? CompleteMatch(record.ToDomain(), callerId, record.MatchedUserId, notify: true)
-                : new LikeResult(record.ToDomain(), false, null);
+                : new LikeResult(record.ToDomain(), false, null));
         }
 
         var existing = storage.ReadCollection<MatchRecord>("matches").FirstOrDefault(x => x.Id == matchId);
         if (existing == null || existing.UserId != callerId)
         {
-            return null;
+            return LikeOutcome.NotFound;
+        }
+
+        if (!CandidateStillThere(existing.MatchedUserId))
+        {
+            return LikeOutcome.CandidateUnavailable;
         }
 
         var all = storage.ReadCollection<MatchRecord>("matches");
@@ -208,9 +218,9 @@ public sealed class MatchService
 
         if (existing.UserLiked)
         {
-            return mutualFile
+            return LikeOutcome.Ok(mutualFile
                 ? CompleteMatch(existing, callerId, existing.MatchedUserId, notify: false)
-                : new LikeResult(existing, false, null);
+                : new LikeResult(existing, false, null));
         }
 
         var liked = storage.UpdateOne<MatchRecord>("matches", matchId, match =>
@@ -221,11 +231,26 @@ public sealed class MatchService
         if (mutualFile)
         {
             storage.UpdateOne<MatchRecord>("matches", other!.Id, match => match.MatchedUserLiked = true);
-            return CompleteMatch(liked, callerId, existing.MatchedUserId, notify: true);
+            return LikeOutcome.Ok(CompleteMatch(liked, callerId, existing.MatchedUserId, notify: true));
         }
 
-        return new LikeResult(liked, false, null);
+        return LikeOutcome.Ok(new LikeResult(liked, false, null));
     }
+
+    /// <summary>
+    /// 卡片上這個人現在還在不在。
+    ///
+    /// 牌是先發後滑的：卡片發到手上之後對方才被封鎖／註銷／停權，右滑仍然走得到
+    /// 這裡。先前唯一的防線在 ChatService.CreateRoom，而它丟的例外被 CompleteMatch
+    /// 的 catch 吞成一行 log——配對那兩列已經標記成互相、通知也送出去了，使用者
+    /// 看到的是「配對成功」加上一間進不去的聊天室，重按幾次結果一模一樣，
+    /// 只有伺服器 log 知道發生什麼事。擋在這裡的時候什麼都還沒寫。
+    ///
+    /// 刻意不把這次右滑記下來：停權的人期滿會回到候選池，到時候這張卡再發一次
+    /// 就好；記下來反而等於幫使用者永久排除一個之後會回來的人。
+    /// </summary>
+    private bool CandidateStillThere(string matchedUserId)
+        => AccountStateService.IsActive(db, storage, matchedUserId, DateTimeOffset.UtcNow);
 
     /// <summary>
     /// 左滑（略過）。
@@ -668,3 +693,29 @@ public sealed record MatchResponse(
 /// 開好的房間（開房失敗時為 null，前端就只顯示配對成功、不給進聊天的按鈕）。
 /// </summary>
 public sealed record LikeResult(MatchRecord Match, bool IsMutual, string? ChatRoomId);
+
+public enum LikeStatus
+{
+    Ok,
+    /// <summary>沒有這筆配對，或它不屬於呼叫者。</summary>
+    NotFound,
+    /// <summary>卡片上那個人已被封鎖／註銷，或正在停權中。</summary>
+    CandidateUnavailable
+}
+
+/// <summary>
+/// 右滑的結局。
+///
+/// 先前 Like 只回 LikeResult?：成功，或 null（找不到）。對方中途被處置時落在
+/// 「成功」那一側，於是使用者收到的是「配對成功」加上一間進不去的聊天室。
+/// 第三種結局要能回到前端，它才有辦法說清楚發生什麼事，也才知道這次右滑
+/// 不該排進「下次打開自動補送」的佇列——那是永遠送不出去的。
+/// </summary>
+public sealed record LikeOutcome(LikeStatus Status, LikeResult? Result)
+{
+    public static LikeOutcome Ok(LikeResult result) => new(LikeStatus.Ok, result);
+
+    public static LikeOutcome NotFound { get; } = new(LikeStatus.NotFound, null);
+
+    public static LikeOutcome CandidateUnavailable { get; } = new(LikeStatus.CandidateUnavailable, null);
+}
