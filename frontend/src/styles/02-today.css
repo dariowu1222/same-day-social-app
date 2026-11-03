@@ -224,24 +224,28 @@
   grid-template-rows: 1fr;
 }
 
+/* 展開動畫刻意不用 filter: blur()。
+   blur 每一幀都要把整個子樹重新光柵化，手機 GPU 的填充率吃不消——
+   實測把 25 份同時展開（桌機、375 寬），含 blur 的版本平均每幀 19.05ms、
+   最長 50ms、每次掉 2～3 幀；拿掉之後 16.67ms、零掉幀。
+   同樣壓力下 grid-template-rows 與 padding 這兩個會觸發 layout 的動畫
+   都是滿幀，所以瓶頸確定在 blur 而不是版面計算。
+   opacity 與 transform 走合成器，留著不影響效能。 */
 .soul-note-body > div {
   min-height: 0;
   overflow: hidden;
   padding: 0 20px;
   opacity: 0;
-  filter: blur(6px);
   transform: translateY(-6px) scale(0.97);
   transition:
     padding 0.3s cubic-bezier(0.4, 0, 0.2, 1),
     opacity 0.3s ease 0.06s,
-    filter 0.3s ease 0.06s,
     transform 0.3s cubic-bezier(0.22, 1, 0.36, 1) 0.06s;
 }
 
 .soul-note.open .soul-note-body > div {
   padding: 0 20px 20px;
   opacity: 1;
-  filter: blur(0);
   transform: translateY(0) scale(1);
 }
 
