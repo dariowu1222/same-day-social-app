@@ -7,6 +7,19 @@ using SameDaySocialApp.Infrastructure.Persistence.Models;
 
 namespace SameDaySocialApp.Application.Services;
 
+/// <summary>
+/// 為什麼這個檔案裡的讀取路徑不依帳號狀態過濾（刻意的，不是漏掉）：
+///
+/// 房間清單、房內訊息、未讀數都是「已經成立的關係」。對方被封鎖或註銷之後把他
+/// 從這些地方濾掉，使用者看到的不是「安全了」，而是對話憑空消失、或列表上多出
+/// 一間沒有名字沒有頭像的空房——而他前幾天才跟這個人講過話。真正要防的是
+/// 「還能被繼續騷擾」，那件事在 Program.cs 的帳號狀態中介軟體就擋住了：
+/// 非 ACTIVE 的帳號連請求都發不出來，傳不進任何一間房。
+///
+/// 所以這裡的分界是：既有的對話留著（CreateRoom 以下的讀取路徑都不擋），
+/// 新的關係不再成立（CreateRoom 擋，配對候選池在 MatchService 擋），
+/// 對方的完整個人檔案也不再提供（ProfileController 擋）。
+/// </summary>
 public sealed class ChatService
 {
     private readonly JsonStorageService storage;
@@ -172,6 +185,19 @@ public sealed class ChatService
             }
         }
 
+        // 任一方的帳號不能用就不開。候選池那側已經擋掉非 ACTIVE 的人，但牌是先發
+        // 後滑的：卡片發到手上之後對方才被封鎖／註銷，右滑仍然走得到這裡，於是
+        // 配對成立、房間開起來、通知送出去，而房裡那個人再也不會回話。
+        // 停權中的人同樣不開，期滿之後他會回到候選池，到時候再配一次就是了。
+        var inactive = orderedUserIds
+            .Where(x => !AccountStateService.IsActive(db, storage, x, DateTimeOffset.UtcNow))
+            .ToList();
+        if (inactive.Count > 0)
+        {
+            throw new InvalidOperationException(
+                $"帳號目前無法使用，不開聊天室：{string.Join("、", inactive)}。");
+        }
+
         if (db != null)
         {
             var candidateRoomIds = db.ChatRooms.AsNoTracking()
@@ -233,6 +259,10 @@ public sealed class ChatService
     /// <summary>
     /// 取聊天室訊息：預設只回最近 <see cref="DefaultMessageLimit"/> 則。
     /// 先以時間倒序取最新一批，再正序回傳給前端顯示。
+    ///
+    /// 不依發話者的帳號狀態過濾：對方被封鎖之後把他說過的話從歷史裡抽掉，
+    /// 剩下的是一段只有自己在講話的對話，連自己當初為什麼那樣回都看不懂了。
+    /// 而且被害人常常正需要那段紀錄去檢舉或報案。見類別上方的說明。
     /// </summary>
     public List<ChatMessage> GetMessages(string chatRoomId, int limit = DefaultMessageLimit)
     {

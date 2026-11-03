@@ -94,8 +94,13 @@ public sealed class AdminSessionService(
 
         // 驗證碼寄到帳號綁定的信箱，不是呼叫端說了算的任意地址。
         // 這是整條鏈路的錨點：控制權在信箱，不在請求內容。
+        // 這裡刻意不再看 is_disabled：走得到這支的人已經帶著有效的 App token，
+        // 而 Program.cs 的請求閘門對每個已認證請求都查過 users.status 了。再看一次
+        // is_disabled 不會多擋到誰，只會多一個跟 users.status 對不上的機會——停權
+        // 期滿的管理員就是這樣卡住的：閘門放他進來，這裡卻找不到帳號，於是收到
+        // 「沒有信箱」而永遠拿不到驗證碼。
         var account = await db.AuthAccounts.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.UserId == userId && !x.IsDisabled, ct);
+            .FirstOrDefaultAsync(x => x.UserId == userId, ct);
         if (account == null || string.IsNullOrWhiteSpace(account.Username))
         {
             return new ChallengeResult(Failure.NoEmail, null);

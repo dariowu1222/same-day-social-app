@@ -6,6 +6,18 @@ using SameDaySocialApp.Infrastructure.Persistence.Models;
 
 namespace SameDaySocialApp.Application.Services;
 
+/// <summary>
+/// 為什麼這裡沒有帳號狀態的過濾（盤點過，刻意不加）：
+///
+/// 收件者永遠是呼叫者自己（List / UnreadCount / MarkAllRead 都拿 token 的 id），
+/// 而非 ACTIVE 的帳號在 Program.cs 的中介軟體就被 401 擋下，讀不到任何一則。
+/// Add 寫給一個已經註銷的收件者只是多幾列沒人看的資料，為此每則通知多付一趟
+/// 資料庫往返並不划算——而通知本來就是寫入失敗也要默默吞掉的次要功能。
+///
+/// 觸發者那一側擋不了也不打算擋：這張表沒有存「是誰觸發的」，只有標題與一段
+/// 內容摘要。要擋得加欄位，而擋到的也只是一則已經送達的舊通知；點進去之後
+/// 那篇貼文／那個人的檔案該不該看得到，由 RantService 與 ProfileController 決定。
+/// </summary>
 public sealed class NotificationService
 {
     private readonly JsonStorageService storage;

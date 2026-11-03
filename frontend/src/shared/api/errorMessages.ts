@@ -31,6 +31,10 @@ export function toUserMessage(code?: string, message?: string) {
       return '驗證碼寄送失敗，請稍後再試。'
     case 'ACCOUNT_EXISTS':
       return '這個 Email 已經註冊過，請直接登入或使用忘記密碼。'
+    // 牌是先發後滑的，卡片到手之後對方才被封鎖／註銷／停權。不說「失敗請再試」——
+    // 再試幾次結果都一樣，而使用者沒有做錯任何事。
+    case 'MATCH_UNAVAILABLE':
+      return '這個人已經不在了，這張卡就跳過吧。'
     default:
       return message ?? '操作失敗，請稍後再試。'
   }

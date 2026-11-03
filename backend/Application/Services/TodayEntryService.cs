@@ -46,6 +46,14 @@ public sealed class TodayEntryService
         return (entry, analysis);
     }
 
+    /// <summary>
+    /// 不依帳號狀態過濾（盤點過，刻意不加）：今日記錄只有本人讀得到——
+    /// TodayEntriesController 對 CallerId != userId 一律 Forbid，而本人若不是
+    /// ACTIVE，請求在 Program.cs 的中介軟體就被 401 擋下來了。
+    ///
+    /// 「別人的今天」會外流的地方不在這支，而在配對候選池（MatchService，
+    /// 那裡已依帳號狀態過濾）。
+    /// </summary>
     public List<TodayEntry> GetByUser(string userId)
     {
         if (db != null)

@@ -7,6 +7,7 @@ import {
   rememberPassed, readPassedIds,
   rememberPendingLike, readPendingLikes, clearPendingLike,
 } from './decidedCache'
+import { ApiError } from '../../shared/api/httpClient'
 import { getProfile, updateProfile } from '../profile/api'
 import { getZodiac, getAge } from '../profile/profileUtils'
 import type { MatchResult } from './types'
@@ -22,6 +23,17 @@ type EnrichedMatch = Omit<MatchResult, 'photos' | 'interests' | 'personalityTags
   city?: string
   bio?: string
   zodiac?: string
+}
+
+/**
+ * 右滑送不出去，是「等一下再試」還是「不用再試了」。
+ *
+ * 兩者的補救方式相反：暫時失敗要排進佇列下次補送，而對方已經不在的話，
+ * 補送幾次結果都一樣，只是每次進頁面都白跑一趟。後端用 MATCH_UNAVAILABLE
+ * 把這件事說清楚，不然這裡只能一視同仁當成暫時失敗。
+ */
+function isCandidateGone(err: unknown) {
+  return err instanceof ApiError && err.code === 'MATCH_UNAVAILABLE'
 }
 
 const TUTORIAL_KEY = 'match-swipe-tutorial-done'
@@ -503,8 +515,11 @@ export default function MatchResultPage({ onBack, onGoToRant, moodLabel, pending
       try {
         await likeMatch(matchId)
         clearPendingLike(matchId)
-      } catch {
-        // 還是送不出去就留著，下次進來再試
+      } catch (err) {
+        // 對方已經不在了就從佇列拿掉。留著只是每次進頁面都再送一次、
+        // 再失敗一次，一路送到七天後自己過期為止。
+        if (isCandidateGone(err)) clearPendingLike(matchId)
+        // 其他原因（沒網路、伺服器還在冷啟動）才留著下次再試
       }
     }
 
@@ -564,11 +579,18 @@ export default function MatchResultPage({ onBack, onGoToRant, moodLabel, pending
         // 所以值得重試一次。
         await passMatch(card.matchId).catch(() => passMatch(card.matchId))
       }
-    } catch {
+    } catch (err) {
       if (dir === 'right') {
-        // 絕不能只記在本機就算了——那會讓這次同頻靜靜消失，而且人還被擋住
-        rememberPendingLike(card.matchId)
-        setToast('這個同頻還沒送出，下次打開會自動補送')
+        if (isCandidateGone(err)) {
+          // 補送也不會成功——卡片發到手上之後這個人被封鎖／註銷／停權了。
+          // 不排進佇列，也不記進本機備援：停權期滿他會回到候選池，
+          // 本機擋住反而讓他再也出不來。伺服器那邊什麼都沒寫。
+          setToast('這個人已經不在了，這張卡就跳過吧')
+        } else {
+          // 絕不能只記在本機就算了——那會讓這次同頻靜靜消失，而且人還被擋住
+          rememberPendingLike(card.matchId)
+          setToast('這個同頻還沒送出，下次打開會自動補送')
+        }
       } else {
         rememberPassed(card.matchId)
       }

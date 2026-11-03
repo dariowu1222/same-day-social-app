@@ -84,3 +84,11 @@ services:
         sync: false
       - key: Push__TriggerSecret
         sync: false
+
+      # 排程維護（停權到期自動恢復）的觸發密鑰。
+      # 沒設時端點回 404、workflow 自己跳過，停權期滿的人照樣登得進來
+      # （登入已經自己判斷期限），只是 users.status 會一直停在 SUSPENDED，
+      # 後台的列表與計數就跟著一直是錯的。
+      # 值要和 GitHub repo secret 的 MAINTENANCE_TRIGGER_SECRET 一致。
+      - key: Maintenance__TriggerSecret
+        sync: false

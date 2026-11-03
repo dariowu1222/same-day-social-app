@@ -9,9 +9,10 @@ namespace SameDaySocialApp.Application.Services;
 /// <summary>
 /// 後台的會員管理。
 ///
-/// 狀態同步原則：users.status 是管理端的單一真相，但實際攔阻登入的是
-/// auth_accounts.is_disabled（登入流程既有的檢查）。每次變更狀態都會同步兩者，
-/// 避免後台顯示已停權、當事人卻還能登入這種最難查的落差。
+/// 狀態同步原則：users.status（加上 suspended_until）是唯一的真相，登入、請求閘門
+/// 與列表過濾全部問 AccountStateService.IsActive。auth_accounts.is_disabled 仍然同步寫，
+/// 但只是那份狀態的鏡子，沒有任何判斷依賴它——它是處置當下的快照，不會隨時間變，
+/// 曾經讓停權期滿的人舊 token 還能用、重新登入卻被擋下。
 /// </summary>
 public sealed class AdminUserService
 {
@@ -204,19 +205,19 @@ public sealed class AdminUserService
 
     /// <summary>停權。until 為 null 表示沒有到期日，需人工解除。</summary>
     public bool Suspend(string userId, string actorId, string? reason, DateTimeOffset? until, string? reportId)
-        => ChangeStatus(userId, actorId, AccountStatus.SUSPENDED, reason, until, true,
+        => ChangeStatus(userId, actorId, AccountStatus.SUSPENDED, reason, until,
             SanctionAction.SUSPEND, reportId);
 
     public bool Unsuspend(string userId, string actorId, string? reason)
-        => ChangeStatus(userId, actorId, AccountStatus.ACTIVE, reason, null, false,
+        => ChangeStatus(userId, actorId, AccountStatus.ACTIVE, reason, null,
             SanctionAction.UNSUSPEND, null);
 
     public bool Ban(string userId, string actorId, string? reason, string? reportId)
-        => ChangeStatus(userId, actorId, AccountStatus.BANNED, reason, null, true,
+        => ChangeStatus(userId, actorId, AccountStatus.BANNED, reason, null,
             SanctionAction.BAN, reportId);
 
     public bool Unban(string userId, string actorId, string? reason)
-        => ChangeStatus(userId, actorId, AccountStatus.ACTIVE, reason, null, false,
+        => ChangeStatus(userId, actorId, AccountStatus.ACTIVE, reason, null,
             SanctionAction.UNBAN, null);
 
     /// <summary>
@@ -226,27 +227,36 @@ public sealed class AdminUserService
     /// （使用者自助刪除的流程仍會清個資，兩者用途不同）。
     /// </summary>
     public bool MarkDeleted(string userId, string actorId, string? reason, string? reportId)
-        => ChangeStatus(userId, actorId, AccountStatus.DELETED, reason, null, true,
+        => ChangeStatus(userId, actorId, AccountStatus.DELETED, reason, null,
             SanctionAction.DELETE, reportId);
 
     private bool ChangeStatus(
         string userId, string actorId, AccountStatus status, string? reason,
-        DateTimeOffset? until, bool disableLogin, SanctionAction action, string? reportId)
+        DateTimeOffset? until, SanctionAction action, string? reportId)
     {
         if (db == null) return false;
         var u = db.Users.FirstOrDefault(x => x.Id == userId);
         if (u == null) return false;
 
+        var now = DateTimeOffset.UtcNow;
+
         u.Status = status.ToString();
         u.StatusReason = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
         u.SuspendedUntil = until;
-        u.UpdatedAt = DateTimeOffset.UtcNow;
+        u.UpdatedAt = now;
 
-        // 同步登入權限：後台狀態與實際能否登入必須一致
+        // 要不要停掉登入，從狀態本身算出來，不另外由呼叫端傳一個布林進來。
+        // 傳進來的話等於同一件事有兩個說法，而那兩個說法只要有一次對不上
+        // （例如新增一種處置時把參數抄錯），後台顯示的狀態和當事人實際遇到的
+        // 就會分岔，偏偏這種落差最難從回報裡看出來。
+        var disableLogin = !AccountStateService.IsActive(status, until, now);
+
+        // 鏡子要跟著一起寫。擋登入的已經不是它了，但直接查資料庫的人會看這個欄位，
+        // 放著不動等於在資料庫裡留一個跟 users.status 矛盾的值給下一個人誤判。
         foreach (var account in db.AuthAccounts.Where(a => a.UserId == userId))
         {
             account.IsDisabled = disableLogin;
-            account.UpdatedAt = DateTimeOffset.UtcNow;
+            account.UpdatedAt = now;
         }
 
         // 停用登入只擋「下次登入」。如果這個人手上有還活著的後台 session，
@@ -272,6 +282,11 @@ public sealed class AdminUserService
     /// <summary>
     /// 停權到期自動恢復。設了期限就該自己失效，
     /// 否則只要沒人記得手動解除，暫時停權就變成永久停權。
+    ///
+    /// 由排程每小時打 /api/maintenance/restore-expired-suspensions 觸發，
+    /// 管理員開後台儀表板時也會順手跑一次。放行與否不靠這支——登入和讀取都自己
+    /// 判斷期限——這支負責的是讓資料庫裡的 users.status 不要長期跟事實分岔，
+    /// 因為後台的列表、篩選與計數是直接查那個欄位的。
     /// </summary>
     public int RestoreExpiredSuspensions()
     {

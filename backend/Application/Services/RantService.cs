@@ -101,17 +101,29 @@ public sealed class RantService
                 .GroupBy(reply => reply.RantPostId)
                 .ToDictionary(g => g.Key, g => g.AsEnumerable());
 
+            // 作者／回覆者的帳號狀態：這一批的人一次問完，再就地濾掉。
+            var active = ActiveAmong(rows.Select(r => r.Post.UserId)
+                .Concat(repliesByPost.Values.SelectMany(g => g).Select(reply => reply.UserId)));
+
             return rows
+                .Where(x => active.Contains(x.Post.UserId))
                 .Select(x => x.Post.ToDomain(
-                    repliesByPost.GetValueOrDefault(x.Post.Id, Array.Empty<RantReplyRecord>()),
+                    repliesByPost.GetValueOrDefault(x.Post.Id, Array.Empty<RantReplyRecord>())
+                        .Where(reply => active.Contains(reply.UserId)),
                     x.LikeCount))
                 .ToList();
         }
 
-        return storage.ReadCollection<RantPost>("rantPosts")
+        var fromFile = storage.ReadCollection<RantPost>("rantPosts")
             .Where(x => !x.IsHidden && (!cursor.HasValue || x.CreatedAt < cursor.Value))
             .OrderByDescending(x => x.CreatedAt)
             .Take(limit)
+            .ToList();
+        var activeInFile = ActiveAmong(fromFile.Select(x => x.UserId)
+            .Concat(fromFile.SelectMany(x => x.Replies).Select(reply => reply.UserId)));
+        return fromFile
+            .Where(x => activeInFile.Contains(x.UserId))
+            .Select(x => StripInactiveReplies(x, activeInFile))
             .ToList();
     }
 
@@ -122,15 +134,27 @@ public sealed class RantService
             var post = db.RantPosts.AsNoTracking().FirstOrDefault(x => x.Id == rantId && !x.IsHidden);
             if (post == null) return null;
             var replies = db.RantReplies.AsNoTracking().Where(x => x.RantPostId == rantId).ToList();
+            // 牆上濾掉了，直接帶網址進來也要濾掉，否則擋的只是「不好找」而已
+            var active = ActiveAmong(replies.Select(x => x.UserId).Append(post.UserId));
+            if (!active.Contains(post.UserId)) return null;
             var likeCount = db.RantReactions.AsNoTracking()
                 .Count(x => x.RantPostId == rantId && x.ReactionType == "UNDERSTAND");
-            return post.ToDomain(replies, likeCount);
+            return post.ToDomain(replies.Where(x => active.Contains(x.UserId)), likeCount);
         }
-        return storage.ReadCollection<RantPost>("rantPosts").FirstOrDefault(x => x.Id == rantId && !x.IsHidden);
+
+        var fromFile = storage.ReadCollection<RantPost>("rantPosts").FirstOrDefault(x => x.Id == rantId && !x.IsHidden);
+        if (fromFile == null) return null;
+        var activeInFile = ActiveAmong(
+            fromFile.Replies.Select(x => x.UserId).Append(fromFile.UserId));
+        return activeInFile.Contains(fromFile.UserId)
+            ? StripInactiveReplies(fromFile, activeInFile)
+            : null;
     }
 
     public RantPost? Understand(string rantId, string? userId = null)
     {
+        if (!PostIsVisible(rantId)) return null;
+
         if (db != null)
         {
             var post = db.RantPosts.FirstOrDefault(x => x.Id == rantId);
@@ -163,6 +187,8 @@ public sealed class RantService
 
     public RantPost? Reply(string rantId, string userId, string nickname, string content, string? imageUrl = null, string? audioUrl = null, string? parentReplyId = null, string? thumbUrl = null)
     {
+        if (!PostIsVisible(rantId)) return null;
+
         if (db != null)
         {
             var post = db.RantPosts.FirstOrDefault(x => x.Id == rantId);
@@ -255,6 +281,8 @@ public sealed class RantService
 
     public RantPost? Report(string rantId, string? userId = null)
     {
+        if (!PostIsVisible(rantId)) return null;
+
         if (db != null)
         {
             var post = db.RantPosts.FirstOrDefault(x => x.Id == rantId);
@@ -290,6 +318,52 @@ public sealed class RantService
         });
     }
 
+    /// <summary>
+    /// 牢騷牆的帳號狀態過濾。
+    ///
+    /// 為什麼這面牆特別需要：它是全 App 唯一不用登入就讀得到的內容
+    /// （RantsController 的 GET 沒有 [Authorize]），而貼文把作者暱稱複寫了一份
+    /// 在 rant_posts.nickname 上。自助註銷只洗 users 那邊的暱稱、自我介紹與照片，
+    /// 牆上這份副本原封不動——所以不在這裡擋，一個已經按下「刪除帳號」的人，
+    /// 他的本名和整串心事還會繼續掛在公開頁面上。封鎖也一樣：帳號停了，
+    /// 內容照留，等於封了個寂寞。
+    ///
+    /// 濾掉之後整頁可能不足 limit。這是刻意接受的：游標走的是 created_at，
+    /// 少幾筆不會讓後面的分頁漏掉或重複，而為了補滿而多撈一輪，
+    /// 代價是每一次翻頁都多付一趟遠端資料庫往返。
+    /// </summary>
+    private HashSet<string> ActiveAmong(IEnumerable<string> userIds)
+        => AccountStateService.ActiveAmong(
+            db, storage, userIds.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().ToList(),
+            DateTimeOffset.UtcNow);
+
+    /// <summary>
+    /// 這篇現在還看得到嗎。看不到就當作不存在：牆上既然濾掉了，按讚、回覆、檢舉
+    /// 也不該還通得過——否則拿著舊畫面上的 id，照樣能往一篇已經隱形的貼文裡寫東西。
+    /// </summary>
+    private bool PostIsVisible(string rantId)
+    {
+        var authorId = db != null
+            ? db.RantPosts.AsNoTracking().Where(x => x.Id == rantId).Select(x => x.UserId).FirstOrDefault()
+            : storage.ReadCollection<RantPost>("rantPosts").FirstOrDefault(x => x.Id == rantId)?.UserId;
+        return authorId != null
+               && AccountStateService.IsActive(db, storage, authorId, DateTimeOffset.UtcNow);
+    }
+
+    /// <summary>JSON 模式的回覆是巢狀的，要連子回覆一起濾。</summary>
+    private static RantPost StripInactiveReplies(RantPost post, HashSet<string> active)
+    {
+        post.Replies = Keep(post.Replies);
+        post.ReplyCount = post.Replies.Count;
+        return post;
+
+        List<RantReply> Keep(List<RantReply> replies)
+            => replies
+                .Where(reply => active.Contains(reply.UserId))
+                .Select(reply => { reply.Replies = Keep(reply.Replies); return reply; })
+                .ToList();
+    }
+
     private RantPost? BuildPost(string rantId)
     {
         if (db == null)
@@ -306,8 +380,10 @@ public sealed class RantService
         var replies = db.RantReplies.AsNoTracking()
             .Where(x => x.RantPostId == rantId)
             .ToList();
+        // 按讚／回覆／檢舉之後回給呼叫者的這一份，和牆上看到的要是同一份
+        var active = ActiveAmong(replies.Select(x => x.UserId));
         var likeCount = db.RantReactions.AsNoTracking()
             .Count(x => x.RantPostId == rantId && x.ReactionType == "UNDERSTAND");
-        return post.ToDomain(replies, likeCount);
+        return post.ToDomain(replies.Where(x => active.Contains(x.UserId)), likeCount);
     }
 }

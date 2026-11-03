@@ -1,0 +1,70 @@
+# 停權到期自動恢復：每小時把過期的 SUSPENDED 寫回 ACTIVE
+#
+# 為什麼需要排程：
+# 設了期限的停權必須自己失效，否則「暫時停權」等於永久停權。原本唯一會做這件事的
+# 是管理員打開後台儀表板的那一刻（AdminUsersController.Dashboard），沒人開後台
+# 就不會發生。
+#
+# 為什麼不是後端自己跑 BackgroundService：
+# 跟彙總推播同一個理由——Render 免費方案閒置 15 分鐘就休眠、行程整個停掉，
+# PeriodicTimer 不會跑，醒來還會重新計時。
+#
+# 為什麼不急：
+# 登入與讀取兩條路都自己看 suspended_until（AccountStateService.IsActive），期滿的人
+# 不必等這支跑完就能回來。這支修的是資料庫裡那份狀態——後台的會員列表、狀態篩選
+# 與儀表板計數是直接查 users.status 的，不同步的話畫面會一直說他還在停權中。
+#
+# 時段：cron 走 UTC，0-16 時 = 台灣時間 08:00–00:59，剛好落在 keep-render-awake
+# 的保活視窗內，不會為了這件事多叫醒服務、多吃 instance-hours。深夜不跑，所以
+# 凌晨三點到期的停權會在早上八點才寫回資料庫——那段時間當事人照樣登得進來，
+# 只有後台顯示會晚一點追上。
+
+name: Restore expired suspensions
+
+on:
+  schedule:
+    - cron: '0 0-16 * * *'
+  workflow_dispatch: {}
+
+# 兩次同時跑會對同一批列各寫一次，解除紀錄（account_sanctions）就多出重複的一筆
+concurrency:
+  group: restore-suspensions
+  cancel-in-progress: false
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 叫醒服務
+        env:
+          BASE: https://tongpin-api-twu8.onrender.com
+        run: curl -sS -o /dev/null --max-time 120 "$BASE/health" || true
+
+      - name: 恢復到期的停權
+        env:
+          BASE: https://tongpin-api-twu8.onrender.com
+          SECRET: ${{ secrets.MAINTENANCE_TRIGGER_SECRET }}
+        run: |
+          if [ -z "$SECRET" ]; then
+            echo "MAINTENANCE_TRIGGER_SECRET 沒設，跳過"
+            exit 0
+          fi
+
+          # 這支是冪等的（只挑已經到期的列），所以失敗可以安心重試
+          body=$(mktemp)
+          for i in 1 2 3; do
+            code=$(curl -sS -o "$body" -w '%{http_code}' --max-time 120 \
+                     -X POST "$BASE/api/maintenance/restore-expired-suspensions" \
+                     -H "X-Maintenance-Trigger: $SECRET" \
+                     -H 'Content-Length: 0' || echo 000)
+
+            echo "第 $i 次：HTTP $code"
+            cat "$body"
+            echo
+            [ "$code" = "200" ] && exit 0
+            sleep 15
+          done
+
+          echo "三次都沒拿到 200"
+          exit 1

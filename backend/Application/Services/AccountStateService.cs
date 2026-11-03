@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
+using SameDaySocialApp.Domain.Entities;
 using SameDaySocialApp.Domain.Enums;
 using SameDaySocialApp.Infrastructure.Persistence;
 
@@ -30,6 +31,75 @@ public sealed class AccountStateService(IServiceScopeFactory scopes, IMemoryCach
 
     private static string Key(string userId) => $"acct-active:{userId}";
 
+    /// <summary>
+    /// 「這個狀態現在還算可用嗎」的單一判斷。任何要依帳號狀態放行或遮蔽的地方
+    /// （請求閘門、配對候選池）都走這裡，不要各自寫一份——兩套判斷遲早會分岔，
+    /// 而分岔的那一邊通常是漏的那一邊。
+    ///
+    /// 為什麼要自己看 suspended_until：
+    /// 停權是「暫時」的，期限一到就該回到正常狀態。真正把 users.status 寫回 ACTIVE 的是
+    /// AdminUserService.RestoreExpiredSuspensions，而它要等排程（每小時一次，見
+    /// .github/workflows/restore-suspensions.yml）跑過才會動那一列。只信 status 欄位的話，
+    /// 中間那段時間人已經期滿了卻還被當成停權中。
+    /// </summary>
+    public static bool IsActive(AccountStatus status, DateTimeOffset? suspendedUntil, DateTimeOffset now)
+    {
+        if (status == AccountStatus.ACTIVE) return true;
+
+        // BANNED／DELETED 沒有期限，不會因為時間過去而恢復
+        return status == AccountStatus.SUSPENDED && suspendedUntil != null && suspendedUntil <= now;
+    }
+
+    /// <summary>資料庫欄位（varchar）版本。認不得的值一律視為不可用。</summary>
+    public static bool IsActive(string? status, DateTimeOffset? suspendedUntil, DateTimeOffset now)
+        => Enum.TryParse<AccountStatus>(status, out var parsed)
+           && IsActive(parsed, suspendedUntil, now);
+
+    /// <summary>
+    /// 一批 id 裡現在還能見人的那幾個。
+    ///
+    /// 列表要把別人的帳號濾掉時走這支（牢騷牆的作者、任務的參與者），不要各自
+    /// 再寫一次「載入 users 再比對狀態」——判斷還是上面那個 IsActive，這裡只負責
+    /// 把兩種儲存模式的載入收在一處。
+    ///
+    /// 不經過快取：快取是給請求閘門那種「同一個 id 每個請求都問一次」用的，
+    /// 列表一次問的是一整批各不相同的 id，塞進去只會把真正有用的項目洗掉。
+    /// </summary>
+    public static HashSet<string> ActiveAmong(
+        AppDbContext? db, JsonStorageService storage, IReadOnlyCollection<string> userIds, DateTimeOffset now)
+    {
+        if (userIds.Count == 0)
+        {
+            return [];
+        }
+
+        if (db != null)
+        {
+            return db.Users.AsNoTracking()
+                .Where(u => userIds.Contains(u.Id))
+                .Select(u => new { u.Id, u.Status, u.SuspendedUntil })
+                .ToList()
+                .Where(u => IsActive(u.Status, u.SuspendedUntil, now))
+                .Select(u => u.Id)
+                .ToHashSet();
+        }
+
+        // JSON 檔案儲存模式走同一套規則，包含「查無此人即不可用」。
+        // 沒有資料庫時 AuthService 六個入口全部回 DATABASE_NOT_CONFIGURED，發不出
+        // token，需要登入的路徑一條都進不來，所以這條分支實際上走不到——正因為
+        // 如此更沒有理由替它另立一套寬鬆的判斷，讓兩套相反的規則並存在同一份程式裡。
+        return storage.ReadCollection<User>("users")
+            .Where(u => userIds.Contains(u.Id) && IsActive(u.Status, u.SuspendedUntil, now))
+            .Select(u => u.Id)
+            .ToHashSet();
+    }
+
+    /// <summary>單筆版。查無此人同樣算不可用。</summary>
+    public static bool IsActive(
+        AppDbContext? db, JsonStorageService storage, string userId, DateTimeOffset now)
+        => !string.IsNullOrWhiteSpace(userId)
+           && ActiveAmong(db, storage, [userId], now).Contains(userId);
+
     public async Task<bool> IsActiveAsync(string userId, CancellationToken ct)
     {
         if (cache.TryGetValue<bool>(Key(userId), out var cached))
@@ -45,13 +115,13 @@ public sealed class AccountStateService(IServiceScopeFactory scopes, IMemoryCach
             return true;
         }
 
-        var status = await db.Users.AsNoTracking()
+        var row = await db.Users.AsNoTracking()
             .Where(u => u.Id == userId)
-            .Select(u => u.Status)
+            .Select(u => new { u.Status, u.SuspendedUntil })
             .FirstOrDefaultAsync(ct);
 
         // 查無此人也算不可用：token 指向一個不存在的帳號，沒有理由放行
-        var active = status == AccountStatus.ACTIVE.ToString();
+        var active = row != null && IsActive(row.Status, row.SuspendedUntil, DateTimeOffset.UtcNow);
         cache.Set(Key(userId), active, Ttl);
         return active;
     }
