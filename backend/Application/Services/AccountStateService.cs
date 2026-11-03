@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
+using SameDaySocialApp.Domain.Entities;
 using SameDaySocialApp.Domain.Enums;
 using SameDaySocialApp.Infrastructure.Persistence;
 
@@ -52,6 +53,51 @@ public sealed class AccountStateService(IServiceScopeFactory scopes, IMemoryCach
     public static bool IsActive(string? status, DateTimeOffset? suspendedUntil, DateTimeOffset now)
         => Enum.TryParse<AccountStatus>(status, out var parsed)
            && IsActive(parsed, suspendedUntil, now);
+
+    /// <summary>
+    /// 一批 id 裡現在還能見人的那幾個。
+    ///
+    /// 列表要把別人的帳號濾掉時走這支（牢騷牆的作者、任務的參與者），不要各自
+    /// 再寫一次「載入 users 再比對狀態」——判斷還是上面那個 IsActive，這裡只負責
+    /// 把兩種儲存模式的載入收在一處。
+    ///
+    /// 不經過快取：快取是給請求閘門那種「同一個 id 每個請求都問一次」用的，
+    /// 列表一次問的是一整批各不相同的 id，塞進去只會把真正有用的項目洗掉。
+    /// </summary>
+    public static HashSet<string> ActiveAmong(
+        AppDbContext? db, JsonStorageService storage, IReadOnlyCollection<string> userIds, DateTimeOffset now)
+    {
+        if (userIds.Count == 0)
+        {
+            return [];
+        }
+
+        if (db != null)
+        {
+            return db.Users.AsNoTracking()
+                .Where(u => userIds.Contains(u.Id))
+                .Select(u => new { u.Id, u.Status, u.SuspendedUntil })
+                .ToList()
+                .Where(u => IsActive(u.Status, u.SuspendedUntil, now))
+                .Select(u => u.Id)
+                .ToHashSet();
+        }
+
+        // JSON 檔案儲存模式走同一套規則，包含「查無此人即不可用」。
+        // 沒有資料庫時 AuthService 六個入口全部回 DATABASE_NOT_CONFIGURED，發不出
+        // token，需要登入的路徑一條都進不來，所以這條分支實際上走不到——正因為
+        // 如此更沒有理由替它另立一套寬鬆的判斷，讓兩套相反的規則並存在同一份程式裡。
+        return storage.ReadCollection<User>("users")
+            .Where(u => userIds.Contains(u.Id) && IsActive(u.Status, u.SuspendedUntil, now))
+            .Select(u => u.Id)
+            .ToHashSet();
+    }
+
+    /// <summary>單筆版。查無此人同樣算不可用。</summary>
+    public static bool IsActive(
+        AppDbContext? db, JsonStorageService storage, string userId, DateTimeOffset now)
+        => !string.IsNullOrWhiteSpace(userId)
+           && ActiveAmong(db, storage, [userId], now).Contains(userId);
 
     public async Task<bool> IsActiveAsync(string userId, CancellationToken ct)
     {
