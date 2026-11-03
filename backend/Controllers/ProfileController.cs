@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SameDaySocialApp.Application.Dto;
+using SameDaySocialApp.Application.Services;
 using SameDaySocialApp.Domain.Entities;
 using SameDaySocialApp.Infrastructure.Persistence;
 
@@ -14,6 +15,17 @@ public sealed class ProfileController(JsonStorageService storage, IServiceProvid
     private readonly AppDbContext? db = services.GetService<AppDbContext>();
 
     // 個人資料會顯示在配對 / 聊天中，故任何登入者皆可讀取（但需登入，避免匿名爬取列舉）。
+    //
+    // 「任何登入者皆可讀取」的另一面：這支回的是整包 User——自我介紹、全部照片、
+    // 身高體重、職業學校、交友條件。帳號被封鎖或停權之後不擋，等於那個人只是
+    // 不能發言，個人檔案還在站上給人翻。自助註銷更明顯：DeleteAccount 只洗了
+    // users 那邊的暱稱、自我介紹與照片，其餘幾十個欄位原封不動留著。
+    //
+    // 停權的人期滿會自動回來（判斷走 AccountStateService，不是只看 users.status，
+    // 那個欄位要等有人開後台才會被寫回 ACTIVE）。
+    //
+    // 查詢自己不用另外放行：非 ACTIVE 的帳號在 Program.cs 的中介軟體就被擋在
+    // 401，根本到不了這裡，所以能走到這一行的呼叫者必定是 ACTIVE。
     [Authorize]
     [HttpGet("{userId}")]
     public async Task<ActionResult<ApiResponse<User>>> Get(string userId, CancellationToken cancellationToken)
@@ -23,12 +35,21 @@ public sealed class ProfileController(JsonStorageService storage, IServiceProvid
             try
             {
                 var record = await db.Users.FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
-                if (record != null) return ApiResponse<User>.Ok(record.ToDomain());
+                if (record != null)
+                {
+                    return AccountStateService.IsActive(record.Status, record.SuspendedUntil, DateTimeOffset.UtcNow)
+                        ? ApiResponse<User>.Ok(record.ToDomain())
+                        : NotFound(ApiResponse<User>.Fail("USER_NOT_FOUND", "找不到使用者。"));
+                }
             }
             catch { /* DB 欄位尚未 migrate，fallback 到 JSON */ }
         }
 
         var user = storage.FindById<User>("users", userId);
+        if (user != null && !AccountStateService.IsActive(user.Status, user.SuspendedUntil, DateTimeOffset.UtcNow))
+        {
+            user = null;
+        }
         return user == null
             ? NotFound(ApiResponse<User>.Fail("USER_NOT_FOUND", "找不到使用者。"))
             : ApiResponse<User>.Ok(user);

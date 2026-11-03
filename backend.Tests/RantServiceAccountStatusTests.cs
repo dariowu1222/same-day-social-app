@@ -1,0 +1,198 @@
+using Microsoft.Extensions.DependencyInjection;
+using SameDaySocialApp.Application.Services;
+using SameDaySocialApp.Domain.Enums;
+using SameDaySocialApp.Infrastructure.Persistence;
+using SameDaySocialApp.Infrastructure.Persistence.Models;
+using Xunit;
+
+namespace SameDaySocialApp.Tests;
+
+/// <summary>
+/// 牢騷牆的帳號狀態過濾。
+///
+/// 為什麼這面牆特別要測：它是全 App 唯一不用登入就讀得到的內容，而且貼文把
+/// 作者暱稱複寫了一份在 rant_posts.nickname 上。自助註銷只洗 users 那邊的暱稱、
+/// 自我介紹與照片，牆上那份副本原封不動——漏擋的話，一個已經按下「刪除帳號」
+/// 的人，本名和整串心事都還掛在公開頁面上。
+/// </summary>
+public sealed class RantServiceAccountStatusTests
+{
+    private const string Author = "user_author";
+    private const string Replier = "user_replier";
+
+    /// <summary>
+    /// 先確認這組測試真的看得到東西。少了這一個，其他「不應出現」的斷言
+    /// 就算是因為整面牆壞掉而空的，也會一樣綠。
+    /// </summary>
+    [Fact]
+    public void ActiveAuthorIsOnTheWall()
+    {
+        var service = Build(nameof(ActiveAuthorIsOnTheWall), TestWorld.User(Author));
+
+        Assert.Contains(service.GetPublicPosts(), x => x.UserId == Author);
+    }
+
+    [Fact]
+    public void DeletedAuthorIsNotOnTheWall()
+    {
+        var service = Build(nameof(DeletedAuthorIsNotOnTheWall), TestWorld.User(Author, AccountStatus.DELETED));
+
+        Assert.DoesNotContain(service.GetPublicPosts(), x => x.UserId == Author);
+    }
+
+    [Fact]
+    public void BannedAuthorIsNotOnTheWall()
+    {
+        var service = Build(nameof(BannedAuthorIsNotOnTheWall), TestWorld.User(Author, AccountStatus.BANNED));
+
+        Assert.DoesNotContain(service.GetPublicPosts(), x => x.UserId == Author);
+    }
+
+    /// <summary>停權還沒到期：擋住。這是下一個測試的對照組。</summary>
+    [Fact]
+    public void RunningSuspensionIsNotOnTheWall()
+    {
+        var service = Build(
+            nameof(RunningSuspensionIsNotOnTheWall),
+            TestWorld.User(Author, AccountStatus.SUSPENDED, TestWorld.StillSuspended));
+
+        Assert.DoesNotContain(service.GetPublicPosts(), x => x.UserId == Author);
+    }
+
+    /// <summary>停權到期：貼文回到牆上，不必等後台有人去按。</summary>
+    [Fact]
+    public void ExpiredSuspensionReturnsToTheWall()
+    {
+        var service = Build(
+            nameof(ExpiredSuspensionReturnsToTheWall),
+            TestWorld.User(Author, AccountStatus.SUSPENDED, TestWorld.SuspensionOver));
+
+        Assert.Contains(service.GetPublicPosts(), x => x.UserId == Author);
+    }
+
+    /// <summary>直接帶貼文網址進來也要擋，否則擋掉的只是「不好找」而已。</summary>
+    [Fact]
+    public void DeletedAuthorsPostIsNotReachableByLink()
+    {
+        var service = Build(
+            nameof(DeletedAuthorsPostIsNotReachableByLink),
+            TestWorld.User(Author, AccountStatus.DELETED));
+
+        Assert.Null(service.GetPost(PostId));
+    }
+
+    // ── 回覆 ──
+
+    [Fact]
+    public void ActiveReplierIsShown()
+    {
+        var service = Build(
+            nameof(ActiveReplierIsShown),
+            TestWorld.User(Author),
+            TestWorld.User(Replier));
+
+        Assert.Contains(service.GetPost(PostId)!.Replies, x => x.UserId == Replier);
+    }
+
+    [Fact]
+    public void DeletedReplierIsHiddenButThePostStays()
+    {
+        var service = Build(
+            nameof(DeletedReplierIsHiddenButThePostStays),
+            TestWorld.User(Author),
+            TestWorld.User(Replier, AccountStatus.DELETED));
+
+        var post = service.GetPost(PostId);
+
+        Assert.NotNull(post);
+        Assert.DoesNotContain(post!.Replies, x => x.UserId == Replier);
+    }
+
+    [Fact]
+    public void ExpiredSuspensionBringsTheReplyBack()
+    {
+        var service = Build(
+            nameof(ExpiredSuspensionBringsTheReplyBack),
+            TestWorld.User(Author),
+            TestWorld.User(Replier, AccountStatus.SUSPENDED, TestWorld.SuspensionOver));
+
+        Assert.Contains(service.GetPost(PostId)!.Replies, x => x.UserId == Replier);
+    }
+
+    // ── 看不到就不能動 ──
+
+    /// <summary>
+    /// 牆上濾掉了，互動也要跟著不通。不然拿著舊畫面上的 id，照樣能往一篇
+    /// 已經隱形的貼文裡寫東西、按讚、檢舉。
+    /// </summary>
+    [Fact]
+    public void CannotInteractWithAHiddenPost()
+    {
+        var service = Build(
+            nameof(CannotInteractWithAHiddenPost),
+            TestWorld.User(Author, AccountStatus.BANNED),
+            TestWorld.User(Replier));
+
+        Assert.Null(service.Understand(PostId, Replier));
+        Assert.Null(service.Reply(PostId, Replier, "回覆的人", "還看得到嗎"));
+        Assert.Null(service.Report(PostId, Replier));
+    }
+
+    [Fact]
+    public void CanStillInteractWithAVisiblePost()
+    {
+        var service = Build(
+            nameof(CanStillInteractWithAVisiblePost),
+            TestWorld.User(Author),
+            TestWorld.User(Replier));
+
+        Assert.NotNull(service.Understand(PostId, Replier));
+        Assert.NotNull(service.Reply(PostId, Replier, "回覆的人", "還看得到嗎"));
+        Assert.NotNull(service.Report(PostId, Replier));
+    }
+
+    // ── 測試資料 ──
+
+    private const string PostId = "rant_under_test";
+
+    /// <summary>
+    /// 一篇貼文、一則回覆，作者與回覆者的狀態由呼叫端指定。
+    /// 只傳作者時不放回覆。
+    /// </summary>
+    private static RantService Build(string databaseName, UserRecord author, UserRecord? replier = null)
+    {
+        var db = TestWorld.Db(databaseName);
+        db.Users.Add(author);
+        db.RantPosts.Add(new RantPostRecord
+        {
+            Id = PostId,
+            UserId = author.Id,
+            Nickname = author.Nickname,
+            Content = "今天真的很累"
+        });
+        if (replier != null)
+        {
+            db.Users.Add(replier);
+            db.RantReplies.Add(new RantReplyRecord
+            {
+                Id = $"reply_{replier.Id}",
+                RantPostId = PostId,
+                UserId = replier.Id,
+                Nickname = replier.Nickname,
+                Content = "我懂"
+            });
+        }
+        db.SaveChanges();
+
+        // RantService 自己從容器拿 AppDbContext；NotificationService 沒註冊，
+        // 服務本來就允許它為 null。
+        var services = new ServiceCollection();
+        services.AddSingleton(db);
+
+        return new RantService(
+            TestWorld.Storage(),
+            new TodayAnalyzerService(),
+            new ModerationService(),
+            services.BuildServiceProvider());
+    }
+}
