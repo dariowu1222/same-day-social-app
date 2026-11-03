@@ -36,7 +36,8 @@ public sealed class AdminUsersController(
     public ActionResult<ApiResponse<AdminUserService.Dashboard>> Dashboard()
     {
         if (Denied()) return NotFound();
-        // 進後台時順手讓到期的停權失效，不必額外排程
+        // 排程（restore-suspensions.yml）每小時跑一次，這裡再順手跑一次：
+        // 審核的人正要看的就是這一頁的數字，不該讓它停在上一輪排程的舊狀態。
         users.RestoreExpiredSuspensions();
         return ApiResponse<AdminUserService.Dashboard>.Ok(users.GetDashboard());
     }

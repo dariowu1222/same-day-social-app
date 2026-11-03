@@ -38,8 +38,9 @@ public sealed class AccountStateService(IServiceScopeFactory scopes, IMemoryCach
     ///
     /// 為什麼要自己看 suspended_until：
     /// 停權是「暫時」的，期限一到就該回到正常狀態。真正把 users.status 寫回 ACTIVE 的是
-    /// AdminUserService.RestoreExpiredSuspensions，但它只在後台開啟會員列表時才跑，
-    /// 沒有任何排程。只信 status 欄位的話，沒人開後台就等於永久停權。
+    /// AdminUserService.RestoreExpiredSuspensions，而它要等排程（每小時一次，見
+    /// .github/workflows/restore-suspensions.yml）跑過才會動那一列。只信 status 欄位的話，
+    /// 中間那段時間人已經期滿了卻還被當成停權中。
     /// </summary>
     public static bool IsActive(AccountStatus status, DateTimeOffset? suspendedUntil, DateTimeOffset now)
     {

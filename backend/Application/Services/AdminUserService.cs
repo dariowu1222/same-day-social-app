@@ -282,6 +282,11 @@ public sealed class AdminUserService
     /// <summary>
     /// 停權到期自動恢復。設了期限就該自己失效，
     /// 否則只要沒人記得手動解除，暫時停權就變成永久停權。
+    ///
+    /// 由排程每小時打 /api/maintenance/restore-expired-suspensions 觸發，
+    /// 管理員開後台儀表板時也會順手跑一次。放行與否不靠這支——登入和讀取都自己
+    /// 判斷期限——這支負責的是讓資料庫裡的 users.status 不要長期跟事實分岔，
+    /// 因為後台的列表、篩選與計數是直接查那個欄位的。
     /// </summary>
     public int RestoreExpiredSuspensions()
     {
