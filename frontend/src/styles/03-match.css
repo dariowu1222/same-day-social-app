@@ -641,3 +641,50 @@
 [data-theme="dark"] .match-celebrate-title { color: #e8f5f0 }
 [data-theme="dark"] .match-celebrate-sub { color: #9ec4b4 }
 [data-theme="dark"] .match-celebrate-chat { background: #4caf7d }
+
+/* 今日沒存成功時的告知橫幅。
+   絕對定位而不進正常流：這一頁的 min-height 是「剛好一屏、不該捲動」
+   （見檔案開頭 .match-result-page 的註解），塞一塊在流裡會把卡片往下推，
+   正是先前修掉的那個問題。 */
+.match-entry-failed {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(253, 240, 232, 0.97);
+  box-shadow: 0 2px 14px rgba(120, 70, 40, 0.18);
+  color: #8a5040;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.match-entry-failed p {
+  margin: 0;
+}
+
+.match-entry-failed button {
+  flex-shrink: 0;
+  /* 44px 命中高度，手機上才按得準 */
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 10px;
+  background: #8a5040;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+[data-theme="dark"] .match-entry-failed {
+  background: rgba(38, 28, 22, 0.97);
+  color: #f0cdbb;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.45);
+}
+[data-theme="dark"] .match-entry-failed button { background: #a9674f }

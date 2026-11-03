@@ -1,17 +1,17 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
+import { markTodayIntroSeen, shouldPlayTodayIntro } from '../../shared/lib/storageKeys'
 import { createTodayEntry } from './api'
 import TodayEntryForm, { type SoulNote, type TodayQuickEntry } from './TodayEntryForm'
 
 type Props = {
-  onGoToMatches: (label: string) => void
+  /** pendingEntry 是「存今日」那一支還在飛的請求，交給滑卡頁去等。 */
+  onGoToMatches: (label: string, pendingEntry: Promise<unknown> | null) => void
 }
 
 type SoulNoteGroup = SoulNote & {
   tone: string
 }
-
-const INTRO_KEY = 'today-intro-seen-session'
 
 const soulNotesByEntry: Record<string, SoulNoteGroup[]> = {
   tired: [
@@ -74,14 +74,16 @@ export default function TodayPage({ onGoToMatches }: Props) {
   const { user } = useAuth()
   const FULL_TEXT = '今天的你，想被怎麼理解？'
   const [introPhase, setIntroPhase] = useState<'center' | 'rising' | 'done'>(
-    sessionStorage.getItem(INTRO_KEY) ? 'done' : 'center'
+    () => (shouldPlayTodayIntro() ? 'center' : 'done')
   )
   const [typedCount, setTypedCount] = useState(0)
   const [showCursor, setShowCursor] = useState(true)
   const [content, setContent] = useState('')
   const [currentPrompt, setCurrentPrompt] = useState('不用想得太正式，像跟朋友說話一樣就好。')
   const [message, setMessage] = useState('')
-  const isSubmitting = false
+  // 送出只允許一次。按鈕按下去就導頁，但手機上兩次點擊可能落在同一個
+  // commit 之前，不擋的話會建立兩筆今日。
+  const submittedRef = useRef(false)
   const [selectedQuickEntryKey, setSelectedQuickEntryKey] = useState<string | null>(null)
   const [selectedResponseMode, setSelectedResponseMode] = useState<string>('JUST_LISTEN')
   const [selectedMoodLabel, setSelectedMoodLabel] = useState<string>('')
@@ -117,7 +119,7 @@ export default function TodayPage({ onGoToMatches }: Props) {
   useEffect(() => {
     if (introPhase === 'rising') {
       const t = setTimeout(() => {
-        sessionStorage.setItem(INTRO_KEY, '1')
+        markTodayIntroSeen()
         setIntroPhase('done')
       }, 950)
       return () => clearTimeout(t)
@@ -129,17 +131,36 @@ export default function TodayPage({ onGoToMatches }: Props) {
     setSelectedResponseMode(entry.responseMode)
     setSelectedMoodLabel(entry.label)
     setIsSoulNoteOpen(false)
-    setContent('')
+    // 不清空已經打好的字。換心情通常是「我想了一下，這個詞更準」，
+    // 不是「我要重寫」——把內文倒掉等於懲罰改變心意的人。
     setCurrentPrompt(entry.prompt)
     setMessage('')
   }
 
   function submitToday() {
-    // 先導頁，API 呼叫背景執行（不阻塞 UI）
-    onGoToMatches(selectedMoodLabel)
-    if (!user) return
-    createTodayEntry({ userId: user.userId, content, responseMode: selectedResponseMode, visibility: 'MATCH_ONLY' })
-      .catch(() => {/* 靜默失敗，假資料仍正常顯示 */})
+    if (submittedRef.current) return
+    submittedRef.current = true
+
+    if (!user) {
+      onGoToMatches(selectedMoodLabel, null)
+      return
+    }
+
+    // 仍然立刻導頁（滑卡頁本來就有載入畫面，等待被它吸收掉），
+    // 但把這支請求交出去讓滑卡頁先 await 再取卡。
+    //
+    // 先前是導完頁就不管了，造成兩個問題：
+    // 一是 POST 跟滑卡頁的 GET 同時在飛，後端配對讀的是「最新一筆今日」，
+    //    POST 還沒落地就會拿上一則、甚至沒有的今日去配——使用者寫了「今天很累」
+    //    卻配到完全無關的人。
+    // 二是 .catch 整個吞掉，存失敗時使用者寫的東西就沒了，而且沒人告訴他。
+    const pending = createTodayEntry({
+      userId: user.userId,
+      content,
+      responseMode: selectedResponseMode,
+      visibility: 'MATCH_ONLY',
+    })
+    onGoToMatches(selectedMoodLabel, pending)
   }
 
   return (
@@ -150,7 +171,7 @@ export default function TodayPage({ onGoToMatches }: Props) {
         <div
           className={`today-intro-overlay today-intro-${introPhase}`}
           onClick={() => {
-            sessionStorage.setItem(INTRO_KEY, '1')
+            markTodayIntroSeen()
             setIntroPhase('done')
           }}
         >
@@ -166,7 +187,6 @@ export default function TodayPage({ onGoToMatches }: Props) {
       </header>
       <TodayEntryForm
         content={content}
-        isSubmitting={isSubmitting}
         hasSelectedEntry={selectedQuickEntryKey !== null}
         selectedEntryKey={selectedQuickEntryKey}
         soulNote={soulNote}

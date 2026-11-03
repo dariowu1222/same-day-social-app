@@ -58,6 +58,12 @@ type Props = {
   onBack: () => void
   onGoToRant: () => void
   moodLabel?: string
+  /**
+   * 剛從今日頁送出、還在飛的「存今日」請求。
+   * 取卡前要先等它落地——後端配對讀的是使用者最新一筆今日，
+   * 沒等就會拿上一則（或完全沒有）去算分。
+   */
+  pendingEntry?: Promise<unknown> | null
 }
 
 type SwipeDir = 'left' | 'right' | null
@@ -461,7 +467,7 @@ function PreferenceSheet({ userId, onClose, onApplied }: { userId: string; onClo
   )
 }
 
-export default function MatchResultPage({ onBack, onGoToRant, moodLabel }: Props) {
+export default function MatchResultPage({ onBack, onGoToRant, moodLabel, pendingEntry }: Props) {
   const { user } = useAuth()
   const [phase, setPhase] = useState<'loading' | 'tutorial' | 'done'>('loading')
   const [matches, setMatches] = useState<EnrichedMatch[]>([])
@@ -473,6 +479,8 @@ export default function MatchResultPage({ onBack, onGoToRant, moodLabel }: Props
   const [prefOpen, setPrefOpen] = useState(false)
   // 右滑沒送出去時要講一聲，不能讓使用者以為表達過了
   const [toast, setToast] = useState('')
+  // 今日沒存成功。下面的卡還是會顯示，但它們是依先前的狀態算的，要講清楚。
+  const [entryFailed, setEntryFailed] = useState(false)
   // toast 自己消失。房內用的是同一套（ChatRoom.tsx 的 toastTimer）。
   useEffect(() => {
     if (!toast) return
@@ -500,6 +508,16 @@ export default function MatchResultPage({ onBack, onGoToRant, moodLabel }: Props
       }
     }
 
+    // 先等「存今日」落地再取卡。失敗不擋流程——還是給卡，但要讓使用者知道
+    // 這批卡不是依他剛寫的內容算的，而且他寫的東西沒存上。
+    if (pendingEntry) {
+      try {
+        await pendingEntry
+      } catch {
+        setEntryFailed(true)
+      }
+    }
+
     try {
       const res = await getTodayMatches(user.userId)
       // 只濾掉左滑過的。右滑失敗的人不能濾——濾掉就等於幫使用者把人藏起來，
@@ -512,7 +530,7 @@ export default function MatchResultPage({ onBack, onGoToRant, moodLabel }: Props
     }
     setCurrentIndex(0)
     setLastDir(null)
-  }, [user])
+  }, [user, pendingEntry])
 
   useEffect(() => {
     void (async () => {
@@ -565,6 +583,15 @@ export default function MatchResultPage({ onBack, onGoToRant, moodLabel }: Props
   return (
     <div className="page match-result-page">
       {toast && <div className="cr-toast" role="status">{toast}</div>}
+
+      {/* 今日沒存成功。先前這裡什麼都不會說，使用者寫的東西靜悄悄不見，
+          而且下面這批卡其實是依他「上一則」今日算出來的。 */}
+      {entryFailed && (
+        <div className="match-entry-failed" role="alert">
+          <p>今天寫的內容沒有存成功，下面的配對是依你先前的狀態算的。</p>
+          <button type="button" onClick={onBack}>回去重寫</button>
+        </div>
+      )}
       {matched && (
         <MatchCelebration
           name={matched.name}

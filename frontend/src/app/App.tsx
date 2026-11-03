@@ -36,6 +36,9 @@ function App() {
   const { totalUnread } = useChatRealtime()
   const [showMatchResult, setShowMatchResult] = useState(false)
   const [selectedMoodLabel, setSelectedMoodLabel] = useState<string>('')
+  // 「存今日」那支還在飛的請求。滑卡頁要先等它落地再取卡，
+  // 否則後端會拿上一則今日去配對。
+  const [pendingEntry, setPendingEntry] = useState<Promise<unknown> | null>(null)
   const [onboardingDone, setOnboardingDone] = useState(true)
   const { mode } = useTheme()
 
@@ -121,8 +124,8 @@ function App() {
         <Routes>
           <Route path="/" element={
             !showMatchResult
-              ? <TodayPage onGoToMatches={(label) => { setSelectedMoodLabel(label); setShowMatchResult(true) }} />
-              : <MatchResultPage moodLabel={selectedMoodLabel} onBack={() => setShowMatchResult(false)} onGoToRant={() => { setShowMatchResult(false); navigate('/rant') }} />
+              ? <TodayPage onGoToMatches={(label, pending) => { setSelectedMoodLabel(label); setPendingEntry(pending); setShowMatchResult(true) }} />
+              : <MatchResultPage moodLabel={selectedMoodLabel} pendingEntry={pendingEntry} onBack={() => setShowMatchResult(false)} onGoToRant={() => { setShowMatchResult(false); navigate('/rant') }} />
           } />
           <Route path="/rant" element={<RantBoardPage />} />
           <Route path="/rant/search" element={<RantSearchPage />} />

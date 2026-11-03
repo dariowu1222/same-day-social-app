@@ -25,7 +25,6 @@ export type SoulNote = {
 type Props = {
   content: string
   placeholder: string
-  isSubmitting: boolean
   hasSelectedEntry: boolean
   selectedEntryKey?: string | null
   soulNote: SoulNote | null
@@ -95,7 +94,6 @@ const quickEntries: TodayQuickEntry[] = [
 export default function TodayEntryForm({
   content,
   placeholder,
-  isSubmitting,
   hasSelectedEntry,
   selectedEntryKey,
   soulNote,
@@ -182,12 +180,14 @@ export default function TodayEntryForm({
         />
       </label>
 
+      {/* 沒有送出中狀態：按下去就導到滑卡頁，等待由那邊的載入畫面吸收。
+          重複送出由 TodayPage 的 submittedRef 擋，不靠 disabled。 */}
       <button
         className="today-submit-btn"
         onClick={onSubmit}
-        disabled={isSubmitting || !canSubmit}
+        disabled={!canSubmit}
       >
-        {isSubmitting ? '正在找同頻的人…' : '找找今天懂我的人'}
+        找找今天懂我的人
       </button>
     </section>
   )
