@@ -31,6 +31,9 @@ builder.Services.Configure<MediaOptions>(builder.Configuration.GetSection("Media
 
 // 推播：憑證與排程密鑰都從環境變數進來（Render 的 Push__XXX）
 builder.Services.Configure<PushOptions>(builder.Configuration.GetSection("Push"));
+// 排程維護端點（停權到期自動恢復）的密鑰
+builder.Services.Configure<SameDaySocialApp.Controllers.MaintenanceOptions>(
+    builder.Configuration.GetSection("Maintenance"));
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<IMediaStorage, SupabaseMediaStorage>();
 builder.Services.AddCors(options =>
