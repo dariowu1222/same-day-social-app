@@ -59,8 +59,25 @@ public sealed class MatchService
         // 已表態過的人（右滑永久、左滑在冷卻期內）與封鎖關係，都不該再出現。
         var excluded = LoadExcludedUserIds(userId);
 
+        // 帳號狀態：註銷／封鎖／停權中的人不該出現在任何人的牌堆。
+        //
+        // 處置不會回頭刪掉 today_entries，所以只要這個人曾經發過一篇非 PRIVATE 的今天，
+        // 不在這裡擋就會一直留在別人的候選裡——對方右滑配得成功、開得了聊天室、
+        // 通知照送，收件的卻是一個已經註銷的帳號。
+        //
+        // 判斷重用 AccountStateService（請求閘門用的是同一個），停權到期就回到牌堆：
+        // users.status 要等後台開啟會員列表才會被寫回 ACTIVE，不能只看那個欄位。
+        // 名單用的是已經載好的 users，不另外查一次資料庫。
+        var now = DateTimeOffset.UtcNow;
+        var activeUserIds = users
+            .Where(x => AccountStateService.IsActive(x.Status, x.SuspendedUntil, now))
+            .Select(x => x.Id)
+            .ToHashSet();
+
         var pool = entries
+            // 查無使用者的孤兒 entry 也排除，與 AccountStateService「查無此人即不可用」一致
             .Where(x => x.UserId != userId
+                        && activeUserIds.Contains(x.UserId)
                         && !pausedUserIds.Contains(x.UserId)
                         && !excluded.Contains(x.UserId))
             .GroupBy(x => x.UserId)
