@@ -154,6 +154,35 @@ public sealed class AuthService
         return AuthServiceResult<AuthUserResponse>.Ok(new AuthUserResponse(user.Id, user.Nickname, account.Username));
     }
 
+    /// <summary>
+    /// 這顆帳號現在能不能走進來（登入、社群登入、重設密碼都算）。可以就回那列
+    /// users，不行回 null——呼叫端拿到 null 就是擋下，不必再自己判斷一次。
+    ///
+    /// 為什麼不看 auth_accounts.is_disabled：
+    /// 那是處置當下寫下的快照，不會隨時間變。但停權是有期限的，期限一到人就該
+    /// 回來，而把 is_disabled 解開的 RestoreExpiredSuspensions 要等排程跑過才會動它。
+    /// 中間那段時間同一個人會得到兩個答案：舊 token 還能用（請求閘門看的是
+    /// users.status，它自己會算期限），重新登入卻被擋下，畫面上只說「請聯絡客服」。
+    /// token 一過期他就徹底進不來，而且沒有任何地方告訴他為什麼。
+    ///
+    /// 所以登入這一側也改成問 users.status / suspended_until，跟請求閘門、列表
+    /// 過濾走同一個 AccountStateService.IsActive。is_disabled 從此只是那份狀態的
+    /// 鏡子（仍然會同步寫，後台和直接查資料庫的人靠它看得懂），不再是另一份真相。
+    ///
+    /// 這不會把洞開大：封鎖與註銷沒有期限，IsActive 永遠回 false。現在唯一能
+    /// 靠時間自己回來的只有「設了期限而且已經到期」的停權。
+    /// </summary>
+    private async Task<UserRecord?> LoadSignInUserAsync(AuthAccountRecord account, CancellationToken cancellationToken)
+    {
+        var user = await db!.Users.FirstOrDefaultAsync(x => x.Id == account.UserId, cancellationToken);
+
+        // 查無此人：auth_accounts 還在但 users 那列不見了，沒有理由發 token 出去
+        return user != null
+               && AccountStateService.IsActive(user.Status, user.SuspendedUntil, DateTimeOffset.UtcNow)
+            ? user
+            : null;
+    }
+
     public async Task<AuthServiceResult<AuthUserResponse>> LoginAsync(LoginCommand command, CancellationToken cancellationToken)
     {
         if (db == null)
@@ -168,9 +197,11 @@ public sealed class AuthService
         }
 
         AuthAccountRecord? account;
+        UserRecord? user;
         try
         {
             account = await db.AuthAccounts.FirstOrDefaultAsync(x => x.Username == email, cancellationToken);
+            user = account == null ? null : await LoadSignInUserAsync(account, cancellationToken);
         }
         catch (Exception) when (!cancellationToken.IsCancellationRequested)
         {
@@ -183,7 +214,7 @@ public sealed class AuthService
             return AuthServiceResult<AuthUserResponse>.Fail("INVALID_CREDENTIALS", "Email 或密碼錯誤，請重新確認。");
         }
 
-        if (account.IsDisabled)
+        if (user == null)
         {
             return AuthServiceResult<AuthUserResponse>.Fail("ACCOUNT_DISABLED", "此帳號目前無法登入，請聯絡客服或稍後再試。");
         }
@@ -193,10 +224,8 @@ public sealed class AuthService
             return AuthServiceResult<AuthUserResponse>.Fail("INVALID_CREDENTIALS", "Email 或密碼錯誤，請重新確認。");
         }
 
-        UserRecord user;
         try
         {
-            user = await db.Users.FirstAsync(x => x.Id == account.UserId, cancellationToken);
             account.LastLoginAt = DateTimeOffset.UtcNow;
             account.UpdatedAt = DateTimeOffset.UtcNow;
             await db.SaveChangesAsync(cancellationToken);
@@ -245,14 +274,25 @@ public sealed class AuthService
         // 既有帳號（含原本用 Email 密碼註冊的同 email）→ 直接登入
         if (account != null)
         {
-            if (account.IsDisabled)
+            UserRecord? existingUser;
+            try
+            {
+                existingUser = await LoadSignInUserAsync(account, cancellationToken);
+            }
+            catch (Exception) when (!cancellationToken.IsCancellationRequested)
+            {
+                return AuthServiceResult<AuthUserResponse>.Fail("DATABASE_UNAVAILABLE", "目前無法連線資料庫，請稍後再試。");
+            }
+
+            // 社群登入跟 Email 密碼登入擋的是同一件事。少了這一關，被封鎖的人
+            // 只要改用 Google 按一下就繞過去了——同一個 email、同一個帳號。
+            if (existingUser == null)
             {
                 return AuthServiceResult<AuthUserResponse>.Fail("ACCOUNT_DISABLED", "此帳號目前無法登入，請聯絡客服或稍後再試。");
             }
 
             try
             {
-                var existingUser = await db.Users.FirstAsync(x => x.Id == account.UserId, cancellationToken);
                 account.LastLoginAt = now;
                 account.UpdatedAt = now;
                 await db.SaveChangesAsync(cancellationToken);
@@ -459,7 +499,7 @@ public sealed class AuthService
         }
 
         var account = await db.AuthAccounts.FirstOrDefaultAsync(x => x.Username == email, cancellationToken);
-        if (account == null || account.IsDisabled)
+        if (account == null || await LoadSignInUserAsync(account, cancellationToken) == null)
         {
             // 去帳號枚舉：不洩漏 Email 是否註冊，一律回覆「已寄出（若該帳號存在）」
             return AuthServiceResult<PasswordResetRequestResponse>.Ok(new PasswordResetRequestResponse(email, 10));
@@ -549,7 +589,8 @@ public sealed class AuthService
         }
 
         var account = await db.AuthAccounts.FirstOrDefaultAsync(x => x.Username == email, cancellationToken);
-        if (account == null || account.IsDisabled)
+        var user = account == null ? null : await LoadSignInUserAsync(account, cancellationToken);
+        if (account == null || user == null)
         {
             // 去帳號枚舉：與「驗證碼錯誤」回覆一致
             return AuthServiceResult<(AuthAccountRecord, UserRecord, PasswordResetTokenRecord)>.Fail("INVALID_CODE", "驗證碼錯誤或已過期。");
@@ -567,7 +608,6 @@ public sealed class AuthService
             return AuthServiceResult<(AuthAccountRecord, UserRecord, PasswordResetTokenRecord)>.Fail("INVALID_CODE", "驗證碼錯誤或已過期。");
         }
 
-        var user = await db.Users.FirstAsync(x => x.Id == account.UserId, cancellationToken);
         return AuthServiceResult<(AuthAccountRecord, UserRecord, PasswordResetTokenRecord)>.Ok((account, user, token));
     }
 
