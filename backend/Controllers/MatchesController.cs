@@ -26,10 +26,19 @@ public sealed class MatchesController(MatchService matchService) : ControllerBas
     [HttpPost("{matchId}/like")]
     public ActionResult<ApiResponse<LikeResult>> Like(string matchId)
     {
-        var result = matchService.Like(matchId, CallerId);
-        return result == null
-            ? NotFound(ApiResponse<LikeResult>.Fail("MATCH_NOT_FOUND", "找不到這筆配對。"))
-            : ApiResponse<LikeResult>.Ok(result);
+        var outcome = matchService.Like(matchId, CallerId);
+        return outcome.Status switch
+        {
+            LikeStatus.Ok => ApiResponse<LikeResult>.Ok(outcome.Result!),
+
+            // 410 而不是 404：這筆配對存在、也確實是你的，只是另一邊的人已經不在了。
+            // 前端靠 MATCH_UNAVAILABLE 區分「暫時送不出去、等下補送」與「送幾次都一樣」。
+            LikeStatus.CandidateUnavailable => StatusCode(
+                StatusCodes.Status410Gone,
+                ApiResponse<LikeResult>.Fail("MATCH_UNAVAILABLE", "這個人已經不在了。")),
+
+            _ => NotFound(ApiResponse<LikeResult>.Fail("MATCH_NOT_FOUND", "找不到這筆配對。")),
+        };
     }
 
     /// <summary>
