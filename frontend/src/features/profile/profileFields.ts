@@ -1,6 +1,11 @@
 // 個人資料欄位的預設選項（「我的」頁與 onboarding 共用）
 
-export const GENDER_OPTIONS = ['男', '女', '其他', '不公開'] as const
+// 只留男/女，不是為了省事，是因為配對過濾只認這兩個值：
+// 「想認識的對象」只有男生/女生/不限，而 MatchService.MatchesPreferences 把
+// 前兩者翻成「男」「女」去比對。填「其他」或「不公開」的人在任何指定性別的
+// 搜尋裡都會被濾掉，等於自願退出大部分牌堆，而 app 裡沒有任何地方會告訴他。
+// 與其留一個看起來可選、實際上會讓人隱形的選項，不如不提供。
+export const GENDER_OPTIONS = ['男', '女'] as const
 export const RELATIONSHIP_OPTIONS = ['單身', '曖昧中', '穩定交往', '已婚', '不公開'] as const
 export const DATING_GOAL_OPTIONS = ['交友', '約會', '長期關係', '先聊聊', '想抒發'] as const
 export const LOOKING_FOR_OPTIONS = ['男生', '女生', '不限'] as const
