@@ -233,10 +233,16 @@ function SwipeCard({
           <span>{match.reason}</span>
         </div>
 
-        <p className="swipe-today-label">今天想說的話</p>
-        <p className={`swipe-today-text${showProfile ? '' : ' clamped'}`}>
-          「{match.todaySummary}」
-        </p>
+        {/* 沒發過今日的人也會進牌堆，這時 todaySummary 是空字串——
+            整塊要收掉，不然卡片上會留一行標題加一對空引號「」。 */}
+        {match.todaySummary.trim() && (
+          <>
+            <p className="swipe-today-label">今天想說的話</p>
+            <p className={`swipe-today-text${showProfile ? '' : ' clamped'}`}>
+              「{match.todaySummary}」
+            </p>
+          </>
+        )}
 
         {match.interests.length > 0 && (
           <div className="swipe-tags">

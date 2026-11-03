@@ -39,12 +39,27 @@ public sealed class MatchService
     public List<MatchResponse> GetTodayMatches(string userId)
     {
         var users = LoadUsers();
-        var entries = LoadMatchableEntries();
-        var current = entries.Where(x => x.UserId == userId).MaxBy(x => x.CreatedAt);
-        if (current == null)
+
+        // 登入者的交友意圖（想認識的對象、年齡範圍）→ 用來篩選候選
+        var me = users.FirstOrDefault(x => x.Id == userId);
+        if (me == null)
         {
             return [];
         }
+
+        // 候選池從「使用者」出發，不是從「今日」出發。
+        //
+        // 先前是拿 today_entries 當池子，等於沒發過今日的人對所有人隱形。
+        // 2026-11-03 實測：78 位使用者裡只有 8 位發過今日，其餘 90% 根本不在
+        // 任何人的牌堆裡——而且 onboarding 只收個人資料、不會建立今日記錄，
+        // 所以一個剛註冊完、資料填得完整的人，什麼都沒做錯就是隱形的，
+        // app 裡也沒有任何地方會告訴他。今日有發就當加分素材，沒發也要能被看到。
+        var latestEntries = LoadMatchableEntries()
+            .GroupBy(x => x.UserId)
+            .ToDictionary(g => g.Key, g => g.MaxBy(x => x.CreatedAt)!);
+
+        // 自己的今日同樣可有可無：有就拿來比對事件與情緒，沒有就只比個人資料。
+        latestEntries.TryGetValue(userId, out var current);
 
         // 暫停配對：本人暫停則不配對；其他暫停者也不出現在候選
         var pausedUserIds = LoadPausedUserIds();
@@ -53,24 +68,19 @@ public sealed class MatchService
             return [];
         }
 
-        // 登入者的交友意圖（想認識的對象、年齡範圍）→ 用來篩選候選
-        var me = users.FirstOrDefault(x => x.Id == userId);
-
         // 已表態過的人（右滑永久、左滑在冷卻期內）與封鎖關係，都不該再出現。
         var excluded = LoadExcludedUserIds(userId);
 
-        var pool = entries
-            .Where(x => x.UserId != userId
-                        && !pausedUserIds.Contains(x.UserId)
-                        && !excluded.Contains(x.UserId))
-            .GroupBy(x => x.UserId)
-            .Select(g => g.MaxBy(x => x.CreatedAt)!)
+        var pool = users
+            .Where(x => x.Id != userId
+                        && !pausedUserIds.Contains(x.Id)
+                        && !excluded.Contains(x.Id))
             .ToList();
 
         // 年齡範圍是硬界線：湊不滿一副牌就發幾張算幾張，不放寬來補。
         // 放寬過的卡片在畫面上和其他人長得一模一樣，使用者只會看到自己
         // 明明設了 25–30 卻跑出 33 歲的人，結論是偏好設定沒有用。
-        var deck = RankCandidates(pool, current, users, me)
+        var deck = RankCandidates(pool, current, latestEntries, me)
             .Take(DeckSize)
             .ToList();
 
@@ -312,17 +322,31 @@ public sealed class MatchService
         return "pair_" + Convert.ToHexString(hash)[..32].ToLowerInvariant();
     }
 
+    /// <summary>
+    /// 候選池的來源。只取 ACTIVE——這在候選池改成從 users 出發之後變成必要條件：
+    /// 先前池子是 today_entries，已註銷的人多半沒發過今日所以碰巧看不到；
+    /// 現在每個人都在池子裡，不擋狀態的話註銷與停權帳號會全部冒出來，
+    /// 還能被右滑配對成功、自動開聊天室、收到通知。
+    ///
+    /// ACTIVE 也是全站對「這個帳號可用」的一致定義（見 AccountStateService.IsActiveAsync）。
+    /// 停權到期不會自動翻回 ACTIVE，所以到期前連登入都不行——配對照同一條線走就對齊了。
+    /// </summary>
     private List<User> LoadUsers()
     {
+        var active = AccountStatus.ACTIVE.ToString();
+
         if (db != null)
         {
             return db.Users.AsNoTracking()
+                .Where(x => x.Status == active)
                 .ToList()
                 .Select(x => x.ToDomain())
                 .ToList();
         }
 
-        return storage.ReadCollection<User>("users");
+        return storage.ReadCollection<User>("users")
+            .Where(x => x.Status == AccountStatus.ACTIVE)
+            .ToList();
     }
 
     private List<TodayEntry> LoadMatchableEntries()
@@ -345,49 +369,103 @@ public sealed class MatchService
     /// 一位候選的算分結果。純計算、不碰資料庫——排序與 Take 都在這個階段完成，
     /// 只有真的要發出去的那幾張才會落地。
     /// </summary>
-    private sealed record Candidate(TodayEntry Entry, int Score, MatchType Type, List<string> SharedTags);
+    /// <summary>
+    /// 一位候選的算分結果。純計算、不碰資料庫——排序與 Take 都在這個階段完成，
+    /// 只有真的要發出去的那幾張才會落地。
+    /// Entry 可能為 null：沒發過今日的人一樣要能被配到，那時只剩個人資料可比。
+    /// </summary>
+    private sealed record Candidate(
+        string UserId, TodayEntry? Entry, int Score, MatchType Type, List<string> SharedTags);
+
+    /// <summary>
+    /// 算分素材。今日有填就用今日的，沒填就退回個人資料裡的長期偏好，
+    /// 兩邊欄位對得上，下游就不必為「有沒有今日」分兩套邏輯。
+    /// </summary>
+    private readonly record struct Traits(
+        EventType? Event,
+        List<string> Emotions,
+        List<string> Values,
+        List<string> Interests,
+        ResponseMode Response);
+
+    private static Traits TraitsOf(TodayEntry? entry, User? user)
+    {
+        if (entry != null)
+        {
+            return new Traits(
+                entry.EventType,
+                entry.EmotionTags.Select(x => x.ToString()).ToList(),
+                entry.ValueTags,
+                entry.InterestTags,
+                entry.ResponseMode);
+        }
+
+        // 事件與情緒講的是「今天發生什麼」，沒填就是沒有，不拿長期標籤硬湊——
+        // 湊出來的「你們今天都遇到…」是假的，使用者一眼就看得出來。
+        // 興趣與價值觀本來就是長期的，個人資料有就拿來用。
+        return new Traits(
+            null,
+            [],
+            user?.ValueTags ?? [],
+            user?.InterestTags ?? [],
+            user?.ResponsePreference ?? ResponseMode.JUST_LISTEN);
+    }
 
     private static List<Candidate> RankCandidates(
-        List<TodayEntry> pool, TodayEntry current, List<User> users, User? me)
+        List<User> pool, TodayEntry? current, Dictionary<string, TodayEntry> latestEntries, User? me)
     {
+        var mine = TraitsOf(current, me);
+
         return pool
-            .Where(entry => MatchesPreferences(me, users.FirstOrDefault(u => u.Id == entry.UserId)))
-            .Select(entry => ScoreCandidate(current, entry))
+            .Where(candidate => MatchesPreferences(me, candidate))
+            .Select(candidate =>
+            {
+                latestEntries.TryGetValue(candidate.Id, out var entry);
+                return ScoreCandidate(mine, candidate, entry);
+            })
             .OrderByDescending(x => x.Score)
             .ToList();
     }
 
-    private static Candidate ScoreCandidate(TodayEntry current, TodayEntry other)
+    private static Candidate ScoreCandidate(Traits mine, User other, TodayEntry? otherEntry)
     {
+        var theirs = TraitsOf(otherEntry, other);
         var sharedTags = new List<string>();
         var score = 0;
 
-        if (current.EventType == other.EventType)
+        // 兩邊都要有今日才談得上「同一種事件」。少了 null 判斷，
+        // 兩個都沒發今日的人會被當成事件相同而加 30 分。
+        //
+        // RANDOM 也要排除：那是 TodayAnalyzerService 認不出事件類型時的預設值
+        // （見 ResolveEventType 最後一行），意思是「不知道發生什麼」，不是
+        // 「我們遇到同一件事」。只選心情卡、沒打字的人全都會落在 RANDOM，
+        // 算成共同事件的話，空白的今日會因為 +30 排到整副牌最前面。
+        if (mine.Event != null && mine.Event != EventType.RANDOM && mine.Event == theirs.Event)
         {
             score += 30;
-            sharedTags.Add(current.EventType.ToString());
+            sharedTags.Add(mine.Event.Value.ToString());
         }
 
-        var emotionIntersection = current.EmotionTags.Intersect(other.EmotionTags).Select(x => x.ToString()).ToList();
+        var emotionIntersection = mine.Emotions.Intersect(theirs.Emotions).ToList();
         score += emotionIntersection.Count * 10;
         sharedTags.AddRange(emotionIntersection);
 
-        var valueIntersection = current.ValueTags.Intersect(other.ValueTags).ToList();
+        var valueIntersection = mine.Values.Intersect(theirs.Values).ToList();
         score += valueIntersection.Count * 10;
         sharedTags.AddRange(valueIntersection);
 
-        var interestIntersection = current.InterestTags.Intersect(other.InterestTags).ToList();
+        var interestIntersection = mine.Interests.Intersect(theirs.Interests).ToList();
         score += interestIntersection.Count * 5;
         sharedTags.AddRange(interestIntersection);
 
-        if (IsCompatible(current.ResponseMode, other.ResponseMode))
+        if (IsCompatible(mine.Response, theirs.Response))
         {
             score += 15;
             sharedTags.Add("RESPONSE_COMPATIBLE");
         }
 
-        var matchType = ResolveMatchType(current, other, emotionIntersection, interestIntersection);
-        return new Candidate(other, score, matchType, sharedTags.Distinct().ToList());
+        var matchType = ResolveMatchType(mine, theirs, emotionIntersection, interestIntersection);
+        return new Candidate(other.Id, otherEntry, score, matchType, sharedTags.Distinct().ToList());
     }
 
     /// <summary>
@@ -398,7 +476,7 @@ public sealed class MatchService
     /// 會全部 404，表態靜默遺失、畫面上卻毫無異狀。
     /// </summary>
     private List<MatchResponse> MaterializeDeck(
-        string userId, TodayEntry current, List<Candidate> deck, List<User> users)
+        string userId, TodayEntry? current, List<Candidate> deck, List<User> users)
     {
         if (deck.Count == 0) return [];
 
@@ -408,20 +486,22 @@ public sealed class MatchService
         foreach (var candidate in deck)
         {
             // 落地衝突時這副牌可能少幾張。少發幾張卡沒關係，發出死掉的 matchId 才嚴重。
-            if (!ids.TryGetValue(candidate.Entry.UserId, out var matchId)) continue;
+            if (!ids.TryGetValue(candidate.UserId, out var matchId)) continue;
 
-            var other = candidate.Entry;
-            var user = users.FirstOrDefault(x => x.Id == other.UserId);
+            var user = users.FirstOrDefault(x => x.Id == candidate.UserId);
             responses.Add(new MatchResponse(
                 matchId,
-                other.UserId,
+                candidate.UserId,
                 user?.Nickname ?? "同頻使用者",
                 candidate.Score,
                 candidate.Type,
                 candidate.SharedTags,
                 BuildReason(current, candidate.Type),
                 BuildIcebreaker(current, candidate.Type),
-                Summarize(other.Content),
+                // 對方有發今日就把內容放上卡片，沒發就留空字串。
+                // 卡片其餘欄位（照片、自我介紹、興趣、個性）全部來自個人資料，
+                // 所以少了今日不會開天窗，只是少一段當天的話。
+                candidate.Entry == null ? string.Empty : Summarize(candidate.Entry.Content),
                 AgeOf(user?.Birthday),
                 user?.LocationArea,
                 user?.Bio,
@@ -446,9 +526,9 @@ public sealed class MatchService
     /// 同一人同時打兩次 today（StrictMode、冷啟動重試、按「套用並重新配對」）
     /// 會真的撞到。
     /// </summary>
-    private Dictionary<string, string> PersistDeck(string userId, TodayEntry current, List<Candidate> deck)
+    private Dictionary<string, string> PersistDeck(string userId, TodayEntry? current, List<Candidate> deck)
     {
-        var wanted = deck.Select(x => x.Entry.UserId).ToList();
+        var wanted = deck.Select(x => x.UserId).ToList();
 
         if (db != null)
         {
@@ -460,7 +540,7 @@ public sealed class MatchService
             var added = new List<MatchRecordEntity>();
             foreach (var candidate in deck)
             {
-                if (existing.Contains(candidate.Entry.UserId)) continue;
+                if (existing.Contains(candidate.UserId)) continue;
                 var entity = NewMatch(userId, current, candidate).ToRecord();
                 db.Matches.Add(entity);
                 added.Add(entity);
@@ -493,22 +573,22 @@ public sealed class MatchService
 
         foreach (var candidate in deck)
         {
-            if (stored.ContainsKey(candidate.Entry.UserId)) continue;
+            if (stored.ContainsKey(candidate.UserId)) continue;
             var match = NewMatch(userId, current, candidate);
             storage.InsertOne("matches", match);
-            stored[candidate.Entry.UserId] = match.Id;
+            stored[candidate.UserId] = match.Id;
         }
 
         return stored;
     }
 
-    private static MatchRecord NewMatch(string userId, TodayEntry current, Candidate candidate)
+    private static MatchRecord NewMatch(string userId, TodayEntry? current, Candidate candidate)
     {
         return new MatchRecord
         {
             Id = $"match_{Guid.NewGuid():N}",
             UserId = userId,
-            MatchedUserId = candidate.Entry.UserId,
+            MatchedUserId = candidate.UserId,
             MatchScore = candidate.Score,
             MatchType = candidate.Type,
             SharedTags = candidate.SharedTags,
@@ -553,9 +633,9 @@ public sealed class MatchService
         return a == b || a == ResponseMode.JUST_LISTEN || b == ResponseMode.JUST_LISTEN;
     }
 
-    private static MatchType ResolveMatchType(TodayEntry current, TodayEntry other, List<string> emotions, List<string> interests)
+    private static MatchType ResolveMatchType(Traits mine, Traits theirs, List<string> emotions, List<string> interests)
     {
-        if (current.EventType == other.EventType)
+        if (mine.Event != null && mine.Event != EventType.RANDOM && mine.Event == theirs.Event)
         {
             return MatchType.SAME_EVENT;
         }
@@ -565,7 +645,7 @@ public sealed class MatchService
             return MatchType.SAME_INTEREST;
         }
 
-        if (IsCompatible(current.ResponseMode, other.ResponseMode))
+        if (IsCompatible(mine.Response, theirs.Response))
         {
             return MatchType.COMPLEMENTARY;
         }
@@ -578,11 +658,13 @@ public sealed class MatchService
         return MatchType.TASK_COMPATIBLE;
     }
 
-    private static string BuildReason(TodayEntry current, MatchType type)
+    private static string BuildReason(TodayEntry? current, MatchType type)
     {
         return type switch
         {
-            MatchType.SAME_EVENT => $"你們今天都遇到 {current.EventType} 類型的事情，也都適合從理解開始。",
+            // SAME_EVENT 只有在雙方都發過今日時才算得出來，所以這裡 current 必定不為 null；
+            // 加上判斷是讓編譯器看得懂，不是防真的會發生的情況。
+            MatchType.SAME_EVENT when current != null => $"你們今天都遇到 {current.EventType} 類型的事情，也都適合從理解開始。",
             MatchType.SAME_INTEREST => "你們今天提到相近的興趣，可以從一件小事慢慢聊起。",
             MatchType.COMPLEMENTARY => "你們期待的回應方式相容，適合低壓地互相聽聽看。",
             MatchType.SAME_EMOTION => "事件不一定相同，但你們今天的情緒很接近。",
@@ -590,11 +672,11 @@ public sealed class MatchService
         };
     }
 
-    private static string BuildIcebreaker(TodayEntry current, MatchType type)
+    private static string BuildIcebreaker(TodayEntry? current, MatchType type)
     {
         return type switch
         {
-            MatchType.SAME_EVENT when current.EventType == EventType.WORK_STRESS => "你今天也是那種明明很努力，卻被誤會的感覺嗎？",
+            MatchType.SAME_EVENT when current?.EventType == EventType.WORK_STRESS => "你今天也是那種明明很努力，卻被誤會的感覺嗎？",
             MatchType.SAME_EMOTION => "你今天也有那種說不上來，但很想有人懂的感覺嗎？",
             MatchType.SAME_INTEREST => "你今天提到的興趣我也有感，要不要先從一件小事聊起？",
             _ => "如果今天不用急著聊天，要不要先一起完成一個小任務？"
