@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>SameDaySocialApp.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <!-- backend 是 Web SDK 專案，測試要建得起來就得帶同一份共用框架 -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <!-- 版本對齊 backend 的 Npgsql.EntityFrameworkCore.PostgreSQL 8.0.4 -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.4" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\backend\backend.csproj" />
+  </ItemGroup>
+
+</Project>

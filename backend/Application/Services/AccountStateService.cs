@@ -30,6 +30,29 @@ public sealed class AccountStateService(IServiceScopeFactory scopes, IMemoryCach
 
     private static string Key(string userId) => $"acct-active:{userId}";
 
+    /// <summary>
+    /// 「這個狀態現在還算可用嗎」的單一判斷。任何要依帳號狀態放行或遮蔽的地方
+    /// （請求閘門、配對候選池）都走這裡，不要各自寫一份——兩套判斷遲早會分岔，
+    /// 而分岔的那一邊通常是漏的那一邊。
+    ///
+    /// 為什麼要自己看 suspended_until：
+    /// 停權是「暫時」的，期限一到就該回到正常狀態。真正把 users.status 寫回 ACTIVE 的是
+    /// AdminUserService.RestoreExpiredSuspensions，但它只在後台開啟會員列表時才跑，
+    /// 沒有任何排程。只信 status 欄位的話，沒人開後台就等於永久停權。
+    /// </summary>
+    public static bool IsActive(AccountStatus status, DateTimeOffset? suspendedUntil, DateTimeOffset now)
+    {
+        if (status == AccountStatus.ACTIVE) return true;
+
+        // BANNED／DELETED 沒有期限，不會因為時間過去而恢復
+        return status == AccountStatus.SUSPENDED && suspendedUntil != null && suspendedUntil <= now;
+    }
+
+    /// <summary>資料庫欄位（varchar）版本。認不得的值一律視為不可用。</summary>
+    public static bool IsActive(string? status, DateTimeOffset? suspendedUntil, DateTimeOffset now)
+        => Enum.TryParse<AccountStatus>(status, out var parsed)
+           && IsActive(parsed, suspendedUntil, now);
+
     public async Task<bool> IsActiveAsync(string userId, CancellationToken ct)
     {
         if (cache.TryGetValue<bool>(Key(userId), out var cached))
@@ -45,13 +68,13 @@ public sealed class AccountStateService(IServiceScopeFactory scopes, IMemoryCach
             return true;
         }
 
-        var status = await db.Users.AsNoTracking()
+        var row = await db.Users.AsNoTracking()
             .Where(u => u.Id == userId)
-            .Select(u => u.Status)
+            .Select(u => new { u.Status, u.SuspendedUntil })
             .FirstOrDefaultAsync(ct);
 
         // 查無此人也算不可用：token 指向一個不存在的帳號，沒有理由放行
-        var active = status == AccountStatus.ACTIVE.ToString();
+        var active = row != null && IsActive(row.Status, row.SuspendedUntil, DateTimeOffset.UtcNow);
         cache.Set(Key(userId), active, Ttl);
         return active;
     }
