@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "740360755278",
+    "project_id": "my-project-496702",
+    "storage_bucket": "my-project-496702.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:740360755278:android:0515ffc3c0ddd2c8e64b1f",
+        "android_client_info": {
+          "package_name": "com.tongpin.today"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "740360755278-s5dtuqqplisbbbr0v6n5qahi7rb86mh3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAqphkCcI5NF1aaAq_PnKyOYCXYAP-4XOY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "740360755278-s5dtuqqplisbbbr0v6n5qahi7rb86mh3.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
