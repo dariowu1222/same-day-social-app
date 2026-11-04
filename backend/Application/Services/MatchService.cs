@@ -107,20 +107,29 @@ public sealed class MatchService
     // 依登入者交友意圖篩選候選：想認識的對象（性別）+ 年齡範圍。
     // 兩者都是硬界線，不因為候選不足而放寬——使用者明說不想看的人硬塞進去，
     // 比沒卡可滑更糟。
-    // 資料缺漏（候選沒填性別/生日、或本人沒設偏好）一律不排除，避免真實用戶被濾光。
+    //
+    // 候選的資料缺漏也擋。先前是「比不出來就放行」，立意是別把真實用戶濾光，
+    // 但效果恰好相反：跳過 onboarding、性別與生日都空著的帳號，兩道檢查全繞過去，
+    // 照樣發給指定了性別與年齡的人看——資料愈空白愈不受限制，正是上面那條原則
+    // 要防的事。改成只要本人表明了偏好、而候選沒有可比對的欄位就不發這張卡；
+    // 本人沒表明偏好時一切照舊。候選把 onboarding 補完就自動回到牌堆，
+    // 而且對他自己也比較好：空白的卡片被滑到只會先燒掉第一印象。
     private static bool MatchesPreferences(User? me, User? candidate)
     {
         if (me == null || candidate == null) return true;
 
-        if (!string.IsNullOrWhiteSpace(me.LookingFor) && me.LookingFor != "不限" && !string.IsNullOrWhiteSpace(candidate.Gender))
+        // "不限"、空值、以及任何對不到男/女的字串都視為沒有指定。
+        var wantGender = me.LookingFor switch { "男生" => "男", "女生" => "女", _ => (string?)null };
+        if (wantGender != null)
         {
-            var wantGender = me.LookingFor == "男生" ? "男" : me.LookingFor == "女生" ? "女" : null;
-            if (wantGender != null && candidate.Gender != wantGender) return false;
+            if (string.IsNullOrWhiteSpace(candidate.Gender)) return false;
+            if (candidate.Gender != wantGender) return false;
         }
 
-        var age = AgeOf(candidate.Birthday);
-        if (age != null)
+        if (me.AgeMin != null || me.AgeMax != null)
         {
+            var age = AgeOf(candidate.Birthday);
+            if (age == null) return false;
             if (me.AgeMin != null && age < me.AgeMin) return false;
             if (me.AgeMax != null && age > me.AgeMax) return false;
         }
@@ -362,15 +371,6 @@ public sealed class MatchService
     }
 
     /// <summary>
-    /// 候選池的來源。只取 ACTIVE——這在候選池改成從 users 出發之後變成必要條件：
-    /// 先前池子是 today_entries，已註銷的人多半沒發過今日所以碰巧看不到；
-    /// 現在每個人都在池子裡，不擋狀態的話註銷與停權帳號會全部冒出來，
-    /// 還能被右滑配對成功、自動開聊天室、收到通知。
-    ///
-    /// ACTIVE 也是全站對「這個帳號可用」的一致定義（見 AccountStateService.IsActiveAsync）。
-    /// 停權到期不會自動翻回 ACTIVE，所以到期前連登入都不行——配對照同一條線走就對齊了。
-    /// </summary>
-    /// <summary>
     /// 候選池的來源。這裡**不**過濾帳號狀態——過濾在 GetTodayMatches 裡用
     /// AccountStateService.IsActive 做，因為那支會把 suspended_until 一起看進去，
     /// 停權期滿的人即使 status 還停在 SUSPENDED（要等排程寫回）也該回到牌堆。
@@ -418,15 +418,18 @@ public sealed class MatchService
         string UserId, TodayEntry? Entry, int Score, MatchType Type, List<string> SharedTags);
 
     /// <summary>
-    /// 算分素材。今日有填就用今日的，沒填就退回個人資料裡的長期偏好，
+    /// 算分素材。興趣與價值觀本來就是長期的，沒發今日就退回個人資料；
+    /// 事件、情緒、回應方式講的是「今天」，沒發今日就留空，不拿長期標籤硬湊。
     /// 兩邊欄位對得上，下游就不必為「有沒有今日」分兩套邏輯。
+    ///
+    /// Response 因此可為 null——「今天想要什麼」只有今日說得準。
     /// </summary>
     private readonly record struct Traits(
         EventType? Event,
         List<string> Emotions,
         List<string> Values,
         List<string> Interests,
-        ResponseMode Response);
+        ResponseMode? Response);
 
     private static Traits TraitsOf(TodayEntry? entry, User? user)
     {
@@ -443,12 +446,17 @@ public sealed class MatchService
         // 事件與情緒講的是「今天發生什麼」，沒填就是沒有，不拿長期標籤硬湊——
         // 湊出來的「你們今天都遇到…」是假的，使用者一眼就看得出來。
         // 興趣與價值觀本來就是長期的，個人資料有就拿來用。
+        // Response 給 null，不退回 users.response_preference。那個欄位全站沒有
+        // 任何介面可以設定，值一律是註冊時寫死的 JUST_LISTEN——而 JUST_LISTEN
+        // 在 ResponseScore 裡是唯一「跟誰都相容」的值。拿它當退路等於讓沒發今日的人
+        // 白拿滿分 15 跟「聊天節奏合」標籤，排在真的寫了今日的人前面。
+        // 回應方式講的是「我今天想要什麼」，沒發今日就是沒說，不該猜。
         return new Traits(
             null,
             [],
             user?.ValueTags ?? [],
             user?.InterestTags ?? [],
-            user?.ResponsePreference ?? ResponseMode.JUST_LISTEN);
+            null);
     }
 
     /// <summary>吃力的情緒。用來判斷「今天過得不好」，兩個方向都會用到。</summary>
@@ -762,15 +770,19 @@ public sealed class MatchService
     ///
     /// 不給 0 是因為「同病相憐」本身仍然成立，只是不該跟真的接得住的人同分。
     /// </summary>
-    private static int ResponseScore(ResponseMode a, ResponseMode b)
+    private static int ResponseScore(ResponseMode? a, ResponseMode? b)
     {
-        if (WantsSomeoneWithCapacity.Contains(a) && WantsSomeoneWithCapacity.Contains(b)) return 5;
+        // 有一邊今天沒說想要什麼就沒得比。給 0 而不是猜一個值，
+        // 否則「沒表態」會變成最好搭配的狀態。
+        if (a == null || b == null) return 0;
+
+        if (WantsSomeoneWithCapacity.Contains(a.Value) && WantsSomeoneWithCapacity.Contains(b.Value)) return 5;
 
         return a == b || a == ResponseMode.JUST_LISTEN || b == ResponseMode.JUST_LISTEN ? 15 : 0;
     }
 
     /// <summary>給 MatchType 用的門檻。只有拿到滿分才稱得上「回應方式相容」。</summary>
-    private static bool IsCompatible(ResponseMode a, ResponseMode b) => ResponseScore(a, b) >= 15;
+    private static bool IsCompatible(ResponseMode? a, ResponseMode? b) => ResponseScore(a, b) >= 15;
 
     private static MatchType ResolveMatchType(Traits mine, Traits theirs, List<string> emotions, List<string> interests)
     {

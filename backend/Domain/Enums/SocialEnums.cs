@@ -44,7 +44,20 @@ public enum ResponseMode
     COMFORT_ME,
     GIVE_ADVICE,
     RANT_TOGETHER,
-    DISTRACT_ME
+    DISTRACT_ME,
+
+    /// <summary>
+    /// 想分享一件好事。今日頁的「今天還不錯・分享一點亮光」對應這個。
+    ///
+    /// 補這個值的理由跟 EventType 補 WORK 一樣：清單裡少了中性／正面的選項，
+    /// 正面的內容只好硬塞進語意相反的值。那張卡原本存的是 DISTRACT_ME
+    /// （想被轉移注意力）——心情好的人沒有東西需要被轉移，而且 DISTRACT_ME
+    /// 對 COMFORT_ME 計分為 0，等於「我想說件開心的事」被當成「別理我說的」。
+    ///
+    /// 跟 ParseEnum 的相容性：新值加在最後。ParseEnum 會接受數字字串並當成
+    /// ordinal，插在中間會讓既有資料的意義整批位移。
+    /// </summary>
+    SHARE_GOOD_NEWS
 }
 
 public enum Visibility

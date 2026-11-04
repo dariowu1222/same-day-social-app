@@ -86,7 +86,7 @@ const quickEntries: TodayQuickEntry[] = [
     label: '今天還不錯',
     helper: '分享一點亮光',
     prompt: '今天有一件小事讓我覺得還不錯...',
-    responseMode: 'DISTRACT_ME',
+    responseMode: 'SHARE_GOOD_NEWS',
     emoji: '✨',
   },
 ]
