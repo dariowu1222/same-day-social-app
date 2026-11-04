@@ -128,6 +128,8 @@ builder.Services.AddScoped<SameDaySocialApp.Application.Services.ChatService>();
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.NotificationService>();
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.ReportService>();
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.AdminUserService>();
+// 後台的 AI 用量分頁。只讀 ai_usage_logs，沒建表時整頁會是 0 而不會炸。
+builder.Services.AddScoped<SameDaySocialApp.Application.Services.AiUsageService>();
 builder.Services.AddSingleton<SameDaySocialApp.Application.Services.AdminAccessService>();
 // 帳號狀態的即時判斷（封鎖／停權要能當場生效，而不是等 token 過期）
 builder.Services.AddMemoryCache();

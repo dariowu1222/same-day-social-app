@@ -304,3 +304,60 @@ export const reviewReport = (id: string, body: {
   method: 'POST',
   body: JSON.stringify(body),
 })
+
+// ── AI 用量 ──────────────────────────────────────────
+
+/** 一段期間的彙總。金額是後端自己乘出來的估算值，單位美元。 */
+export type AiUsageBucket = {
+  calls: number
+  failedCalls: number
+  inputTokens: number
+  outputTokens: number
+  reasoningTokens: number
+  costUsd: number
+}
+
+export type AiUsageSummary = {
+  /** 後端有沒有設 Ai:ApiKey。false 代表整條分析是關的，數字再漂亮也只是歷史資料。 */
+  configured: boolean
+  /** ai_usage_logs 這張表在不在。SQL 要人工貼到 Supabase 跑，忘了就是 false。 */
+  storageReady: boolean
+  model: string
+  inputPricePerMTok: number
+  cachedPricePerMTok: number
+  outputPricePerMTok: number
+  today: AiUsageBucket
+  last7Days: AiUsageBucket
+  thisMonth: AiUsageBucket
+  allTime: AiUsageBucket
+  averageLatencyMs: number
+  lastCallAt?: string | null
+}
+
+export type AiUsageEntry = {
+  id: string
+  todayEntryId?: string | null
+  model: string
+  /** OK / TRUNCATED / REFUSED / EMPTY_CONTENT / PARSE_FAILED / TIMEOUT / ERROR */
+  status: string
+  inputTokens: number
+  cachedInputTokens: number
+  outputTokens: number
+  reasoningTokens: number
+  costUsd: number
+  latencyMs: number
+  error?: string | null
+  createdAt: string
+}
+
+export type PagedAiUsage = { items: AiUsageEntry[]; total: number; page: number; pageSize: number }
+
+export const getAiUsage = () => request<AiUsageSummary>('/api/admin/ai-usage')
+
+export function getAiUsageLogs(params: { status?: string; page?: number; pageSize?: number }) {
+  const q = new URLSearchParams()
+  if (params.status) q.set('status', params.status)
+  q.set('page', String(params.page ?? 1))
+  q.set('pageSize', String(params.pageSize ?? 20))
+  return request<PagedAiUsage>(`/api/admin/ai-usage/logs?${q}`)
+}

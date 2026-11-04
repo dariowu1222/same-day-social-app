@@ -6,6 +6,7 @@ import DashboardPage from './pages/DashboardPage'
 import UsersPage from './pages/UsersPage'
 import UserDetailPage from './pages/UserDetailPage'
 import ReportsPage from './pages/ReportsPage'
+import AiUsagePage from './pages/AiUsagePage'
 
 const USER_KEY = 'admin_user'
 
@@ -79,6 +80,9 @@ export default function App() {
             <NavLink to="/reports" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>
               檢舉處理
             </NavLink>
+            <NavLink to="/ai-usage" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>
+              AI 用量
+            </NavLink>
           </nav>
           <div className="sidebar-foot">
             <div className="sidebar-user">{user.nickname}<br />{user.email}</div>
@@ -94,6 +98,7 @@ export default function App() {
             <Route path="/users" element={<UsersPage />} />
             <Route path="/users/:userId" element={<UserDetailPage />} />
             <Route path="/reports" element={<ReportsPage />} />
+            <Route path="/ai-usage" element={<AiUsagePage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
