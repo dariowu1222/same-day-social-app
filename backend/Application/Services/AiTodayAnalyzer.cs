@@ -99,9 +99,12 @@ public sealed class AiTodayAnalyzer
         - 不要從語氣推測未明說的情緒。
 
         event（必選一個）
-        WORK_STRESS 工作壓力 / FAMILY 家庭 / FRIENDSHIP 朋友 / RELATIONSHIP 感情
+        WORK_STRESS 工作上受挫、有壓力 / WORK 工作，但不帶壓力（順利、普通、甚至愉快）
+        FAMILY 家庭 / FRIENDSHIP 朋友 / RELATIONSHIP 感情
         STUDY 學業 / MONEY 金錢 / HEALTH 健康 / SMALL_HAPPINESS 小確幸 / RANDOM 看不出來
         → 看不出來就給 RANDOM，不要硬挑一個最接近的。
+        → 講到工作時先分清楚是哪一種：有受挫、抱怨、壓力才算 WORK_STRESS，
+          單純在講今天做了什麼工作、或工作順利，是 WORK。
 
         emotions（預設空陣列，最多 3 個）
         TIRED 累 / ANGRY 生氣 / SAD 難過 / LONELY 孤單 / ANXIOUS 焦慮

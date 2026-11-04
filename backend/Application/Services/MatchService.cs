@@ -692,13 +692,37 @@ public sealed class MatchService
         return MatchType.TASK_COMPATIBLE;
     }
 
+    /// <summary>
+    /// 事件類型給人看的說法。
+    ///
+    /// 之前 BuildReason 直接把 enum 名稱內插進中文句子，使用者實際看到的是
+    /// 「你們今天都遇到 WORK_STRESS 類型的事情」。對照表漏掉的值就退回代號——
+    /// 少一個詞比句子破掉好，而且代號夠醒目，看到就知道該來補。
+    /// </summary>
+    private static readonly Dictionary<EventType, string> EventLabels = new()
+    {
+        [EventType.WORK_STRESS] = "工作壓力",
+        [EventType.WORK] = "工作",
+        [EventType.FAMILY] = "家庭",
+        [EventType.FRIENDSHIP] = "朋友",
+        [EventType.RELATIONSHIP] = "感情",
+        [EventType.STUDY] = "學業",
+        [EventType.MONEY] = "金錢",
+        [EventType.HEALTH] = "健康",
+        [EventType.SMALL_HAPPINESS] = "小確幸",
+        [EventType.RANDOM] = "說不上來",
+    };
+
+    private static string LabelOf(EventType type) =>
+        EventLabels.TryGetValue(type, out var label) ? label : type.ToString();
+
     private static string BuildReason(TodayEntry? current, MatchType type)
     {
         return type switch
         {
             // SAME_EVENT 只有在雙方都發過今日時才算得出來，所以這裡 current 必定不為 null；
             // 加上判斷是讓編譯器看得懂，不是防真的會發生的情況。
-            MatchType.SAME_EVENT when current != null => $"你們今天都遇到 {current.EventType} 類型的事情，也都適合從理解開始。",
+            MatchType.SAME_EVENT when current != null => $"你們今天都遇到{LabelOf(current.EventType)}相關的事情，也都適合從理解開始。",
             MatchType.SAME_INTEREST => "你們今天提到相近的興趣，可以從一件小事慢慢聊起。",
             MatchType.COMPLEMENTARY => "你們期待的回應方式相容，適合低壓地互相聽聽看。",
             MatchType.SAME_EMOTION => "事件不一定相同，但你們今天的情緒很接近。",
@@ -711,6 +735,9 @@ public sealed class MatchService
         return type switch
         {
             MatchType.SAME_EVENT when current?.EventType == EventType.WORK_STRESS => "你今天也是那種明明很努力，卻被誤會的感覺嗎？",
+            // WORK 沒有自己的句子的話會掉到最下面那句「一起完成一個小任務」，
+            // 那是給 TASK_COMPATIBLE 用的，配在「我們今天都在講工作」上語氣是歪的。
+            MatchType.SAME_EVENT when current?.EventType == EventType.WORK => "你今天工作上有沒有哪件事，是做完會想跟人說一聲的？",
             MatchType.SAME_EMOTION => "你今天也有那種說不上來，但很想有人懂的感覺嗎？",
             MatchType.SAME_INTEREST => "你今天提到的興趣我也有感，要不要先從一件小事聊起？",
             _ => "如果今天不用急著聊天，要不要先一起完成一個小任務？"

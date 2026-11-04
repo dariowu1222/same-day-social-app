@@ -10,7 +10,19 @@ public enum EventType
     MONEY,
     HEALTH,
     SMALL_HAPPINESS,
-    RANDOM
+    RANDOM,
+
+    /// <summary>
+    /// 中性的工作。WORK_STRESS 講的是工作上受挫，但「今天順手把專案做完了」
+    /// 這種正面提到工作的句子以前只能落到 WORK_STRESS，標籤和事實相反。
+    ///
+    /// 為什麼不排在 WORK_STRESS 旁邊：RecordMapper.ParseEnum 用的是
+    /// Enum.TryParse(value, true, out _)，這個多載連「數字字串」也吃並按序數
+    /// 對應，而且不檢查該數字是否為已定義值。資料庫裡只要有一列 event_type
+    /// 是數字，插在中間就會讓它靜默變成另一種事件。
+    /// （2026-11-04 查過：27 列全是名稱，沒有數字。但新值一律加尾端比較安全。）
+    /// </summary>
+    WORK
 }
 
 public enum EmotionTag

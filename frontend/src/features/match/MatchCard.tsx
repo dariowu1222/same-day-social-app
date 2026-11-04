@@ -1,3 +1,4 @@
+import { tagLabel } from '../../shared/lib/tagLabels'
 import type { MatchResult } from './types'
 
 type Props = {
@@ -15,9 +16,10 @@ export default function MatchCard({ match, onChat }: Props) {
       <p>{match.reason}</p>
       <p className="muted">{match.todaySummary}</p>
       <div className="tag-row">
+        {/* key 用代號、顯示用中文：代號才是穩定的識別，文案會改 */}
         {match.sharedTags.map((tag) => (
           <span key={tag} className="tag">
-            {tag}
+            {tagLabel(tag)}
           </span>
         ))}
       </div>

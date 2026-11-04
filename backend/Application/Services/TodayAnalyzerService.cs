@@ -29,7 +29,17 @@ public sealed class TodayAnalyzerService
 
     private static EventType ResolveEventType(string text)
     {
-        if (ContainsAny(text, "上班", "主管", "同事", "工作", "加班", "會議", "客戶")) return EventType.WORK_STRESS;
+        // 工作相關的詞先認出來，再看有沒有受挫的訊號才決定是哪一種。
+        //
+        // 以前這七個詞全部直接判成 WORK_STRESS，但「上班／同事／會議／客戶」
+        // 本身是中性的——「今天上班順手把案子做完了」會被標成工作壓力，
+        // 標籤和事實相反，然後拿去跟真的在工作上受挫的人配 +30 分。
+        if (ContainsAny(text, "上班", "主管", "同事", "工作", "加班", "會議", "客戶"))
+        {
+            return ContainsAny(text, "加班", "壓力", "罵", "煩", "累", "崩潰", "趕", "績效", "deadline")
+                ? EventType.WORK_STRESS
+                : EventType.WORK;
+        }
         if (ContainsAny(text, "家人", "爸", "媽", "家庭", "父母")) return EventType.FAMILY;
         if (ContainsAny(text, "朋友", "閨蜜", "兄弟")) return EventType.FRIENDSHIP;
         if (ContainsAny(text, "曖昧", "分手", "喜歡", "感情", "戀愛")) return EventType.RELATIONSHIP;
