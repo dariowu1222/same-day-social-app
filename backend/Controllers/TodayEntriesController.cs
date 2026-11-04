@@ -41,7 +41,10 @@ public sealed class TodayEntriesController(TodayEntryService todayEntryService) 
         var content = request.Content ?? string.Empty;
 
         // 以 token 的身分建立，忽略 body 傳來的 userId，避免冒名發文。
-        var result = todayEntryService.Create(CallerId, content, request.ResponseMode, request.Visibility);
+        // UseAi 由前端的「會員測試AI」開關決定（今日頁標題旁邊）。
+        // 關掉時整條走原本的關鍵字分析器，不會有任何外部呼叫。
+        var result = todayEntryService.Create(
+            CallerId, content, request.ResponseMode, request.Visibility, request.UseAi ?? false);
         return ApiResponse<object>.Ok(new { entry = result.Entry, analysis = result.Analysis });
     }
 
@@ -58,4 +61,9 @@ public sealed record CreateTodayEntryRequest(
     string UserId,
     string Content,
     ResponseMode ResponseMode,
-    Visibility Visibility);
+    Visibility Visibility,
+    /// <summary>
+    /// 要不要用 AI 重新分析這一則。可為 null（舊版 app 不會送這欄），
+    /// null 當成 false——預設維持原本的關鍵字分析器。
+    /// </summary>
+    bool? UseAi = null);

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
+import { isAiFilterOn, setAiFilter } from '../../shared/lib/aiFilter'
 import { markTodayIntroSeen, shouldPlayTodayIntro } from '../../shared/lib/storageKeys'
 import { createTodayEntry } from './api'
 import TodayEntryForm, { type SoulNote, type TodayQuickEntry } from './TodayEntryForm'
@@ -88,6 +89,8 @@ export default function TodayPage({ onGoToMatches }: Props) {
   const [selectedResponseMode, setSelectedResponseMode] = useState<string>('JUST_LISTEN')
   const [selectedMoodLabel, setSelectedMoodLabel] = useState<string>('')
   const [isSoulNoteOpen, setIsSoulNoteOpen] = useState(false)
+  // 測試期開關。關掉就走原本的關鍵字分析器，兩條路徑都留著可以比對。
+  const [aiFilter, setAiFilterState] = useState(isAiFilterOn)
 
   const soulNote = useMemo(() => {
     if (!selectedQuickEntryKey) return null
@@ -159,6 +162,7 @@ export default function TodayPage({ onGoToMatches }: Props) {
       content,
       responseMode: selectedResponseMode,
       visibility: 'MATCH_ONLY',
+      useAi: aiFilter,
     })
     onGoToMatches(selectedMoodLabel, pending)
   }
@@ -184,6 +188,14 @@ export default function TodayPage({ onGoToMatches }: Props) {
 
       <header className={`today-header${introPhase === 'center' ? ' today-header-hidden' : ''}`}>
         <h1>今天的你，想被怎麼理解？</h1>
+        <label className="today-ai-toggle">
+          <input
+            type="checkbox"
+            checked={aiFilter}
+            onChange={(e) => { setAiFilter(e.target.checked); setAiFilterState(e.target.checked) }}
+          />
+          <span>會員測試AI</span>
+        </label>
       </header>
       <TodayEntryForm
         content={content}

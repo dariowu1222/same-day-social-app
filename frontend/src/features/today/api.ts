@@ -6,6 +6,8 @@ export async function createTodayEntry(payload: {
   content: string
   responseMode: string
   visibility: string
+  /** 今日頁標題旁的「會員測試AI」開關。後端沒設 Ai:ApiKey 時這個值不會有作用。 */
+  useAi: boolean
 }) {
   return request<{ entry: TodayEntry; analysis: TodayAnalysis }>('/api/today-entries', {
     method: 'POST',

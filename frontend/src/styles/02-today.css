@@ -68,8 +68,14 @@
 /* ── 今日 header ──────────────────────────── */
 
 .today-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
   padding: 0;
-  max-height: 80px;
+  /* 開關擠進來之後標題在窄螢幕會折成兩行，96px 容得下兩行 26px 的字；
+     這個值同時是進場動畫 max-height 0 → 展開的終點。 */
+  max-height: 96px;
   overflow: hidden;
   opacity: 1;
   transition: max-height 0.6s ease, opacity 0.6s ease;
@@ -82,6 +88,7 @@
 
 .today-header h1 {
   margin: 0;
+  min-width: 0;
   font-size: 26px;
   font-weight: 800;
   line-height: 1.35;
@@ -156,6 +163,40 @@
 
 .quick-entry-button:active {
   transform: scale(0.96);
+}
+
+/* 會員測試 AI 開關。測試期放在標題右邊，關掉就走原本的關鍵字分析器。
+   整個 label 可點，min-height 44px 讓手機上不必瞄那個小方塊；
+   flex-shrink: 0 保證它不會被標題擠扁，標題自己折行。 */
+.today-ai-toggle {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px dashed rgba(122, 58, 32, 0.3);
+  border-radius: 12px;
+  color: #8a5040;
+  font-size: 11px;
+  line-height: 1.3;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.today-ai-toggle input {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #8a5040;
+}
+
+[data-theme="dark"] .today-ai-toggle {
+  border-color: rgba(168, 212, 204, 0.25);
+  color: #9ec4b4;
 }
 
 /* ── 心靈小語 ─────────────────────────────── */

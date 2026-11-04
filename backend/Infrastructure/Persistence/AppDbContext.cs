@@ -32,6 +32,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<AccountSanctionRecord> AccountSanctions => Set<AccountSanctionRecord>();
     public DbSet<DeviceTokenRecord> DeviceTokens => Set<DeviceTokenRecord>();
     public DbSet<PushDigestStateRecord> PushDigestStates => Set<PushDigestStateRecord>();
+    public DbSet<AiUsageLogRecord> AiUsageLogs => Set<AiUsageLogRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

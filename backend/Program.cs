@@ -112,6 +112,13 @@ builder.Services.AddSingleton<SameDaySocialApp.Application.Services.GoogleAuthSe
 builder.Services.AddSingleton<SameDaySocialApp.Application.Services.FacebookAuthService>();
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.AuthService>();
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.TodayAnalyzerService>();
+
+// 今日的 AI 分析。沒設 Ai:ApiKey 就整條停用，TodayEntryService 會照常走關鍵字分析器。
+builder.Services.Configure<SameDaySocialApp.Application.Services.AiAnalyzerOptions>(
+    builder.Configuration.GetSection("Ai"));
+builder.Services.AddSingleton<SameDaySocialApp.Application.Services.AiTodayAnalyzer>();
+builder.Services.AddSingleton<SameDaySocialApp.Application.Services.TodayAiEnrichmentQueue>();
+builder.Services.AddHostedService<SameDaySocialApp.Application.Services.TodayAiEnrichmentWorker>();
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.TodayEntryService>();
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.MatchService>();
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.ModerationService>();

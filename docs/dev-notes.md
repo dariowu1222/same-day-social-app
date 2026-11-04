@@ -32,9 +32,18 @@
 
 - `backend/Infrastructure/Persistence/MigrationsSql/20260522_initial_same_day_social_schema.sql`
 
+> 這份「已套用」清單從 2026-05 之後就沒人維護，不要當成真實狀態的依據；
+> 要確認某支 .sql 跑過沒有，只能去 Supabase 查。
+
+2026-11-04 新增（需人工執行）：
+
+- `backend/Infrastructure/Persistence/MigrationsSql/20261104_ai_usage_logs.sql`
+  —— 「今日」AI 標籤分析的用量與花費，後台「AI 用量」分頁的資料來源。
+  沒跑這支的話後台整頁會顯示 0 並提示要先建表（不會炸）。
+
 ## 暫時不做
 
-- 不串 OpenAI / Gemini / Claude API
+- 不串 Gemini / Claude API。OpenAI 只用在「今日」的標籤分析（AiTodayAnalyzer），沒設 Ai:ApiKey 就整條停用
 - 不串金流
 - 不做第三方登入
 - 不做 GPS 精準定位

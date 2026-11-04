@@ -92,3 +92,10 @@ services:
       # 值要和 GitHub repo secret 的 MAINTENANCE_TRIGGER_SECRET 一致。
       - key: Maintenance__TriggerSecret
         sync: false
+
+      # 「今日」的 AI 標籤分析（OpenAI）。沒設就整條停用，背景 worker 根本不啟動，
+      # 今日照樣走原本的關鍵字分析器，所以漏填不會壞掉，只是前端那個
+      # 「會員測試AI」勾起來也不會有作用。
+      # 模型預設 gpt-5-nano（價目表上最便宜的一顆），要換再設 Ai__Model。
+      - key: Ai__ApiKey
+        sync: false
