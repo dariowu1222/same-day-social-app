@@ -21,6 +21,12 @@ public sealed class MatchService
     /// </summary>
     private const int PassCooldownDays = 30;
 
+    /// <summary>
+    /// 使用者今天情緒吃力時，牌堆裡保留給「看起來還有餘裕」的人的張數。
+    /// 調這個值等於調「同溫層」和「透氣口」的比例，是個產品旋鈕不是實作細節。
+    /// </summary>
+    private const int SteadySlotsWhenLow = 3;
+
     private readonly JsonStorageService storage;
     private readonly AppDbContext? db;
     private readonly NotificationService? notifications;
@@ -88,9 +94,9 @@ public sealed class MatchService
         // 年齡範圍是硬界線：湊不滿一副牌就發幾張算幾張，不放寬來補。
         // 放寬過的卡片在畫面上和其他人長得一模一樣，使用者只會看到自己
         // 明明設了 25–30 卻跑出 33 歲的人，結論是偏好設定沒有用。
-        var deck = RankCandidates(pool, current, latestEntries, me)
-            .Take(DeckSize)
-            .ToList();
+        // BuildDeck 不只是 Take(DeckSize)：使用者今天情緒吃力時會保留幾張
+        // 給看起來還有餘裕的人，避免整副牌變成一面負面的鏡子。
+        var deck = BuildDeck(RankCandidates(pool, current, latestEntries, me), TraitsOf(current, me));
 
         // 落地只發生在這裡，而且只對真的要發出去的這幾張。
         // 先前是在算分階段對「每一位候選」寫一列，所以 matches 有列不代表
@@ -445,6 +451,69 @@ public sealed class MatchService
             user?.ResponsePreference ?? ResponseMode.JUST_LISTEN);
     }
 
+    /// <summary>吃力的情緒。用來判斷「今天過得不好」，兩個方向都會用到。</summary>
+    private static readonly HashSet<string> HeavyEmotions =
+    [
+        nameof(EmotionTag.TIRED), nameof(EmotionTag.ANGRY), nameof(EmotionTag.SAD),
+        nameof(EmotionTag.LONELY), nameof(EmotionTag.ANXIOUS), nameof(EmotionTag.WRONGED),
+    ];
+
+    private static bool IsLowMood(IEnumerable<string> emotions) => emotions.Any(HeavyEmotions.Contains);
+
+    /// <summary>
+    /// 這個人今天看起來還有餘裕聽別人說話嗎。
+    ///
+    /// 這是**代理指標**，不是真的知道——資料模型裡沒有任何欄位讓人表示
+    /// 「我今天可以聽別人說」（見 WantsSomeoneWithCapacity 的說明）。
+    /// 所以只能反過來推：今天有發今日、情緒裡沒有吃力的那幾種、而且自己
+    /// 沒有在要安慰或要建議。三個條件都成立才算。
+    ///
+    /// 沒發今日的人一律不算。不知道就是不知道，寧可保留席空著。
+    /// </summary>
+    private static bool LooksAvailable(TodayEntry? entry)
+    {
+        if (entry == null) return false;
+        if (WantsSomeoneWithCapacity.Contains(entry.ResponseMode)) return false;
+        return !IsLowMood(entry.EmotionTags.Select(x => x.ToString()));
+    }
+
+    /// <summary>
+    /// 組牌堆。平常就是照分數取前 DeckSize 張。
+    ///
+    /// 但使用者今天情緒吃力時，保留幾張給「看起來還有餘裕」的人。
+    /// 原因是情緒交集每個 +10、回應方式最多 +15，兩個都低落的人會被這兩項
+    /// 一起推到最前面，整副牌於是變成一面負面的鏡子。同頻的前提是有人懂，
+    /// 不是所有人一起沉下去。
+    ///
+    /// 刻意不挑「最開心」的人：HAPPY／EXCITED 推給正在低谷的人，常見的反應
+    /// 不是被療癒而是「全世界只有我這樣」。這裡要的是平穩、不是高昂。
+    ///
+    /// 保留席照原本的分數排回去，不固定插在最前面——它是摻進去的，不是推薦。
+    /// 湊不到人就讓位，牌堆不會因此變短。
+    /// </summary>
+    private static List<Candidate> BuildDeck(List<Candidate> ranked, Traits mine)
+    {
+        if (ranked.Count <= DeckSize || !IsLowMood(mine.Emotions)) return ranked.Take(DeckSize).ToList();
+
+        var reserved = ranked
+            .Where(c => LooksAvailable(c.Entry))
+            .Take(SteadySlotsWhenLow)
+            .Select(c => c.UserId)
+            .ToHashSet();
+
+        if (reserved.Count == 0) return ranked.Take(DeckSize).ToList();
+
+        var chosen = ranked.Where(c => reserved.Contains(c.UserId)).ToList();
+        foreach (var c in ranked)
+        {
+            if (chosen.Count >= DeckSize) break;
+            if (reserved.Contains(c.UserId)) continue;
+            chosen.Add(c);
+        }
+
+        return chosen.OrderByDescending(c => c.Score).ToList();
+    }
+
     private static List<Candidate> RankCandidates(
         List<User> pool, TodayEntry? current, Dictionary<string, TodayEntry> latestEntries, User? me)
     {
@@ -492,9 +561,12 @@ public sealed class MatchService
         score += interestIntersection.Count * 5;
         sharedTags.AddRange(interestIntersection);
 
-        if (IsCompatible(mine.Response, theirs.Response))
+        var responseScore = ResponseScore(mine.Response, theirs.Response);
+        score += responseScore;
+        // 標籤只在真的相容時才貼。拿 5 分那種是「兩個人都在要」，
+        // 在卡片上寫「聊天節奏合」會是騙人的。
+        if (responseScore >= 15)
         {
-            score += 15;
             sharedTags.Add("RESPONSE_COMPATIBLE");
         }
 
@@ -662,10 +734,43 @@ public sealed class MatchService
             .ToHashSet();
     }
 
-    private static bool IsCompatible(ResponseMode a, ResponseMode b)
+    /// <summary>
+    /// 自己也在要東西的那幾種回應方式。
+    ///
+    /// 先講清楚這組 enum 是什麼，因為名字很容易讀反：五個值**全部**都是
+    /// 「我希望對方怎麼對我」，沒有一個表示「我可以給什麼」。
+    /// JUST_LISTEN 是「請你只要聽我說、不要急著給建議」（今日頁那張卡寫的是
+    /// 「想找人說說／不用急著解決」），不是「我願意聽別人說」。
+    /// GIVE_ADVICE 同理，是「給我建議」不是「我能給建議」。
+    ///
+    /// 所以真正的互補在這份資料上算不出來——沒有供給面。這裡能做的只是
+    /// 至少不要把「兩個人都在要」當成最契合。
+    /// </summary>
+    private static readonly HashSet<ResponseMode> WantsSomeoneWithCapacity =
+    [
+        ResponseMode.COMFORT_ME,
+        ResponseMode.GIVE_ADVICE,
+    ];
+
+    /// <summary>
+    /// 回應方式的契合分數，滿分 15。
+    ///
+    /// 原本是個 bool，兩個都選 COMFORT_ME 的人跟「一個想被安慰、一個低需求」
+    /// 拿一樣的 15 分。而今日頁最負面的兩張卡（有點累、有點委屈）都對應
+    /// COMFORT_ME，所以兩個低落的人會同時吃到情緒交集與這 15 分，雙重加成——
+    /// 負面同溫層最強力的那條路徑就在這裡。
+    ///
+    /// 不給 0 是因為「同病相憐」本身仍然成立，只是不該跟真的接得住的人同分。
+    /// </summary>
+    private static int ResponseScore(ResponseMode a, ResponseMode b)
     {
-        return a == b || a == ResponseMode.JUST_LISTEN || b == ResponseMode.JUST_LISTEN;
+        if (WantsSomeoneWithCapacity.Contains(a) && WantsSomeoneWithCapacity.Contains(b)) return 5;
+
+        return a == b || a == ResponseMode.JUST_LISTEN || b == ResponseMode.JUST_LISTEN ? 15 : 0;
     }
+
+    /// <summary>給 MatchType 用的門檻。只有拿到滿分才稱得上「回應方式相容」。</summary>
+    private static bool IsCompatible(ResponseMode a, ResponseMode b) => ResponseScore(a, b) >= 15;
 
     private static MatchType ResolveMatchType(Traits mine, Traits theirs, List<string> emotions, List<string> interests)
     {
