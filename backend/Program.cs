@@ -126,6 +126,8 @@ builder.Services.AddScoped<SameDaySocialApp.Application.Services.RantService>();
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.TaskService>();
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.ChatService>();
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.NotificationService>();
+builder.Services.AddScoped<SameDaySocialApp.Application.Services.AppSettingsService>();
+builder.Services.AddScoped<SameDaySocialApp.Application.Services.ChatExpiryService>();
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.ReportService>();
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.AdminUserService>();
 // 後台的 AI 用量分頁。只讀 ai_usage_logs，沒建表時整頁會是 0 而不會炸。

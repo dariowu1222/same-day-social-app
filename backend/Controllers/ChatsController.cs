@@ -43,6 +43,20 @@ public sealed class ChatsController(ChatService chatService, IHubContext<ChatHub
             limit.HasValue ? chatService.GetMessages(chatRoomId, limit.Value) : chatService.GetMessages(chatRoomId));
     }
 
+    /// <summary>
+    /// 聊天對象額度。滑卡頁在開始滑之前先問一次，額滿就先跳提示——
+    /// 讓人滑完十張才發現配不到，比一開始就講清楚糟得多。
+    ///
+    /// used 只算「還沒到期」的房間，與 CreateRoom 的判斷同一條規則。
+    /// </summary>
+    [HttpGet("partner-quota")]
+    public ActionResult<ApiResponse<PartnerQuota>> GetPartnerQuota()
+    {
+        var used = chatService.CountActivePartners(CallerId);
+        var limit = chatService.PartnerLimit;
+        return ApiResponse<PartnerQuota>.Ok(new PartnerQuota(used, limit, used >= limit));
+    }
+
     [HttpPost("{chatRoomId}/messages")]
     public async Task<ActionResult<ApiResponse<ChatMessage>>> SendMessage(string chatRoomId, [FromBody] SendMessageRequest request)
     {
@@ -54,6 +68,14 @@ public sealed class ChatsController(ChatService chatService, IHubContext<ChatHub
         {
             return BadRequest(ApiResponse<ChatMessage>.Fail(
                 "CHAT_ROOM_REPORTED", "你檢舉的對象已經被處置，這段對話無法再傳送訊息。"));
+        }
+
+        // 閒置到期也會讓房間唯讀。跟上面分開回報：兩者的原因完全不同，
+        // 前端要據此顯示不一樣的說明，共用一個代碼就只能對使用者說錯話。
+        if (chatService.GetExpiredRoomIds([chatRoomId]).Count > 0)
+        {
+            return BadRequest(ApiResponse<ChatMessage>.Fail(
+                "CHAT_ROOM_EXPIRED", "這個聊天室因為太久沒有往來已經關閉，無法再傳送訊息。"));
         }
 
         var message = chatService.SendMessage(
@@ -170,3 +192,5 @@ public sealed class ChatsController(ChatService chatService, IHubContext<ChatHub
 public sealed record SendMessageRequest(string Content, string? QuotedMessageId = null, string? QuotedSenderName = null, string? QuotedContent = null);
 public sealed record UpdateChatSettingRequest(string? NoteName = null, bool? Pinned = null, bool? Muted = null);
 public sealed record ReportChatRequest(string? Reason = null);
+
+public sealed record PartnerQuota(int Used, int Limit, bool Full);

@@ -7,6 +7,12 @@ public sealed class ChatRoom
     public string SourceType { get; set; } = "TODAY_MATCH";
     public string SourceId { get; set; } = "";
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    /// <summary>
+    /// 閒置到期被鎖定的時間。非 null 代表這間房只剩「退出聊天室」：
+    /// 還在列表上、看得到歷史訊息，但不能再傳送。
+    /// </summary>
+    public DateTimeOffset? ExpiredAt { get; set; }
 }
 
 public sealed class ChatMessage

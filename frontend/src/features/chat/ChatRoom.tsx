@@ -33,6 +33,9 @@ type Props = {
   /** 檢舉已成立（後台認定）：對話唯讀，輸入列換成說明與「退出聊天室」。
       送出檢舉但尚未審核時為 false，兩人照常聊天。 */
   reported?: boolean
+  /** 太久沒有往來，房間被排程鎖定：一樣唯讀，只是原因跟檢舉無關。
+      鎖定不代表離開，退不退由使用者自己按。 */
+  expired?: boolean
   onUpdateSetting?: (patch: { noteName?: string | null; pinned?: boolean; muted?: boolean }) => void
   onLeave?: () => void
   onBlock?: () => void
@@ -64,7 +67,7 @@ type RenderRow =
 export default function ChatRoom({
   room, otherProfile, otherUserId, currentUserId,
   messages, draft, onDraftChange, onSendContent, onRecall,
-  setting, reported = false, onUpdateSetting, onLeave, onBlock, onReport, onBack,
+  setting, reported = false, expired = false, onUpdateSetting, onLeave, onBlock, onReport, onBack,
 }: Props) {
   // const navigate = useNavigate() // 任務功能暫時下架（後端保留）
   const [sheet, setSheet] = useState<SheetState>('closed')
@@ -73,6 +76,10 @@ export default function ChatRoom({
   const [chatSearch, setChatSearch] = useState<string | null>(null)
   const muted = !!setting?.muted
   const pinned = !!setting?.pinned
+  // 檢舉成立與閒置到期都讓房間唯讀，差別只在那段說明文案。
+  // 凡是「最後要送出一則訊息」的 UI 都看這個旗標；只跟檢舉本身有關的
+  // （選單裡的「檢舉對方」）仍然只看 reported，到期不該把那條路也關掉。
+  const readOnly = reported || expired
   const [toast, setToast] = useState('')
   // 多圖上傳中的張數（0 = 沒有在上傳）
   const [uploadingCount, setUploadingCount] = useState(0)
@@ -454,8 +461,8 @@ export default function ChatRoom({
         )}
       </div>
 
-      {/* 引用回覆條 */}
-      {quote && !reported && (
+      {/* 引用回覆條。它是送出流程的一部分，所以兩種唯讀狀態都要收掉 */}
+      {quote && !readOnly && (
         <div className="cr-quote-bar">
           <div className="cr-quote-bar-body">
             <span className="cr-quote-bar-name">回覆 {quoteName(quote)}</span>
@@ -481,8 +488,11 @@ export default function ChatRoom({
         </div>
       )}
 
-      {/* 錄好之後先試聽，確認了才送。按 X 可以丟掉重錄。 */}
-      {voiceDraft && !isRecording && (
+      {/* 錄好之後先試聽，確認了才送。按 X 可以丟掉重錄。
+          唯讀時收掉：這一塊在輸入列外面，不跟著 cr-frozen 一起被換掉。
+          房間在錄好、還沒按傳送的空檔被鎖（重抓 overview 時才會發現），
+          留著那顆傳送鈕只會讓人按下去拿到一個失敗。 */}
+      {voiceDraft && !isRecording && !readOnly && (
         <div className="cr-voice-draft">
           <audio controls src={voiceDraft} className="cr-voice-draft-audio" />
           <button
@@ -505,14 +515,25 @@ export default function ChatRoom({
         </div>
       )}
 
-      {/* 檢舉成立後的唯讀狀態。觸發點是後台認定成立，不是送出檢舉——
-          按送出就關對話的話，一次誤報就能把別人的對話鎖死。
-          也不自動把房間移除：使用者常常還要回頭看對方說過什麼，而且對話
-          憑空消失會讓人以為自己誤觸。退不退由他自己決定。 */}
-      {reported ? (
+      {/* 唯讀狀態取代輸入列，兩種原因共用這一塊、只換說明：
+          檢舉成立的觸發點是後台認定，不是送出檢舉——按送出就關對話的話，
+          一次誤報就能把別人的對話鎖死；閒置到期則是排程只負責鎖，不代為退出。
+          兩者都不把房間移除：使用者常常還要回頭看對方說過什麼，而且對話
+          憑空消失會讓人以為自己誤觸。退不退由他自己決定。
+          同時成立時講檢舉——那個比較嚴重，也比較需要交代。 */}
+      {readOnly ? (
         <div className="cr-frozen">
-          <p className="cr-frozen-title">你檢舉的對象已經被處置。</p>
-          <p className="cr-frozen-desc">這段對話已經關閉，先前的訊息還看得到，但不能再傳送。</p>
+          {reported ? (
+            <>
+              <p className="cr-frozen-title">你檢舉的對象已經被處置。</p>
+              <p className="cr-frozen-desc">這段對話已經關閉，先前的訊息還看得到，但不能再傳送。</p>
+            </>
+          ) : (
+            <>
+              <p className="cr-frozen-title">太久沒有往來，這段對話已經關閉。</p>
+              <p className="cr-frozen-desc">先前的訊息都還在，可以慢慢回頭看，只是不能再傳送了。</p>
+            </>
+          )}
           <button className="cr-frozen-leave" type="button" onClick={confirmLeave}>
             <LogOut size={17} strokeWidth={2} />退出聊天室
           </button>
@@ -593,7 +614,9 @@ export default function ChatRoom({
           <Ban size={19} strokeWidth={1.8} className="cr-menu-ic" /><span>離開並封鎖對方</span>
         </button>
         {/* 已經處置過就不再給：再送一次對審核沒有幫助，而使用者按下去只會
-            看到同一張面板，像是上一次沒成功 */}
+            看到同一張面板，像是上一次沒成功。
+            這裡刻意不看 readOnly——閒置到期只是不能再傳訊息，對方先前說過
+            的話仍然該檢舉得了。 */}
         {!reported && (
           <button className="cr-menu-item danger" type="button" onClick={confirmReport}>
             <Flag size={19} strokeWidth={1.8} className="cr-menu-ic" /><span>檢舉對方</span>
@@ -717,7 +740,9 @@ export default function ChatRoom({
             className={`cr-action-bar${action.isOut ? ' out' : ''}`}
             style={{ left: action.x, top: action.y }}
           >
-            {!reported && (
+            {/* 引用回覆結尾是送出一則訊息，唯讀就收掉；底下的複製與檢舉
+                都不送東西出去，兩種唯讀狀態都留著 */}
+            {!readOnly && (
               <button className="cr-action-btn" type="button" onClick={actReply}>
                 <Reply size={17} strokeWidth={1.9} /><span>回覆</span>
               </button>

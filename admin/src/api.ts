@@ -361,3 +361,39 @@ export function getAiUsageLogs(params: { status?: string; page?: number; pageSiz
   q.set('pageSize', String(params.pageSize ?? 20))
   return request<PagedAiUsage>(`/api/admin/ai-usage/logs?${q}`)
 }
+
+// ── 規則設定 ─────────────────────────────────────────
+
+/**
+ * 營運規則，以及每個值的合法範圍。
+ *
+ * 上下限一起回是後端刻意的：驗證的真相只有一份。前端自己抄一份數字的話，
+ * 哪天後端放寬了，畫面會繼續擋著不給改。
+ */
+export type AppSettings = {
+  chatIdleDays: number
+  chatIdleDaysMin: number
+  chatIdleDaysMax: number
+  chatMaxPartners: number
+  chatMaxPartnersMin: number
+  chatMaxPartnersMax: number
+  /** 既有聊天室的寬限起點，後台唯讀。沒設就是沒有下限。 */
+  chatExpirySince?: string | null
+}
+
+/** 跑完一次到期處理的結果。storageReady 為 false 代表 migration 還沒跑，什麼都沒做。 */
+export type ChatExpiryOutcome = {
+  notified: number
+  expired: number
+  scanned: number
+  storageReady: boolean
+}
+
+export const getAppSettings = () => request<AppSettings>('/api/admin/settings')
+
+/** 兩個欄位都是選填，只送有動到的那個——沒改的值送過去會多留一筆審核軌跡。 */
+export const updateAppSettings = (patch: { chatIdleDays?: number; chatMaxPartners?: number }) =>
+  request<AppSettings>('/api/admin/settings', { method: 'PUT', body: JSON.stringify(patch) })
+
+export const runChatExpiry = () =>
+  request<ChatExpiryOutcome>('/api/admin/settings/run-chat-expiry', { method: 'POST' })

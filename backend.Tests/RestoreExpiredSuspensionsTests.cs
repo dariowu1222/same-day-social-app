@@ -139,7 +139,23 @@ public sealed class RestoreExpiredSuspensionsTests
     }
 
     private static MaintenanceController Endpoint(AppDbContext db, string? secret)
-        => new(Service(db),
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(db);
+        var provider = services.BuildServiceProvider();
+        var settings = new AppSettingsService(provider);
+
+        // 這組測的是停權恢復那一支，聊天室到期只是同一個 controller 上的鄰居。
+        // 照樣給真的實例而不是 null：建構子參數為 null 的話，哪天有人在
+        // 停權那支裡用到它，測試會過但線上會 NullReference。
+        var chatExpiry = new ChatExpiryService(
+            provider, settings,
+            new NotificationService(TestWorld.Storage(), provider),
+            NullLogger<ChatExpiryService>.Instance);
+
+        return new MaintenanceController(
+            Service(db), chatExpiry,
             Options.Create(new MaintenanceOptions { TriggerSecret = secret }),
             NullLogger<MaintenanceController>.Instance);
+    }
 }

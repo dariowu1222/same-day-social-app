@@ -33,6 +33,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<DeviceTokenRecord> DeviceTokens => Set<DeviceTokenRecord>();
     public DbSet<PushDigestStateRecord> PushDigestStates => Set<PushDigestStateRecord>();
     public DbSet<AiUsageLogRecord> AiUsageLogs => Set<AiUsageLogRecord>();
+    public DbSet<AppSettingRecord> AppSettings => Set<AppSettingRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

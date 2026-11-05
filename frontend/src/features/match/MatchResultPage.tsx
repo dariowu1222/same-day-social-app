@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { SlidersHorizontal, X } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
-import { getTodayMatches, likeMatch, passMatch } from './api'
+import { getTodayMatches, getPartnerQuota, likeMatch, passMatch } from './api'
 import {
   rememberPassed, readPassedIds,
   rememberPendingLike, readPendingLikes, clearPendingLike,
@@ -10,7 +10,7 @@ import {
 import { ApiError } from '../../shared/api/httpClient'
 import { getProfile, updateProfile } from '../profile/api'
 import { getZodiac, getAge } from '../profile/profileUtils'
-import type { MatchResult } from './types'
+import type { MatchResult, PartnerQuota } from './types'
 import AgeRangeSlider, { AGE_FLOOR, AGE_CEIL } from '../../shared/ui/AgeRangeSlider'
 
 type EnrichedMatch = Omit<MatchResult, 'photos' | 'interests' | 'personalityTags' | 'appearanceTags'> & {
@@ -410,6 +410,41 @@ function SwipeTutorial({ onStart }: { onStart: () => void }) {
   )
 }
 
+/**
+ * 聊天對象額滿時，開始滑之前先講一聲。
+ *
+ * 不硬擋——他可能只是想看看今天有誰——但要先把後果說完：額滿的期間
+ * 右滑就算配對成立，聊天室也開不出來。滑了十張才發現都配不到，
+ * 比一開始就講清楚糟得多。
+ *
+ * 外觀借用慶祝畫面那組樣式（match-celebrate-*）：同樣是置中的單張卡加
+ * 兩顆按鈕，不為了這一塊再寫一份幾乎一樣的 CSS。
+ */
+function PartnerQuotaNotice({ used, limit, onGoChatList, onClose }: {
+  used: number
+  limit: number
+  onGoChatList: () => void
+  onClose: () => void
+}) {
+  return (
+    <div className="match-celebrate-backdrop" role="dialog" aria-modal="true" aria-label="聊天對象已額滿">
+      <div className="match-celebrate">
+        <p className="match-celebrate-title">聊天對象已經額滿</p>
+        <p className="match-celebrate-sub">
+          你同時進行中的聊天對象有 {used} 人，已經到上限 {limit} 人。
+          在結束幾段對話之前，接下來滑到的卡就算右滑配對成功，也開不了聊天室。
+        </p>
+        <button className="match-celebrate-chat" type="button" onClick={onGoChatList}>
+          去整理聊天室
+        </button>
+        <button className="match-celebrate-later" type="button" onClick={onClose}>
+          還是先看看今天有誰
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // 配對偏好：只放會真正改變卡片池的硬條件（想認識的對象 / 年齡）。
 // 交友目的、語言、活動時段等屬於自我描述，留在「我的」頁，不在這裡過濾。
 function PreferenceSheet({ userId, onClose, onApplied }: { userId: string; onClose: () => void; onApplied: () => void }) {
@@ -484,13 +519,17 @@ export default function MatchResultPage({ onBack, onGoToRant, moodLabel, pending
   const [currentIndex, setCurrentIndex] = useState(0)
   const navigate = useNavigate()
   // 配對成功時要秀的慶祝畫面；null 表示不顯示
-  const [matched, setMatched] = useState<{ name: string; photo?: string; chatRoomId?: string | null } | null>(null)
+  const [matched, setMatched] = useState<{ name: string; photo?: string; chatRoomId?: string | null; limitReached?: boolean } | null>(null)
   const [lastDir, setLastDir] = useState<SwipeDir>(null)
   const [prefOpen, setPrefOpen] = useState(false)
   // 右滑沒送出去時要講一聲，不能讓使用者以為表達過了
   const [toast, setToast] = useState('')
   // 今日沒存成功。下面的卡還是會顯示，但它們是依先前的狀態算的，要講清楚。
   const [entryFailed, setEntryFailed] = useState(false)
+  // 聊天對象額度。問不到就一直是 null，畫面當作沒額滿照常滑——這只是提示，
+  // 不該讓一支查詢把整頁變成單點故障。
+  const [quota, setQuota] = useState<PartnerQuota | null>(null)
+  const [quotaNoticeDismissed, setQuotaNoticeDismissed] = useState(false)
   // toast 自己消失。房內用的是同一套（ChatRoom.tsx 的 toastTimer）。
   useEffect(() => {
     if (!toast) return
@@ -553,6 +592,17 @@ export default function MatchResultPage({ onBack, onGoToRant, moodLabel, pending
     })()
   }, [loadMatches])
 
+  // 額度只在進頁面時問一次。它不會因為「套用並重新配對」而改變，
+  // 所以不跟著 loadMatches 走，免得每次重新取卡都多打一支。
+  useEffect(() => {
+    if (!user) return
+    let alive = true
+    getPartnerQuota()
+      .then(res => { if (alive) setQuota(res.data) })
+      .catch(() => { /* 問不到就不提示，絕不能因此擋住滑卡 */ })
+    return () => { alive = false }
+  }, [user])
+
   function handleSwipe(dir: SwipeDir) {
     const card = matches[currentIndex]
     // 畫面先走，網路在背景跑。滑卡手感優先，不給 loading、不擋 UI。
@@ -569,8 +619,13 @@ export default function MatchResultPage({ onBack, onGoToRant, moodLabel, pending
         // 收到第二則「你們互相同頻了」。失敗改排進佇列，下次進頁面補送。
         // 只有「雙方都按了同頻」才跳慶祝畫面：單向喜歡時對方還不知道這件事。
         const res = await likeMatch(card.matchId)
+        // 額滿時配對照樣成立，只是沒開成聊天室。不講的話他只會看到一個
+        // 按不到「開始聊天」的慶祝畫面，以為是壞了。
+        const limitReached = res.data?.partnerLimitReached === true
         if (res.data?.isMutual) {
-          setMatched({ name: card.nickname, photo: card.photos[0], chatRoomId: res.data.chatRoomId })
+          setMatched({ name: card.nickname, photo: card.photos[0], chatRoomId: res.data.chatRoomId, limitReached })
+        } else if (limitReached) {
+          setToast('聊天對象已額滿，就算對方也右滑也開不了聊天室')
         }
       } else {
         // 左滑是冪等的（後端一律重新計時），而且它是「不再出現」的唯一依據，
@@ -616,10 +671,24 @@ export default function MatchResultPage({ onBack, onGoToRant, moodLabel, pending
         <MatchCelebration
           name={matched.name}
           photo={matched.photo}
+          limitReached={matched.limitReached}
+          partnerLimit={quota?.limit}
           onClose={() => setMatched(null)}
+          onGoChatList={() => { setMatched(null); navigate('/chat') }}
           onGoChat={matched.chatRoomId
             ? () => { const id = matched.chatRoomId!; setMatched(null); navigate(`/chat?room=${encodeURIComponent(id)}`) }
             : undefined}
+        />
+      )}
+
+      {/* 等教學頁看完才跳，不然兩層說明畫面會疊在一起。
+          allDone 時不跳：這張卡都沒有了，講「接下來滑到的卡」沒有意義。 */}
+      {phase === 'done' && !allDone && quota?.full && !quotaNoticeDismissed && (
+        <PartnerQuotaNotice
+          used={quota.used}
+          limit={quota.limit}
+          onGoChatList={() => { setQuotaNoticeDismissed(true); navigate('/chat') }}
+          onClose={() => setQuotaNoticeDismissed(true)}
         />
       )}
 
@@ -721,12 +790,18 @@ export default function MatchResultPage({ onBack, onGoToRant, moodLabel, pending
  * 只在雙方都按下同頻時出現。兩個頭像從左右滑進來、中間的愛心彈跳一下，
  * 下方給「開始聊天」直接切到那間已經自動開好的房。
  * 開房失敗時不給按鈕（onGoChat 為 undefined），只恭喜一下就好。
+ *
+ * limitReached 是另一回事：房沒開成不是出錯，是他的聊天對象額滿了。
+ * 這時要把人帶去清理，不是讓他乾等一個永遠不會自己冒出來的聊天室。
  */
-function MatchCelebration({ name, photo, onClose, onGoChat }: {
+function MatchCelebration({ name, photo, limitReached, partnerLimit, onClose, onGoChat, onGoChatList }: {
   name: string
   photo?: string
+  limitReached?: boolean
+  partnerLimit?: number
   onClose: () => void
   onGoChat?: () => void
+  onGoChatList: () => void
 }) {
   return (
     <div className="match-celebrate-backdrop" role="dialog" aria-modal="true" aria-label="配對成功">
@@ -746,7 +821,19 @@ function MatchCelebration({ name, photo, onClose, onGoChat }: {
         <p className="match-celebrate-title">你們互相同頻了</p>
         <p className="match-celebrate-sub">你和 {name} 都按下了同頻</p>
 
-        {onGoChat && (
+        {limitReached ? (
+          <>
+            <p className="match-celebrate-sub" role="alert">
+              {partnerLimit != null
+                ? `只是聊天室還沒開成——你同時進行中的聊天對象已經滿 ${partnerLimit} 人。`
+                : '只是聊天室還沒開成——你同時進行中的聊天對象已經額滿。'}
+              先去結束幾段對話，再回來找他。
+            </p>
+            <button className="match-celebrate-chat" type="button" onClick={onGoChatList}>
+              去整理聊天室
+            </button>
+          </>
+        ) : onGoChat && (
           <button className="match-celebrate-chat" type="button" onClick={onGoChat}>
             開始聊天
           </button>

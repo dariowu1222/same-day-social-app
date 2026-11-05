@@ -107,7 +107,12 @@ public sealed class ChatServiceAccountStatusTests
 
         var services = new ServiceCollection();
         services.AddSingleton(db);
+        var provider = services.BuildServiceProvider();
 
-        return new ChatService(TestWorld.Storage(), services.BuildServiceProvider());
+        // 這組測試不碰聊天對象上限，但 ChatService 現在要靠它取上限值。
+        // 給真的 AppSettingsService（讀不到 app_settings 就退回預設 100），
+        // 不另外造假：假的那個遲早會跟真的行為分岔。
+        return new ChatService(
+            TestWorld.Storage(), new AppSettingsService(provider), provider);
     }
 }

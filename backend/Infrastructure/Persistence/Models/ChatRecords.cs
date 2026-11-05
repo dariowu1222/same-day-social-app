@@ -6,6 +6,28 @@ public sealed class ChatRoomRecord
     public string SourceType { get; set; } = "TODAY_MATCH";
     public string SourceId { get; set; } = "";
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    /// <summary>已經寄出「即將到期」通知的時間。沒寄過就不准鎖定。</summary>
+    public DateTimeOffset? ExpiryNotifiedAt { get; set; }
+
+    /// <summary>
+    /// 鎖定時間。非 null 代表這間房只剩「退出聊天室」一個動作：
+    /// 還在列表上、進得去、看得到歷史，但不能再送訊息。
+    /// 真正離開由本人按下去，排程不代勞。
+    /// </summary>
+    public DateTimeOffset? ExpiredAt { get; set; }
+}
+
+/// <summary>
+/// 後台可調的營運規則。放資料庫而不是 appsettings，是因為後者要重新部署才生效。
+/// 值一律存字串，型別與合法範圍由 AppSettingsService 把關。
+/// </summary>
+public sealed class AppSettingRecord
+{
+    public string Key { get; set; } = "";
+    public string Value { get; set; } = "";
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public string? UpdatedBy { get; set; }
 }
 
 public sealed class ChatRoomUserRecord

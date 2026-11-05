@@ -204,6 +204,8 @@ tbody tr:hover { background: #fafbfc; }
 .msg { padding: 10px 12px; border-radius: 6px; margin-bottom: 14px; font-size: 13.5px; }
 .msg-error { background: #fdeaea; color: #a72b1e; }
 .msg-ok { background: #e6f4ea; color: #1e7e34; }
+/* 影響預告用：事情還沒發生，用 msg-error 的紅色會讓人以為是操作失敗 */
+.msg-warn { background: #fdf3e2; color: #8a6116; }
 .empty { padding: 40px; text-align: center; color: var(--text-dim); }
 
 /* ── 登入頁 ── */

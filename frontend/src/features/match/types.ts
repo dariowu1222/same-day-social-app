@@ -31,4 +31,16 @@ export type LikeResult = {
   }
   isMutual: boolean
   chatRoomId?: string | null
+  /**
+   * 配對成立了，但聊天對象額滿所以沒開成聊天室。
+   * 與一般的開房失敗不同：這個重試幾次都一樣，要先去結束幾段對話。
+   */
+  partnerLimitReached?: boolean
+}
+
+/** 同時進行中的聊天對象額度。used 只算還沒到期的房間，與開房時的判斷同一條規則。 */
+export type PartnerQuota = {
+  used: number
+  limit: number
+  full: boolean
 }

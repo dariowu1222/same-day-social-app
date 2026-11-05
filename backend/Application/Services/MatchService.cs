@@ -327,9 +327,20 @@ public sealed class MatchService
 
         var pairKey = PairKey(callerId, otherUserId);
         string? roomId = null;
+        var limitReached = false;
         try
         {
             roomId = chat.CreateRoom([callerId, otherUserId], "TODAY_MATCH", pairKey).Id;
+        }
+        catch (ChatPartnerLimitReachedException ex)
+        {
+            // 額度滿了不是錯誤，是規則。配對本身仍然成立（兩邊都按了右滑是事實），
+            // 只是房間要等有人退出才開得起來。這條路要跟下面的「真的出錯」分開，
+            // 否則畫面會對使用者說「稍後再試」——他等到天荒地老也不會好。
+            limitReached = true;
+            logger?.LogInformation(
+                "配對成功但聊天對象額度已滿 limit={Limit} full={Full}",
+                ex.Limit, string.Join("、", ex.FullUserIds));
         }
         catch (Exception ex)
         {
@@ -351,7 +362,7 @@ public sealed class MatchService
                 roomId);
         }
 
-        return new LikeResult(match, true, roomId);
+        return new LikeResult(match, true, roomId, limitReached);
     }
 
     /// <summary>
@@ -910,7 +921,12 @@ public sealed record MatchResponse(
 /// 右滑的結果。IsMutual 為 true 時代表兩邊都按了同頻，ChatRoomId 是自動
 /// 開好的房間（開房失敗時為 null，前端就只顯示配對成功、不給進聊天的按鈕）。
 /// </summary>
-public sealed record LikeResult(MatchRecord Match, bool IsMutual, string? ChatRoomId);
+/// <summary>
+/// ChatRoomId 為 null 時 <see cref="PartnerLimitReached"/> 說明是不是因為額度滿了。
+/// 兩者在畫面上要講不一樣的話：額度滿了是「去清理一下」，其他失敗是「等一下再試」。
+/// </summary>
+public sealed record LikeResult(
+    MatchRecord Match, bool IsMutual, string? ChatRoomId, bool PartnerLimitReached = false);
 
 public enum LikeStatus
 {

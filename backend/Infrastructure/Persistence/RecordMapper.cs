@@ -319,7 +319,8 @@ public static class RecordMapper
             UserIds = users.Select(x => x.UserId).Distinct().ToList(),
             SourceType = record.SourceType,
             SourceId = record.SourceId,
-            CreatedAt = record.CreatedAt
+            CreatedAt = record.CreatedAt,
+            ExpiredAt = record.ExpiredAt
         };
     }
 

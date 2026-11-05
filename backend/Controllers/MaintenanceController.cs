@@ -18,6 +18,8 @@ public sealed class MaintenanceOptions
 
 public sealed record RestoreExpiredSuspensionsResult(int Restored);
 
+public sealed record ChatExpiryResult(int Notified, int Expired, int Scanned, bool StorageReady);
+
 /// <summary>
 /// 由排程打的維護端點。
 ///
@@ -32,6 +34,7 @@ public sealed record RestoreExpiredSuspensionsResult(int Restored);
 [Route("api/maintenance")]
 public sealed class MaintenanceController(
     AdminUserService users,
+    ChatExpiryService chatExpiry,
     IOptions<MaintenanceOptions> options,
     ILogger<MaintenanceController> logger) : ControllerBase
 {
@@ -74,6 +77,38 @@ public sealed class MaintenanceController(
         }
 
         return ApiResponse<RestoreExpiredSuspensionsResult>.Ok(new RestoreExpiredSuspensionsResult(restored));
+    }
+
+    /// <summary>
+    /// 聊天室閒置到期：先通知、隔天才鎖定。
+    ///
+    /// 為什麼跟停權恢復共用同一把密鑰：兩者都是「這台排程機器可以叫後端做維護」
+    /// 這一件事，外洩的後果也相同（有人能重複觸發維護）。再開一把只會多一個
+    /// 要輪替的祕密。與 Push__TriggerSecret 分開則是刻意的——那條鏈路會真的
+    /// 對使用者送出推播，風險不同級。
+    ///
+    /// 可以重複打：通知過的不會再通知，鎖定過的不會再掃到。
+    /// </summary>
+    [AllowAnonymous]
+    [HttpPost("chat-expiry")]
+    public ActionResult<ApiResponse<ChatExpiryResult>> RunChatExpiry(
+        [FromHeader(Name = "X-Maintenance-Trigger")] string? secret)
+    {
+        var expected = options.Value.TriggerSecret;
+        if (string.IsNullOrWhiteSpace(expected))
+        {
+            return NotFound(ApiResponse<ChatExpiryResult>.Fail("MAINTENANCE_DISABLED", "維護端點未啟用。"));
+        }
+
+        if (!FixedTimeEquals(secret, expected))
+        {
+            logger.LogWarning("聊天室到期端點收到錯誤的密鑰");
+            return Unauthorized(ApiResponse<ChatExpiryResult>.Fail("UNAUTHORIZED", "密鑰不符。"));
+        }
+
+        var outcome = chatExpiry.Run();
+        return ApiResponse<ChatExpiryResult>.Ok(new ChatExpiryResult(
+            outcome.Notified, outcome.Expired, outcome.Scanned, outcome.StorageReady));
     }
 
     private static bool FixedTimeEquals(string? provided, string expected)

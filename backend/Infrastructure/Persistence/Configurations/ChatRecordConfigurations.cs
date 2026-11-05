@@ -14,7 +14,22 @@ public sealed class ChatRoomRecordConfiguration : IEntityTypeConfiguration<ChatR
         builder.Property(x => x.SourceType).HasColumnName("source_type").HasMaxLength(40);
         builder.Property(x => x.SourceId).HasColumnName("source_id").HasMaxLength(64);
         builder.Property(x => x.CreatedAt).HasColumnName("created_at");
+        builder.Property(x => x.ExpiryNotifiedAt).HasColumnName("expiry_notified_at");
+        builder.Property(x => x.ExpiredAt).HasColumnName("expired_at");
         builder.HasIndex(x => new { x.SourceType, x.SourceId });
+    }
+}
+
+public sealed class AppSettingRecordConfiguration : IEntityTypeConfiguration<AppSettingRecord>
+{
+    public void Configure(EntityTypeBuilder<AppSettingRecord> builder)
+    {
+        builder.ToTable("app_settings");
+        builder.HasKey(x => x.Key);
+        builder.Property(x => x.Key).HasColumnName("key").HasMaxLength(64);
+        builder.Property(x => x.Value).HasColumnName("value");
+        builder.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+        builder.Property(x => x.UpdatedBy).HasColumnName("updated_by").HasMaxLength(64);
     }
 }
 

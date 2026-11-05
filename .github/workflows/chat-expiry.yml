@@ -1,0 +1,61 @@
+# 聊天室閒置到期：先通知、隔天才鎖定
+#
+# 為什麼不是後端自己跑 BackgroundService：
+# 跟彙總推播、停權恢復同一個理由——Render 免費方案閒置 15 分鐘就休眠、行程整個
+# 停掉，PeriodicTimer 不會跑，醒來還會重新計時。後端只提供端點，排程交給這裡。
+#
+# 為什麼一天只跑一次：
+# 這件事的粒度本來就是「天」。跑得更密不會讓任何人更早收到通知（判斷是用天數
+# 算的），只會多叫醒服務、多吃免費方案的 instance-hours。
+#
+# 時段：cron 走 UTC，1 點 = 台灣時間早上 9 點。刻意不挑半夜——「明天就會關閉」
+# 這種通知在凌晨三點送出去，使用者早上看到時已經少掉幾個小時可以回話。
+# 這個時間也落在 keep-render-awake 的保活視窗內，不必為了它額外叫醒服務。
+
+name: Chat room expiry
+
+on:
+  schedule:
+    - cron: '0 1 * * *'
+  workflow_dispatch: {}
+
+# 兩次同時跑會對同一批房間各發一次通知，使用者就收到兩則一模一樣的提醒
+concurrency:
+  group: chat-expiry
+  cancel-in-progress: false
+
+jobs:
+  expire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 叫醒服務
+        env:
+          BASE: https://tongpin-api-twu8.onrender.com
+        # 免費方案冷啟動要 50 秒上下。先打 health 讓它醒來，否則下一個請求
+        # 會在還沒起來的時候就逾時。失敗不中斷——真正要跑的是下一步。
+        run: curl -sS -o /dev/null --max-time 120 "$BASE/health" || true
+
+      - name: 執行到期處理
+        env:
+          BASE: https://tongpin-api-twu8.onrender.com
+          SECRET: ${{ secrets.MAINTENANCE_TRIGGER_SECRET }}
+        run: |
+          if [ -z "$SECRET" ]; then
+            echo "沒有設定 MAINTENANCE_TRIGGER_SECRET，跳過。"
+            echo "（後端那側沒設 Maintenance__TriggerSecret 時端點本來就回 404）"
+            exit 0
+          fi
+          body=$(mktemp)
+          code=$(curl -sS -o "$body" -w '%{http_code}' --max-time 300 \
+                   -X POST "$BASE/api/maintenance/chat-expiry" \
+                   -H "X-Maintenance-Trigger: $SECRET")
+          echo "HTTP $code"
+          cat "$body"
+          echo
+          # 404 = 端點沒啟用（密鑰沒設）。那是設定狀態，不是故障，不要讓排程一直紅。
+          if [ "$code" = "404" ]; then
+            echo "維護端點未啟用，視為跳過。"
+            exit 0
+          fi
+          [ "$code" = "200" ]

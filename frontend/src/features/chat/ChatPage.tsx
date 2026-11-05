@@ -240,11 +240,14 @@ export default function ChatPage() {
       replaceMessage(roomId, tempId, response.data)
     } catch (error) {
       markMessageFailed(roomId, tempId)
-      // 後台剛認定檢舉成立的話，這間房在伺服器那端已經唯讀了，但使用者畫面還
-      // 停在舊狀態——他會看到「傳送失敗」然後一直重送。重抓一次房間，輸入列
-      // 就會換成說明與「退出聊天室」。這是目前唯一讓凍結即時反映到畫面上的
-      // 路徑（沒有為此推 SignalR 事件，那會讓被檢舉的那側推得出凍結的存在）。
-      if (error instanceof ApiError && error.code === 'CHAT_ROOM_REPORTED') {
+      // 後台剛認定檢舉成立、或排程剛把這間房標成閒置到期：伺服器那端已經唯讀了，
+      // 但使用者畫面還停在舊狀態——他會看到「傳送失敗」然後一直重送。重抓一次
+      // 房間，輸入列就會換成說明與「退出聊天室」。這是目前唯一讓凍結即時反映到
+      // 畫面上的路徑（沒有為此推 SignalR 事件，那會讓被檢舉的那側推得出凍結的存在）。
+      if (error instanceof ApiError && (error.code === 'CHAT_ROOM_REPORTED' || error.code === 'CHAT_ROOM_EXPIRED')) {
+        // 到期是「對方沒有錯、只是久了」，換掉輸入列不足以讓人知道發生什麼事，
+        // 補一句後端的說明。檢舉成立那段文案自己會解釋，不另外跳 toast。
+        if (error.code === 'CHAT_ROOM_EXPIRED') setToast(error.message)
         void loadRooms()
       }
     }
@@ -425,6 +428,7 @@ export default function ChatPage() {
   if (activeRoom) {
     const otherUserId = activeRoom.userIds.find((id) => id !== user.userId) ?? activeRoom.id
     return (
+      <>
       <ChatRoom
         room={activeRoom}
         otherProfile={profiles[otherUserId] ?? null}
@@ -437,12 +441,17 @@ export default function ChatPage() {
         onRecall={recallMsg}
         setting={settings[activeRoom.id]}
         reported={reportedRooms.has(activeRoom.id)}
+        expired={activeRoom.expiredAt != null}
         onUpdateSetting={updateSetting}
         onLeave={leaveActiveRoom}
         onBlock={blockActiveRoom}
         onReport={reportActiveRoom}
         onBack={() => setActiveRoomId(null)}
       />
+      {/* toast 本來只掛在列表那一支，房內送出失敗時那句話沒有人顯示。
+          .cr-toast 是 fixed 定位，擺在房間旁邊就會浮在上面。 */}
+      {toast && <div className="cr-toast" role="status">{toast}</div>}
+      </>
     )
   }
 
@@ -599,6 +608,7 @@ type ChatSummary = {
   pinned: boolean
   pinnedAt: Date | null
   reported: boolean
+  expired: boolean
 }
 
 type RoomAction = 'pin' | 'leave' | 'report'
@@ -674,9 +684,12 @@ function ChatCard({ summary, onOpen, highlight, menuOpen, onToggleMenu, onAction
             <time>{summary.timeLabel}</time>
           </span>
           <span className={`chat-card-preview${summary.unreadCount > 0 ? ' unread' : ''}`}>
-            {/* 已處置的房間點進去只剩「退出聊天室」，列表上就先講，
-                不然使用者得一間一間點開才知道是哪一間 */}
-            {summary.reported && <span className="chat-card-tag">已處置</span>}
+            {/* 已處置與已關閉的房間點進去都只剩「退出聊天室」，列表上就先講，
+                不然使用者得一間一間點開才知道是哪一間。
+                兩個同時成立只標嚴重的那個，兩顆標籤並排會把預覽擠到看不見 */}
+            {summary.reported
+              ? <span className="chat-card-tag">已處置</span>
+              : summary.expired && <span className="chat-card-tag">已關閉</span>}
             {summary.preview}
           </span>
         </span>
@@ -754,6 +767,8 @@ function buildRoomSummary(room: ChatRoomType, messages: ChatMessage[], peers: Re
     pinnedAt: null,
     // 這三個預設值由呼叫端用 settings / unreadByRoom / reportedRooms 覆寫
     reported: false,
+    // 到期與否房間自己就帶著（overview 的 room.expiredAt），不必再繞一層
+    expired: room.expiredAt != null,
   }
 }
 

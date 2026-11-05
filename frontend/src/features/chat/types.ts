@@ -4,6 +4,9 @@ export type ChatRoom = {
   sourceType: string
   sourceId: string
   createdAt: string
+  /** 太久沒有往來而被鎖定的時間（ISO 字串），null 代表還能聊。
+      鎖定後房間仍留在列表上、歷史訊息照看，只是不能再傳送。 */
+  expiredAt?: string | null
 }
 
 export type ChatMemberSetting = {

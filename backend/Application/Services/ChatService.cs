@@ -20,16 +20,47 @@ namespace SameDaySocialApp.Application.Services;
 /// 新的關係不再成立（CreateRoom 擋，配對候選池在 MatchService 擋），
 /// 對方的完整個人檔案也不再提供（ProfileController 擋）。
 /// </summary>
+/// <summary>
+/// 聊天對象已達上限。帶著上限值與「是誰滿了」——右滑的人需要知道是自己滿了
+/// 還是對方滿了，這兩句話要對使用者說得不一樣。
+/// </summary>
+public sealed class ChatPartnerLimitReachedException(int limit, IReadOnlyList<string> fullUserIds)
+    : InvalidOperationException($"聊天對象已達上限 {limit} 人。")
+{
+    public int Limit { get; } = limit;
+    public IReadOnlyList<string> FullUserIds { get; } = fullUserIds;
+}
+
 public sealed class ChatService
 {
     private readonly JsonStorageService storage;
     private readonly AppDbContext? db;
+    private readonly AppSettingsService settings;
 
-    public ChatService(JsonStorageService storage, IServiceProvider services)
+    public ChatService(JsonStorageService storage, AppSettingsService settings, IServiceProvider services)
     {
         this.storage = storage;
+        this.settings = settings;
         db = services.GetService<AppDbContext>();
     }
+
+    /// <summary>聊天對象上限。走設定服務，後台改完即生效、不必重新部署。</summary>
+    private int partnerLimit() => settings.MaxPartners;
+
+    /// <summary>
+    /// 這個人目前佔用了幾個聊天對象額度。只算還沒到期的房間——
+    /// 跟 CreateRoom 的判斷用同一條規則，兩邊不可以各算各的。
+    /// </summary>
+    public int CountActivePartners(string userId)
+    {
+        if (db == null) return 0;
+        return db.ChatRoomUsers.AsNoTracking().Count(cru =>
+            cru.UserId == userId
+            && db.ChatRooms.Any(r => r.Id == cru.ChatRoomId && r.ExpiredAt == null));
+    }
+
+    /// <summary>上限值本身，給前端顯示「100 人」用。</summary>
+    public int PartnerLimit => partnerLimit();
 
     /// <summary>
     /// 房間成員檢查：單一 EXISTS 查詢。
@@ -120,6 +151,20 @@ public sealed class ChatService
     /// 凍結只對檢舉人生效：被檢舉的人照常傳得進來，不會從「訊息送不出去」
     /// 反推自己被檢舉了。檢舉人那側不顯示未讀、也不推播。
     /// </summary>
+    /// <summary>
+    /// 閒置到期被鎖定的房間。與 GetFrozenRoomIds（檢舉成立）刻意分開：
+    /// 兩者都讓房間唯讀，但原因完全不同，前端與 API 要給得出不一樣的說明，
+    /// 混在一起只會在畫面上對使用者說錯話。
+    /// </summary>
+    public HashSet<string> GetExpiredRoomIds(ICollection<string> roomIds)
+    {
+        if (db == null || roomIds.Count == 0) return [];
+        return db.ChatRooms.AsNoTracking()
+            .Where(x => roomIds.Contains(x.Id) && x.ExpiredAt != null)
+            .Select(x => x.Id)
+            .ToHashSet();
+    }
+
     public HashSet<string> GetFrozenRoomIds(string userId, ICollection<string>? scope = null)
     {
         if (db == null)
@@ -182,6 +227,22 @@ public sealed class ChatService
             if (blocked)
             {
                 throw new InvalidOperationException("雙方之間存在封鎖關係，不開聊天室。");
+            }
+        }
+
+        // 任一方已經滿了就不開。上限算的是「還沒到期的房間」——到期被鎖的那些
+        // 已經不能再聊，再把它們算進額度等於逼人先去一間一間退出才能認識新的人。
+        if (db != null)
+        {
+            var max = partnerLimit();
+            var full = orderedUserIds
+                .Where(id => db.ChatRoomUsers.AsNoTracking().Count(cru =>
+                    cru.UserId == id
+                    && db.ChatRooms.Any(r => r.Id == cru.ChatRoomId && r.ExpiredAt == null)) >= max)
+                .ToList();
+            if (full.Count > 0)
+            {
+                throw new ChatPartnerLimitReachedException(max, full);
             }
         }
 
