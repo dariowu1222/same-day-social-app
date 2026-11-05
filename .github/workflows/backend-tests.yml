@@ -1,0 +1,79 @@
+# 後端測試：每次推送都建置並跑 backend.Tests
+#
+# 為什麼現在才有：
+# 這個倉庫原本沒有 CI，四支 workflow 全是排程或手動觸發的營運工作，沒有一支
+# 碰原始碼。測試因此只在有人記得敲 dotnet test 的時候才算數——而最需要它的
+# 時刻，正是沒人想到要跑的時刻。實際發生過一次：改了 ChatService 的建構子，
+# 只建了 backend.csproj 就推上去，測試專案根本沒編到，壞的是編譯而不是斷言。
+#
+# 為什麼值得為它多跑一次 Actions：
+# 整套測試跑完 852ms，大頭是還原與建置。換到的是 ChatExpiryService 那十二條
+# 真的會在每次推送時守著——它們守的事情要到 2026-12-03 排程第一次真的寄出
+# 通知時才會在線上發生，中間這一個月不會有任何其他東西提醒你改壞了。
+#
+# 為什麼 push 與 pull_request 都跑、而且不限分支：
+# 這是單人為主的倉庫，功能分支與 main 一樣會被直接推上來。限定分支等於替
+# 「忘記開 PR」這條路留了後門，而那正是最常走的路。
+# 代價是：分支開了 PR 之後再推，push 與 pull_request 會各跑一次（concurrency
+# 的 group 是以 ref 算的，兩者不同 ref 所以不會互相取消）。這個倉庫很少開 PR，
+# 換來的是「不管怎麼推都一定會跑」，划算。真的覺得吵，把 push 限定成 main 即可。
+#
+# 為什麼不加 paths 過濾：
+# 只改前端時跑 dotnet test 確實是白跑一分鐘。但過濾清單會過期——哪天有人動了
+# 不在清單上的共用檔案（Directory.Build.props、方案檔、這支 workflow 自己），
+# 測試就會安靜地不跑，而畫面上看起來一切正常。寧可白跑。
+#
+# 為什麼 cancel-in-progress 是 true，跟其他四支相反：
+# 那幾支取消會漏掉一次真正的工作（漏發通知、漏恢復停權）。這支不一樣——
+# 同一個分支連推兩次，舊的那次結果已經沒人要看了，跑完也只是佔住 runner。
+#
+# 為什麼指定 backend.Tests.csproj 而不是方案檔：
+# mobile/TongpinToday.Mobile.csproj 是 MAUI（net9.0-android/ios/maccatalyst），
+# 在 CI 上要先裝 workload 才建得起來。它今天不在 SameDaySocialApp.sln 裡，
+# 但指定方案檔等於把「以後也不會被加進去」當成前提。指定測試專案，它會循
+# ProjectReference 把 backend 一起帶進來，範圍剛好。
+#
+# 為什麼用 Release：
+# Render 部署的是 Release。CI 跟部署用同一個組態，才抓得到只在 Release 下
+# 出現的問題。本機 Debug 與 Release 都驗過，100/100。
+
+name: Backend tests
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: backend-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安裝 .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      # 只看這兩個專案檔。用 **/*.csproj 的話，改 mobile/ 會無謂地讓快取失效。
+      - name: 取用 NuGet 快取
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ hashFiles('backend/backend.csproj', 'backend.Tests/backend.Tests.csproj') }}
+          restore-keys: nuget-
+
+      - name: 還原套件
+        run: dotnet restore backend.Tests/backend.Tests.csproj
+
+      # 建置與測試分開跑，失敗時一眼看得出是編不過還是斷言沒過。
+      # 兩者要修的地方完全不同。
+      - name: 建置
+        run: dotnet build backend.Tests/backend.Tests.csproj --no-restore -c Release
+
+      - name: 跑測試
+        run: dotnet test backend.Tests/backend.Tests.csproj --no-build -c Release --logger "console;verbosity=normal"
