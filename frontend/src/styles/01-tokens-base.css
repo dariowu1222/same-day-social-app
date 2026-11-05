@@ -229,6 +229,16 @@ h3 {
   -webkit-appearance: none;
   appearance: none;
   pointer-events: none;
+
+  /* 把上面那條 `input, textarea, select` 的表單外框關掉。它是給文字欄位用的，
+     套到 range 上有兩個後果：
+     一、border 會在滑桿外面畫出一個圓角方框，而且兩個 input 疊著各畫一次。
+     二、border 1px + padding 12px 讓圓點的可移動範圍內縮 13px，但 rail 只內縮
+         11px（半個圓點）。兩者對不上，兩端各差 13px、中間才重合——最低年齡時
+         橘色進度條會從圓點左邊凸出來一截，看起來像沒對齊。 */
+  border: 0;
+  padding: 0;
+  border-radius: 0;
 }
 
 .age-range-input::-webkit-slider-runnable-track { background: transparent; }

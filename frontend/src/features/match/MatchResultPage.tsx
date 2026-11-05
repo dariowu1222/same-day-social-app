@@ -455,8 +455,6 @@ function PreferenceSheet({ userId, onClose, onApplied }: { userId: string; onClo
           <button className="pref-sheet-close" type="button" onClick={onClose} aria-label="關閉"><X size={18} /></button>
         </div>
 
-        <p className="pref-sheet-note">調整後會同步更新你的個人檔案。</p>
-
         <p className="pref-field-label">想認識的對象</p>
         <div className="pref-chips">
           {LOOKING_FOR_OPTIONS.map(o => (
@@ -648,9 +646,9 @@ export default function MatchResultPage({ onBack, onGoToRant, moodLabel, pending
               </svg>
               返回
             </button>
-            <button className="match-pref-btn" onClick={() => setPrefOpen(true)} aria-label="調整偏好">
+            <button className="match-pref-btn" onClick={() => setPrefOpen(true)}>
               <SlidersHorizontal size={18} />
-              篩選
+              配對偏好
             </button>
           </header>
 
