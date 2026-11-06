@@ -239,6 +239,25 @@ public sealed class ReportService
             .ToList();
     }
 
+    /// <summary>
+    /// 這批檢舉指向的樹洞貼文現在是不是隱藏中。
+    ///
+    /// 後台原本看不到這件事：佇列只顯示檢舉本身，審核的人無從判斷那篇到底還在不在。
+    /// 一次查完整批，不要每一列各問一次（那張清單已經有一個 N+1 了，見 CountAgainstUser）。
+    /// </summary>
+    public Dictionary<string, bool> HiddenRantPosts(IEnumerable<string> postIds)
+    {
+        if (db == null) return [];
+
+        var ids = postIds.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().ToList();
+        if (ids.Count == 0) return [];
+
+        return db.RantPosts.AsNoTracking()
+            .Where(x => ids.Contains(x.Id))
+            .Select(x => new { x.Id, x.IsHidden })
+            .ToDictionary(x => x.Id, x => x.IsHidden);
+    }
+
     /// <summary>同一被檢舉人累積的未駁回檢舉數，供審核時判斷是否累犯。</summary>
     public int CountAgainstUser(string userId)
     {
@@ -322,7 +341,17 @@ public sealed class ReportService
         if (targetType != ReportTargetType.RANT_POST.ToString()) return;
 
         var post = db.RantPosts.FirstOrDefault(x => x.Id == targetId);
-        if (post != null) post.IsHidden = hidden;
+        if (post == null) return;
+
+        post.IsHidden = hidden;
+
+        // 退回給原作者時，把檢舉計數一起歸零。
+        //
+        // 自動隱藏的門檻是「三個不同的人檢舉過」（RantService.Report），而那個計數
+        // 不會因為後台判定不成立就減少。不歸零的話，貼文退回去之後只要再多一個人
+        // 檢舉就立刻又被藏起來——對原作者來說就是「它又不見了」，而且沒有人動過後台。
+        // 既有的 rant_reports 列留著，稽核軌跡不受影響。
+        if (!hidden) post.ReportCount = 0;
     }
 
     /// <summary>

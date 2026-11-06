@@ -287,6 +287,8 @@ export type ModerationReport = {
   reviewedBy?: string | null
   reviewedAt?: string | null
   resolution?: string | null
+  /** 這篇現在是不是隱藏中。只有 RANT_POST 有值，其他型別是 null。 */
+  targetHidden?: boolean | null
 }
 
 export const getReports = (status: ReportStatus | '', limit = 50) => {

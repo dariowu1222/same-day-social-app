@@ -96,6 +96,15 @@ export default function ReportsPage() {
               </span>
             </div>
 
+            {r.targetHidden != null && (
+              <div className="field-row">
+                <span className="field-label">內容狀態</span>
+                <span className="field-value">
+                  {r.targetHidden ? '已隱藏，一般使用者與原作者都看不到' : '正常顯示中'}
+                </span>
+              </div>
+            )}
+
             {r.status !== 'PENDING' && (
               <div className="field-row">
                 <span className="field-label">處理紀錄</span>
@@ -115,9 +124,19 @@ export default function ReportsPage() {
                   onChange={(e) => setResolution(e.target.value)}
                 />
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-                  <button className="btn btn-danger" onClick={() => review(r.id, 'RESOLVED', true)}>
-                    隱藏內容並結案
-                  </button>
+                  {/* 已經隱藏的內容要給得出一條回頭路。
+                      原本三顆按鈕送的 hideTarget 只有 true 與 null——null 的意思是
+                      「這次不要動隱藏狀態」，所以誤判之後怎麼按都救不回來：
+                      後端的 SetTargetHidden(false) 一直在，只是後台叫不到它。 */}
+                  {r.targetHidden === true ? (
+                    <button className="btn btn-primary" onClick={() => review(r.id, 'DISMISSED', false)}>
+                      退回給作者（解除隱藏）
+                    </button>
+                  ) : (
+                    <button className="btn btn-danger" onClick={() => review(r.id, 'RESOLVED', true)}>
+                      隱藏內容並結案
+                    </button>
+                  )}
                   <button className="btn btn-primary" onClick={() => review(r.id, 'RESOLVED', null)}>
                     不動內容，結案
                   </button>
@@ -127,7 +146,9 @@ export default function ReportsPage() {
                   <button className="btn" onClick={() => { setOpenId(null); setResolution('') }}>取消</button>
                 </div>
                 <div className="page-sub" style={{ marginTop: 6 }}>
-                  需要停權或封鎖帳號，請點上方被檢舉人進入其詳細頁處置。
+                  {r.targetHidden === true
+                    ? '退回會讓這篇重新公開，並把累積的檢舉次數歸零（不然再被檢舉一次就又會自動隱藏）。'
+                    : '需要停權或封鎖帳號，請點上方被檢舉人進入其詳細頁處置。'}
                 </div>
               </div>
             ) : (

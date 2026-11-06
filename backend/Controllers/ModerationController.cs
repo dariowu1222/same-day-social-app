@@ -34,6 +34,12 @@ public sealed class ModerationController(ReportService reports, AdminAccessServi
         if (Denied()) return NotFound();
 
         var queue = reports.GetQueue(status, limit);
+
+        // 這批檢舉指向的貼文現在是不是隱藏中。審核的人要看得到目前狀態，
+        // 才知道該按「隱藏」還是「退回」——以前這張清單完全沒有這個資訊。
+        var hidden = reports.HiddenRantPosts(
+            queue.Where(r => r.TargetType == ReportTargetType.RANT_POST).Select(r => r.TargetId));
+
         var dto = queue.Select(r => new ModerationReportDto(
             r.Id,
             r.TargetType.ToString(),
@@ -48,7 +54,8 @@ public sealed class ModerationController(ReportService reports, AdminAccessServi
             r.CreatedAt,
             r.ReviewedBy,
             r.ReviewedAt,
-            r.Resolution)).ToList();
+            r.Resolution,
+            r.TargetType == ReportTargetType.RANT_POST ? hidden.GetValueOrDefault(r.TargetId) : null)).ToList();
 
         reports.LogAudit(CallerId, "VIEW_QUEUE", null, $"status={status}, 筆數={dto.Count}");
         return ApiResponse<List<ModerationReportDto>>.Ok(dto);
@@ -84,7 +91,12 @@ public sealed record ModerationReportDto(
     DateTimeOffset CreatedAt,
     string? ReviewedBy,
     DateTimeOffset? ReviewedAt,
-    string? Resolution);
+    string? Resolution,
+    /// <summary>
+    /// 這篇現在是不是隱藏中。只有 RANT_POST 有值，其他型別為 null（還不支援隱藏）。
+    /// 後台靠它決定要顯示「隱藏內容」還是「退回給作者」。
+    /// </summary>
+    bool? TargetHidden);
 
 public sealed record ReviewReportRequest(
     ReportStatus Status,
