@@ -29,13 +29,12 @@ type Props = {
   onDelete: () => void
   onLikedReply: () => void
   onHashtagClick?: (tag: string) => void
-  currentUserId: string
 }
 
 export default function RantPostCard({
   post, replyText, replyMedia,
   onReplyTextChange, onReplyMediaChange,
-  onUnderstand, onReply, onReported, onDelete, onLikedReply, onHashtagClick, currentUserId,
+  onUnderstand, onReply, onReported, onDelete, onLikedReply, onHashtagClick,
 }: Props) {
   const navigate = useNavigate()
   const [showReplies, setShowReplies] = useState(false)
@@ -172,7 +171,7 @@ export default function RantPostCard({
               <span className="tag" data-mode={post.mode}>{MODE_LABELS[post.mode] ?? post.mode}</span>
             </div>
             <div onClick={(e) => e.stopPropagation()}>
-              <PostMenu postId={post.id} isOwner={post.userId === currentUserId} onDelete={onDelete} />
+              <PostMenu postId={post.id} isOwner={post.isMine} onDelete={onDelete} />
             </div>
           </div>
 

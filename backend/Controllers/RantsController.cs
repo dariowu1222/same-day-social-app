@@ -23,7 +23,7 @@ public sealed class RantsController(RantService rantService, MediaUrlPolicy medi
     public ActionResult<ApiResponse<List<RantPost>>> Get([FromQuery] string? cursor, [FromQuery] int limit = 20)
     {
         DateTimeOffset? c = DateTimeOffset.TryParse(cursor, out var parsed) ? parsed : null;
-        return ApiResponse<List<RantPost>>.Ok(rantService.GetPublicPosts(c, limit));
+        return ApiResponse<List<RantPost>>.Ok([.. rantService.GetPublicPosts(c, limit).Select(Mine)]);
     }
 
     [HttpGet("{rantId}")]
@@ -32,7 +32,7 @@ public sealed class RantsController(RantService rantService, MediaUrlPolicy medi
         var post = rantService.GetPost(rantId);
         return post == null
             ? NotFound(ApiResponse<RantPost>.Fail("RANT_NOT_FOUND", "找不到這篇樹洞文章。"))
-            : ApiResponse<RantPost>.Ok(post);
+            : ApiResponse<RantPost>.Ok(Mine(post));
     }
 
     [Authorize]
@@ -65,7 +65,7 @@ public sealed class RantsController(RantService rantService, MediaUrlPolicy medi
         var result = rantService.Create(userId, content, request.Mode, request.HashTags, images, request.AudioUrl, request.ThumbUrls);
         if (result.Moderation.IsBlocked)
             return BadRequest(ApiResponse<RantPost>.Fail(result.Moderation.Code!, result.Moderation.Message!));
-        return ApiResponse<RantPost>.Ok(result.Post!, result.Moderation.Warning);
+        return ApiResponse<RantPost>.Ok(Mine(result.Post!), result.Moderation.Warning);
     }
 
     [Authorize]
@@ -78,7 +78,7 @@ public sealed class RantsController(RantService rantService, MediaUrlPolicy medi
         var post = rantService.Understand(rantId, userId);
         return post == null
             ? NotFound(ApiResponse<RantPost>.Fail("RANT_NOT_FOUND", "找不到這篇樹洞文章。"))
-            : ApiResponse<RantPost>.Ok(post);
+            : ApiResponse<RantPost>.Ok(Mine(post));
     }
 
     [Authorize]
@@ -102,7 +102,7 @@ public sealed class RantsController(RantService rantService, MediaUrlPolicy medi
         var post = rantService.Reply(rantId, userId, content, request.ImageUrl, request.AudioUrl, request.ParentReplyId, request.ThumbUrl);
         return post == null
             ? NotFound(ApiResponse<RantPost>.Fail("RANT_NOT_FOUND", "找不到這篇樹洞文章。"))
-            : ApiResponse<RantPost>.Ok(post);
+            : ApiResponse<RantPost>.Ok(Mine(post));
     }
 
     [Authorize]
@@ -128,7 +128,7 @@ public sealed class RantsController(RantService rantService, MediaUrlPolicy medi
         var post = rantService.LikeReply(rantId, replyId, userId);
         return post == null
             ? NotFound(ApiResponse<RantPost>.Fail("REPLY_NOT_FOUND", "找不到這則回應。"))
-            : ApiResponse<RantPost>.Ok(post);
+            : ApiResponse<RantPost>.Ok(Mine(post));
     }
 
     [Authorize]
@@ -141,7 +141,40 @@ public sealed class RantsController(RantService rantService, MediaUrlPolicy medi
         var post = rantService.Report(rantId, userId);
         return post == null
             ? NotFound(ApiResponse<RantPost>.Fail("RANT_NOT_FOUND", "找不到這篇樹洞文章。"))
-            : ApiResponse<RantPost>.Ok(post);
+            : ApiResponse<RantPost>.Ok(Mine(post));
+    }
+
+    /// <summary>
+    /// 標上「這篇／這則是不是我發的」。
+    ///
+    /// 作者的 user id 不再送出去（RantPost.UserId 掛了 JsonIgnore）——
+    /// 這兩支 GET 沒有 [Authorize]，任何人都讀得到，帶著 user id 等於
+    /// 匿名發文可以被對應回某一個帳號，再拿去 /api/profile/{userId} 查出是誰。
+    ///
+    /// 前端要的只是「要不要顯示刪除選單」，這個布林值就夠。未登入時
+    /// CallerId 是 null，IsMine 一律 false。
+    /// </summary>
+    private RantPost Mine(RantPost post)
+    {
+        var callerId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                       ?? User.FindFirst("sub")?.Value;
+        if (string.IsNullOrEmpty(callerId))
+        {
+            return post;
+        }
+
+        post.IsMine = post.UserId == callerId;
+        MarkReplies(post.Replies);
+        return post;
+
+        void MarkReplies(List<RantReply> replies)
+        {
+            foreach (var reply in replies)
+            {
+                reply.IsMine = reply.UserId == callerId;
+                MarkReplies(reply.Replies);
+            }
+        }
     }
 
     /// <summary>

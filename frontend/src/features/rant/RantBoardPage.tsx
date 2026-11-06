@@ -82,7 +82,6 @@ export default function RantBoardPage() {
             onDelete={() => removePost(post.id, () => deleteRant(post.id))}
             onLikedReply={loadPosts}
             onHashtagClick={(tag) => navigate('/rant/search', { state: { q: tag } })}
-            currentUserId={user.userId}
           />
         ))}
 

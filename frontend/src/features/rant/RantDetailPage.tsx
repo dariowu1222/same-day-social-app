@@ -141,7 +141,7 @@ export default function RantDetailPage() {
         <span className="detail-topbar-title">貼文</span>
         <PostMenu
           postId={post.id}
-          isOwner={post.userId === user.userId}
+          isOwner={post.isMine}
           onDelete={async () => { await deleteRant(post.id); navigate(-1) }}
         />
       </div>
