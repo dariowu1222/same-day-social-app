@@ -298,6 +298,19 @@ public sealed class ReportService
         if (hideTarget.HasValue)
         {
             SetTargetHidden(record.TargetType, record.TargetId, hideTarget.Value);
+
+            // 退回給作者時，連同這篇上面其他還在計分的檢舉一起駁回。
+            //
+            // 不做的話退回根本站不住：ApplyAutoModeration 每次有新檢舉進來，
+            // 都會把這篇「非 DISMISSED」的檢舉權重重新加總一次跟門檻比
+            // ——而「結案」是 RESOLVED，仍然計入。所以舊的那幾筆還在累計，
+            // 下一筆檢舉一進來就立刻又超過門檻，貼文又不見了。
+            //
+            // 判定內容沒問題，本來就等於針對這篇的那些檢舉都不成立。
+            if (!hideTarget.Value)
+            {
+                DismissOtherReportsOn(record.TargetType, record.TargetId, exceptReportId: record.Id);
+            }
         }
 
         db.SaveChanges();
@@ -352,6 +365,34 @@ public sealed class ReportService
         // 檢舉就立刻又被藏起來——對原作者來說就是「它又不見了」，而且沒有人動過後台。
         // 既有的 rant_reports 列留著，稽核軌跡不受影響。
         if (!hidden) post.ReportCount = 0;
+    }
+
+    /// <summary>
+    /// 把這篇上面其他還在計分的檢舉一併駁回，好讓退回之後的貼文站得住。
+    ///
+    /// 跳過兩種：這次正在處理的那一筆（它的狀態由管理者自己決定，不要覆蓋掉），
+    /// 以及 SELF_HARM——那本來就不計入自動隱藏的權重（見 ApplyAutoModeration），
+    /// 而且它是一張關懷單，不是內容違規的指控，不該被順手判定為不成立。
+    /// </summary>
+    private void DismissOtherReportsOn(string targetType, string targetId, string exceptReportId)
+    {
+        if (db == null) return;
+
+        var selfHarm = ReportCategory.SELF_HARM.ToString();
+        var dismissed = ReportStatus.DISMISSED.ToString();
+
+        var others = db.Reports
+            .Where(x => x.TargetType == targetType
+                        && x.TargetId == targetId
+                        && x.Id != exceptReportId
+                        && x.Category != selfHarm
+                        && x.Status != dismissed)
+            .ToList();
+
+        foreach (var other in others)
+        {
+            other.Status = dismissed;
+        }
     }
 
     /// <summary>

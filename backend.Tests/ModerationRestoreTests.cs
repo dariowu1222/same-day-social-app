@@ -94,6 +94,85 @@ public sealed class ModerationRestoreTests
         Assert.Equal(3, db.RantPosts.Single().ReportCount);
     }
 
+    // ── 退回之後要真的站得住（走 App 真正在用的那條路）──
+
+    /// <summary>
+    /// 這是真正會咬人的那一條。ApplyAutoModeration 不看 rant_posts.report_count，
+    /// 它每次有新檢舉進來都把這篇「非 DISMISSED」的檢舉權重重新加總一次跟門檻比
+    /// ——而「結案」是 RESOLVED，仍然計入。所以只歸零 report_count 沒有用：
+    /// 舊的那幾筆還在累計，下一筆檢舉一進來就立刻又超過門檻。
+    /// </summary>
+    [Fact]
+    public void AfterBeingGivenBackANewReportThroughTheRealPathDoesNotHideItAgain()
+    {
+        const string name = nameof(AfterBeingGivenBackANewReportThroughTheRealPathDoesNotHideItAgain);
+        var (service, db) = Build(name, hidden: true, reportCount: 0);
+        // 三筆騷擾（各 60 分，合計 180）已經超過 150 的門檻，而且都是「結案」不是「駁回」
+        AddResolvedHarassment(db, "report_a", "user_r1");
+        AddResolvedHarassment(db, "report_b", "user_r2");
+        AddResolvedHarassment(db, "report_c", "user_r3");
+
+        service.Review(ReportId, Admin, ReportStatus.DISMISSED, null, hideTarget: false);
+        service.Submit("user_r4", ReportTargetType.RANT_POST, PostId, ReportCategory.HARASSMENT, null);
+
+        Assert.False(db.RantPosts.Single().IsHidden);
+    }
+
+    /// <summary>沒有退回過的貼文，權重照常累積——別把自動隱藏修壞了。</summary>
+    [Fact]
+    public void WithoutARestoreTheWeightsStillAddUpAndHideThePost()
+    {
+        const string name = nameof(WithoutARestoreTheWeightsStillAddUpAndHideThePost);
+        var (service, db) = Build(name, hidden: false, reportCount: 0);
+        AddResolvedHarassment(db, "report_a", "user_r1");
+        AddResolvedHarassment(db, "report_b", "user_r2");
+
+        service.Submit("user_r3", ReportTargetType.RANT_POST, PostId, ReportCategory.HARASSMENT, null);
+
+        Assert.True(db.RantPosts.Single().IsHidden);
+    }
+
+    /// <summary>管理者自己這一筆的狀態不能被順手蓋掉。</summary>
+    [Fact]
+    public void RestoringDoesNotOverwriteTheStatusTheAdminChose()
+    {
+        const string name = nameof(RestoringDoesNotOverwriteTheStatusTheAdminChose);
+        var (service, db) = Build(name, hidden: true, reportCount: 0);
+
+        service.Review(ReportId, Admin, ReportStatus.RESOLVED, null, hideTarget: false);
+
+        Assert.Equal(ReportStatus.RESOLVED.ToString(), db.Reports.Single(x => x.Id == ReportId).Status);
+    }
+
+    /// <summary>
+    /// 自我傷害那種單子不跟著被判定為不成立。它本來就不計入自動隱藏的權重，
+    /// 而且那是一張關懷單，不是內容違規的指控。
+    /// </summary>
+    [Fact]
+    public void RestoringLeavesASelfHarmFlagAlone()
+    {
+        const string name = nameof(RestoringLeavesASelfHarmFlagAlone);
+        var (service, db) = Build(name, hidden: true, reportCount: 0);
+        db.Reports.Add(new ReportRecord
+        {
+            Id = "report_welfare",
+            TargetType = ReportTargetType.RANT_POST.ToString(),
+            TargetId = PostId,
+            ReportedUserId = Author,
+            ReporterId = "user_worried",
+            Category = ReportCategory.SELF_HARM.ToString(),
+            Severity = 100,
+            Status = ReportStatus.PENDING.ToString(),
+        });
+        db.SaveChanges();
+
+        service.Review(ReportId, Admin, ReportStatus.DISMISSED, null, hideTarget: false);
+
+        Assert.Equal(
+            ReportStatus.PENDING.ToString(),
+            db.Reports.Single(x => x.Id == "report_welfare").Status);
+    }
+
     // ── 後台要看得到目前狀態 ──
 
     /// <summary>
@@ -125,6 +204,23 @@ public sealed class ModerationRestoreTests
     }
 
     // ── 測試資料 ──
+
+    /// <summary>一筆已結案的騷擾檢舉。權重 60，三筆就超過 150 的自動隱藏門檻。</summary>
+    private static void AddResolvedHarassment(AppDbContext db, string id, string reporterId)
+    {
+        db.Reports.Add(new ReportRecord
+        {
+            Id = id,
+            TargetType = ReportTargetType.RANT_POST.ToString(),
+            TargetId = PostId,
+            ReportedUserId = Author,
+            ReporterId = reporterId,
+            Category = ReportCategory.HARASSMENT.ToString(),
+            Severity = 60,
+            Status = ReportStatus.RESOLVED.ToString(),
+        });
+        db.SaveChanges();
+    }
 
     private static (ReportService Service, AppDbContext Db) Build(string databaseName, bool hidden, int reportCount)
     {
