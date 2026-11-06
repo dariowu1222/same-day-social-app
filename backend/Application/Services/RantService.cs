@@ -239,6 +239,13 @@ public sealed class RantService
 
     public RantPost? LikeReply(string rantId, string replyId)
     {
+        // 這一行以前不在。PostIsVisible 的註解點名了「按讚、回覆、檢舉」三件事都要擋，
+        // 但四個互動端點裡只有 Understand／Reply／Report 掛了它，LikeReply 漏了。
+        // 漏的後果不是「多按到一個讚」：它回傳的是 BuildPost(rantId)，也就是整篇貼文。
+        // 拿著舊畫面上的 rantId + replyId 戳一下，就能把一篇作者已被停權／註銷的貼文
+        // 連同所有回覆整筆取回來——而後台註銷是刻意不洗個資的。
+        if (!PostIsVisible(rantId)) return null;
+
         if (db != null)
         {
             var reply = db.RantReplies.FirstOrDefault(x => x.Id == replyId && x.RantPostId == rantId);
@@ -380,8 +387,18 @@ public sealed class RantService
         var replies = db.RantReplies.AsNoTracking()
             .Where(x => x.RantPostId == rantId)
             .ToList();
-        // 按讚／回覆／檢舉之後回給呼叫者的這一份，和牆上看到的要是同一份
-        var active = ActiveAmong(replies.Select(x => x.UserId));
+        // 按讚／回覆／檢舉之後回給呼叫者的這一份，和牆上看到的要是同一份。
+        //
+        // 作者本人也要查。這裡本來只問了回覆者，等於預設「呼叫端已經擋過了」——
+        // 四個呼叫端裡有三個確實擋了，第四個（LikeReply）沒有，這個函式就照樣
+        // 把貼文交出去。擋在這裡的好處是不必指望每個未來的呼叫端都記得：
+        // 多問一個 id 不會多一趟往返，ActiveAmong 本來就是一次問一整批。
+        var active = ActiveAmong(replies.Select(x => x.UserId).Append(post.UserId));
+        if (!active.Contains(post.UserId))
+        {
+            return null;
+        }
+
         var likeCount = db.RantReactions.AsNoTracking()
             .Count(x => x.RantPostId == rantId && x.ReactionType == "UNDERSTAND");
         return post.ToDomain(replies.Where(x => active.Contains(x.UserId)), likeCount);

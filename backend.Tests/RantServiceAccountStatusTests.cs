@@ -124,6 +124,10 @@ public sealed class RantServiceAccountStatusTests
     /// <summary>
     /// 牆上濾掉了，互動也要跟著不通。不然拿著舊畫面上的 id，照樣能往一篇
     /// 已經隱形的貼文裡寫東西、按讚、檢舉。
+    ///
+    /// 四個互動端點全部在這裡列出來，不是為了湊齊。這組斷言原本只有三條
+    /// （Understand／Reply／Report），而少掉的那一條正好就是當時唯一沒掛
+    /// PostIsVisible 的那個端點——測試漏的和程式漏的是同一個。
     /// </summary>
     [Fact]
     public void CannotInteractWithAHiddenPost()
@@ -136,6 +140,7 @@ public sealed class RantServiceAccountStatusTests
         Assert.Null(service.Understand(PostId, Replier));
         Assert.Null(service.Reply(PostId, Replier, "回覆的人", "還看得到嗎"));
         Assert.Null(service.Report(PostId, Replier));
+        Assert.Null(service.LikeReply(PostId, ReplyIdOf(Replier)));
     }
 
     [Fact]
@@ -149,11 +154,67 @@ public sealed class RantServiceAccountStatusTests
         Assert.NotNull(service.Understand(PostId, Replier));
         Assert.NotNull(service.Reply(PostId, Replier, "回覆的人", "還看得到嗎"));
         Assert.NotNull(service.Report(PostId, Replier));
+        Assert.NotNull(service.LikeReply(PostId, ReplyIdOf(Replier)));
+    }
+
+    /// <summary>
+    /// 按讚回覆這條路特別再測一次，因為它洩漏的東西和其他三個不同。
+    ///
+    /// Understand／Reply／Report 漏擋，頂多是讓人往隱形的貼文裡寫東西；
+    /// LikeReply 漏擋是把整篇貼文連同所有回覆原封不動回傳給呼叫者——內容、
+    /// 作者 id、暱稱都在裡面。這一條釘的是「什麼都不回來」，不是「少按一個讚」。
+    /// </summary>
+    [Fact]
+    public void LikingAReplyDoesNotHandBackABannedAuthorsPost()
+    {
+        var service = Build(
+            nameof(LikingAReplyDoesNotHandBackABannedAuthorsPost),
+            TestWorld.User(Author, AccountStatus.BANNED),
+            TestWorld.User(Replier));
+
+        Assert.Null(service.LikeReply(PostId, ReplyIdOf(Replier)));
+    }
+
+    /// <summary>
+    /// 回 null 不等於沒寫。
+    ///
+    /// 這篇貼文的守衛有兩道：LikeReply 開頭的 PostIsVisible，以及 BuildPost 裡
+    /// 對作者狀態的檢查。只靠後者的話，讚其實已經加上去、SaveChanges 也跑完了，
+    /// 只是結果沒交出來——外面看起來一樣是 null，資料庫裡卻多了一個讚。
+    /// 所以這一條另開一個 context 回去重讀，釘的是「擋在寫入之前」。
+    /// </summary>
+    [Fact]
+    public void LikingAReplyOnAHiddenPostDoesNotEvenCountTheLike()
+    {
+        const string name = nameof(LikingAReplyOnAHiddenPostDoesNotEvenCountTheLike);
+        var service = Build(name, TestWorld.User(Author, AccountStatus.BANNED), TestWorld.User(Replier));
+
+        Assert.Null(service.LikeReply(PostId, ReplyIdOf(Replier)));
+
+        using var reloaded = TestWorld.Db(name);
+        Assert.Equal(0, reloaded.RantReplies.Single(x => x.Id == ReplyIdOf(Replier)).LikeCount);
+    }
+
+    /// <summary>停權到期之後按讚要恢復正常，否則上面那條用「永遠回 null」也會綠。</summary>
+    [Fact]
+    public void LikingAReplyWorksOnceTheSuspensionIsOver()
+    {
+        var service = Build(
+            nameof(LikingAReplyWorksOnceTheSuspensionIsOver),
+            TestWorld.User(Author, AccountStatus.SUSPENDED, TestWorld.SuspensionOver),
+            TestWorld.User(Replier));
+
+        var post = service.LikeReply(PostId, ReplyIdOf(Replier));
+
+        Assert.NotNull(post);
+        Assert.Equal(1, post!.Replies.Single(x => x.UserId == Replier).LikeCount);
     }
 
     // ── 測試資料 ──
 
     private const string PostId = "rant_under_test";
+
+    private static string ReplyIdOf(string userId) => $"reply_{userId}";
 
     /// <summary>
     /// 一篇貼文、一則回覆，作者與回覆者的狀態由呼叫端指定。
@@ -175,7 +236,7 @@ public sealed class RantServiceAccountStatusTests
             db.Users.Add(replier);
             db.RantReplies.Add(new RantReplyRecord
             {
-                Id = $"reply_{replier.Id}",
+                Id = ReplyIdOf(replier.Id),
                 RantPostId = PostId,
                 UserId = replier.Id,
                 Nickname = replier.Nickname,
