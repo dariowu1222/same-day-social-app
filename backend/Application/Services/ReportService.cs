@@ -287,17 +287,13 @@ public sealed class ReportService
         var record = db.Reports.FirstOrDefault(x => x.Id == reportId);
         if (record == null) return null;
 
-        // 狀態有沒有真的變。後台的結案按鈕在送出期間沒有 disabled，連點兩下就是
-        // 兩個請求；「已處理」清單裡也還給得出「處理這筆」。少了這一行，
-        // 當事人會為同一筆檢舉收到兩封一樣的信。
-        var previousStatus = record.Status;
-
         // 先記下原本的狀態。下面那則通知只能在「這一次才變成成立」時發，而讀完
         // 就覆蓋的話，PENDING→RESOLVED 跟 RESOLVED→RESOLVED 在後面看起來一模一樣。
         // 後台的結案按鈕在送出期間沒有 disabled，連點兩下就是兩個請求；「已處理」
         // 清單裡也還給得出「處理這筆」。NotificationService.Add 沒有去重，
         // 所以少了這一行，檢舉人會為同一筆檢舉收到兩則一樣的通知。
         var wasResolved = record.Status == ReportStatus.RESOLVED.ToString();
+        var previousStatus = record.Status;
 
         record.Status = status.ToString();
         record.ReviewedBy = actorId;
@@ -332,12 +328,22 @@ public sealed class ReportService
         // 只有在扣掉之後真的低於門檻才放出來。一篇被三個人檢舉的貼文，
         // 管理者判定其中一筆是亂檢舉，不該讓另外兩筆成立的檢舉一起失效——
         // 那種情況要退回，用「退回給作者」那顆（它會把其餘的一併駁回）。
+        var restored = hideTarget == false;
         if (status == ReportStatus.DISMISSED
             && !hideTarget.HasValue
             && RestoreIfBelowThreshold(record.TargetType, record.TargetId))
         {
-            db.SaveChanges();
+            restored = true;
         }
+
+        // 實際結果決定最終狀態。內容真的被放回牆上就記成「已退回」而不只是
+        // 「已駁回」——那是一筆誤判的紀錄，後台要能單獨翻出來看。
+        // 「成立」不會變成退回：那是相反的判斷，就算手動解除隱藏也一樣。
+        var finalStatus = restored && status == ReportStatus.DISMISSED
+            ? ReportStatus.RESTORED
+            : status;
+        record.Status = finalStatus.ToString();
+        db.SaveChanges();
 
         // 檢舉成立才通知檢舉人。這是整條流程對他唯一的回音——沒有它，
         // 他不會知道自己的檢舉有沒有被看過，而聊天室也會在他毫無預期時變成唯讀。
@@ -361,14 +367,17 @@ public sealed class ReportService
         }
 
         // 寄信給檢舉人與被檢舉人。只在狀態真的改變時寄，而且 SELF_HARM 一封都不寄。
-        if (previousStatus != status.ToString()
-            && (status == ReportStatus.RESOLVED || status == ReportStatus.DISMISSED))
+        // 結果落地到 outcome_mail_sent：寄信會失敗（SMTP 額度、查無信箱），
+        // 而失敗之後沒有地方看得出來，管理者會以為當事人已經被通知了。
+        if (previousStatus != finalStatus.ToString() && finalStatus != ReportStatus.PENDING)
         {
             var stillHidden = IsTargetHidden(record.TargetType, record.TargetId);
-            await SendOutcomeEmailsAsync(record, status == ReportStatus.RESOLVED, stillHidden, cancellationToken);
+            record.OutcomeMailSent = await SendOutcomeEmailsAsync(
+                record, finalStatus == ReportStatus.RESOLVED, stillHidden, cancellationToken);
+            db.SaveChanges();
         }
 
-        LogAudit(actorId, $"REVIEW_{status}", reportId,
+        LogAudit(actorId, $"REVIEW_{finalStatus}", reportId,
             hideTarget switch
             {
                 true => "並隱藏內容",
@@ -424,22 +433,25 @@ public sealed class ReportService
     /// 寄信失敗不能讓審核失敗：信寄不出去頂多是當事人沒收到通知，
     /// 而處置本身已經生效了。失敗各自吞掉並留 log。
     /// </summary>
-    private async Task SendOutcomeEmailsAsync(
+    private async Task<bool?> SendOutcomeEmailsAsync(
         ReportRecord record, bool upheld, bool contentHidden, CancellationToken cancellationToken)
     {
-        if (db == null || emailSender == null) return;
-        if (record.Category == ReportCategory.SELF_HARM.ToString()) return;
+        if (db == null || emailSender == null) return null;
+        if (record.Category == ReportCategory.SELF_HARM.ToString()) return null;
 
         var recipients = new[] { record.ReporterId, record.ReportedUserId }
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .Distinct()
             .ToList();
-        if (recipients.Count == 0) return;
+        if (recipients.Count == 0) return null;
 
         var emails = db.AuthAccounts.AsNoTracking()
             .Where(x => recipients.Contains(x.UserId))
             .Select(x => new { x.UserId, x.Username })
             .ToDictionary(x => x.UserId, x => x.Username);
+
+        var attempted = 0;
+        var failed = 0;
 
         await SendOneAsync(record.ReporterId, "檢舉人", email =>
             emailSender.SendReportOutcomeToReporterAsync(email, upheld, cancellationToken));
@@ -447,17 +459,23 @@ public sealed class ReportService
         await SendOneAsync(record.ReportedUserId, "被檢舉人", email =>
             emailSender.SendReportOutcomeToReportedAsync(email, upheld, contentHidden, cancellationToken));
 
+        // 一封都沒寄（兩邊都查不到信箱）回 null，不要謊報成功
+        if (attempted == 0) return null;
+        return failed == 0;
+
         async Task SendOneAsync(string? userId, string who, Func<string, Task> send)
         {
             if (string.IsNullOrWhiteSpace(userId)) return;
             if (!emails.TryGetValue(userId, out var email) || string.IsNullOrWhiteSpace(email)) return;
 
+            attempted++;
             try
             {
                 await send(email);
             }
             catch (Exception ex)
             {
+                failed++;
                 logger?.LogWarning(ex, "檢舉處理結果寄信失敗（{Who}） reportId={ReportId}", who, record.Id);
             }
         }

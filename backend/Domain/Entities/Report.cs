@@ -42,4 +42,10 @@ public sealed class Report
     public string? Resolution { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    /// <summary>
+    /// 處理結果有沒有寄信成功。null = 沒寄（SELF_HARM，或兩邊都查不到信箱）、
+    /// true = 該寄的都寄出去了、false = 有人沒寄成功。
+    /// </summary>
+    public bool? OutcomeMailSent { get; set; }
 }

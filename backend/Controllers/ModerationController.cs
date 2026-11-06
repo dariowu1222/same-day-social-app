@@ -55,7 +55,8 @@ public sealed class ModerationController(ReportService reports, AdminAccessServi
             r.ReviewedBy,
             r.ReviewedAt,
             r.Resolution,
-            r.TargetType == ReportTargetType.RANT_POST ? hidden.GetValueOrDefault(r.TargetId) : null)).ToList();
+            r.TargetType == ReportTargetType.RANT_POST ? hidden.GetValueOrDefault(r.TargetId) : null,
+            r.OutcomeMailSent)).ToList();
 
         reports.LogAudit(CallerId, "VIEW_QUEUE", null, $"status={status}, 筆數={dto.Count}");
         return ApiResponse<List<ModerationReportDto>>.Ok(dto);
@@ -98,7 +99,12 @@ public sealed record ModerationReportDto(
     /// 這篇現在是不是隱藏中。只有 RANT_POST 有值，其他型別為 null（還不支援隱藏）。
     /// 後台靠它決定要顯示「隱藏內容」還是「退回給作者」。
     /// </summary>
-    bool? TargetHidden);
+    bool? TargetHidden,
+    /// <summary>
+    /// 處理結果有沒有寄信成功。null = 沒寄（SELF_HARM，或兩邊都查不到信箱）、
+    /// true = 該寄的都寄出去了、false = 有人沒寄成功。
+    /// </summary>
+    bool? OutcomeMailSent);
 
 public sealed record ReviewReportRequest(
     ReportStatus Status,

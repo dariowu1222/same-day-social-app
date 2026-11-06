@@ -251,6 +251,44 @@ public sealed class ModerationRestoreTests
         Assert.Equal(2, post.ReportCount);
     }
 
+    // ── 「已退回」是自己一個狀態 ──
+
+    /// <summary>
+    /// 退回是一筆誤判的紀錄，後台要能單獨翻出來看，所以不跟「已駁回」混在一起。
+    /// 判準是結果不是意圖：內容真的被放回牆上才算退回。
+    /// </summary>
+    [Fact]
+    public async Task ADismissThatPutsThePostBackIsFiledAsRestored()
+    {
+        var (service, db) = Build(nameof(ADismissThatPutsThePostBackIsFiledAsRestored), hidden: true, reportCount: 0);
+
+        await service.ReviewAsync(ReportId, Admin, ReportStatus.DISMISSED, null, hideTarget: null);
+
+        Assert.Equal(ReportStatus.RESTORED.ToString(), db.Reports.Single().Status);
+    }
+
+    /// <summary>沒有東西被放回去的駁回，就只是駁回。</summary>
+    [Fact]
+    public async Task ADismissThatChangesNothingStaysDismissed()
+    {
+        var (service, db) = Build(nameof(ADismissThatChangesNothingStaysDismissed), hidden: false, reportCount: 0);
+
+        await service.ReviewAsync(ReportId, Admin, ReportStatus.DISMISSED, null, hideTarget: null);
+
+        Assert.Equal(ReportStatus.DISMISSED.ToString(), db.Reports.Single().Status);
+    }
+
+    /// <summary>「退回給作者」那顆（明確送 false）同樣歸到已退回。</summary>
+    [Fact]
+    public async Task TheExplicitRestoreButtonIsAlsoFiledAsRestored()
+    {
+        var (service, db) = Build(nameof(TheExplicitRestoreButtonIsAlsoFiledAsRestored), hidden: true, reportCount: 3);
+
+        await service.ReviewAsync(ReportId, Admin, ReportStatus.DISMISSED, null, hideTarget: false);
+
+        Assert.Equal(ReportStatus.RESTORED.ToString(), db.Reports.Single().Status);
+    }
+
     // ── 後台要看得到目前狀態 ──
 
     /// <summary>

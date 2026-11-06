@@ -41,9 +41,9 @@ export const TARGET_LABEL: Record<string, string> = {
 
 export const REPORT_STATUS_LABEL: Record<string, string> = {
   PENDING: '待處理',
-  REVIEWING: '處理中',
   RESOLVED: '已處理',
   DISMISSED: '已駁回',
+  RESTORED: '已退回',
 }
 
 export const SANCTION_LABEL: Record<string, string> = {

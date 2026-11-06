@@ -126,6 +126,46 @@ public sealed class ModerationEmailTests
         Assert.Single(mail.ToReported);
     }
 
+    // ── 寄信結果要落地 ──
+
+    /// <summary>
+    /// 寄信會失敗（SMTP 額度、查無信箱），而失敗之後沒有任何地方看得出來，
+    /// 管理者會以為當事人已經被通知了。所以結果要寫進 reports.outcome_mail_sent。
+    /// </summary>
+    [Fact]
+    public async Task ASuccessfulSendIsRecordedOnTheReport()
+    {
+        const string name = nameof(ASuccessfulSendIsRecordedOnTheReport);
+        var (service, db, _) = Build(name, ReportCategory.HARASSMENT);
+
+        await service.ReviewAsync(ReportId, Admin, ReportStatus.RESOLVED, null, hideTarget: true);
+
+        Assert.True(db.Reports.Single().OutcomeMailSent);
+    }
+
+    [Fact]
+    public async Task AFailedSendIsRecordedTooRatherThanLookingLikeSuccess()
+    {
+        const string name = nameof(AFailedSendIsRecordedTooRatherThanLookingLikeSuccess);
+        var (service, db, _) = Build(name, ReportCategory.HARASSMENT, mail: new ExplodingEmailSender());
+
+        await service.ReviewAsync(ReportId, Admin, ReportStatus.RESOLVED, null, hideTarget: true);
+
+        Assert.False(db.Reports.Single().OutcomeMailSent);
+    }
+
+    /// <summary>沒寄就是 null，不要謊報成功。</summary>
+    [Fact]
+    public async Task NotSendingAtAllLeavesItNull()
+    {
+        const string name = nameof(NotSendingAtAllLeavesItNull);
+        var (service, db, _) = Build(name, ReportCategory.SELF_HARM);
+
+        await service.ReviewAsync(ReportId, Admin, ReportStatus.RESOLVED, null, hideTarget: true);
+
+        Assert.Null(db.Reports.Single().OutcomeMailSent);
+    }
+
     // ── 測試資料 ──
 
     private static (ReportService Service, AppDbContext Db, RecordingEmailSender Mail) Build(

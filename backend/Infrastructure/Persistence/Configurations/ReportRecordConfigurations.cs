@@ -18,6 +18,7 @@ public sealed class ReportRecordConfiguration : IEntityTypeConfiguration<ReportR
         builder.Property(x => x.Category).HasColumnName("category").HasMaxLength(40).IsRequired();
         builder.Property(x => x.Detail).HasColumnName("detail").HasMaxLength(1000);
         builder.Property(x => x.Status).HasColumnName("status").HasMaxLength(20);
+        builder.Property(x => x.OutcomeMailSent).HasColumnName("outcome_mail_sent");
         builder.Property(x => x.Severity).HasColumnName("severity");
         builder.Property(x => x.ContextSnapshot).HasColumnName("context_snapshot").HasColumnType("text");
         builder.Property(x => x.ReviewedBy).HasColumnName("reviewed_by").HasMaxLength(64);

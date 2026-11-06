@@ -16,6 +16,14 @@ public sealed class ReportRecord
     public DateTimeOffset? ReviewedAt { get; set; }
     public string? Resolution { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    /// <summary>
+    /// 處理結果有沒有寄信成功。null = 沒寄（SELF_HARM，或兩邊都查不到信箱）、
+    /// true = 該寄的都寄出去了、false = 有人沒寄成功。
+    /// 寄信是會失敗的，而失敗之後沒有任何地方看得出來，管理者會以為當事人
+    /// 已經被通知了——所以這一欄要落地，不是只寫 log。
+    /// </summary>
+    public bool? OutcomeMailSent { get; set; }
 }
 
 /// <summary>

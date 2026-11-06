@@ -49,9 +49,9 @@ export default function ReportsPage() {
       <div className="toolbar">
         <select className="select" value={status} onChange={(e) => setStatus(e.target.value as ReportStatus | '')}>
           <option value="PENDING">待處理</option>
-          <option value="REVIEWING">處理中</option>
           <option value="RESOLVED">已處理</option>
           <option value="DISMISSED">已駁回</option>
+          <option value="RESTORED">已退回</option>
           <option value="">全部</option>
         </select>
         <button className="btn" onClick={load} disabled={loading}>重新整理</button>
@@ -106,13 +106,25 @@ export default function ReportsPage() {
             )}
 
             {r.status !== 'PENDING' && (
-              <div className="field-row">
-                <span className="field-label">處理紀錄</span>
-                <span className="field-value">
-                  <span className="mono">{r.status}　{formatDate(r.reviewedAt)}　by {r.reviewedBy ?? '—'}</span>
-                  {r.resolution && <div>{r.resolution}</div>}
-                </span>
-              </div>
+              <>
+                <div className="field-row">
+                  <span className="field-label">處理紀錄</span>
+                  <span className="field-value">
+                    <span className="mono">{r.status}　{formatDate(r.reviewedAt)}　by {r.reviewedBy ?? '—'}</span>
+                    {r.resolution && <div>{r.resolution}</div>}
+                  </span>
+                </div>
+                {/* 寄信會失敗（SMTP 額度、查無信箱），失敗之後沒有地方看得出來，
+                    管理者會以為當事人已經被通知了。 */}
+                <div className="field-row">
+                  <span className="field-label">結果通知</span>
+                  <span className="field-value">
+                    {r.outcomeMailSent === true && '已寄出給檢舉人與被檢舉人'}
+                    {r.outcomeMailSent === false && '寄信失敗，對方沒有收到通知'}
+                    {r.outcomeMailSent == null && '未寄送（自我傷害通報不寄信，或查不到信箱）'}
+                  </span>
+                </div>
+              </>
             )}
 
             {openId === r.id ? (

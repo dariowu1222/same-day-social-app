@@ -405,7 +405,8 @@ public static class RecordMapper
             ReviewedBy = record.ReviewedBy,
             ReviewedAt = record.ReviewedAt,
             Resolution = record.Resolution,
-            CreatedAt = record.CreatedAt
+            CreatedAt = record.CreatedAt,
+            OutcomeMailSent = record.OutcomeMailSent
         };
     }
 

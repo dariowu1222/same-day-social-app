@@ -129,9 +129,20 @@ public enum ReportCategory
 public enum ReportStatus
 {
     PENDING,
-    REVIEWING,
+
+    /// <summary>檢舉成立，已經做出處置。</summary>
     RESOLVED,
-    DISMISSED
+
+    /// <summary>檢舉不成立，而內容本來就看得到（或仍被其他檢舉壓著）。</summary>
+    DISMISSED,
+
+    /// <summary>
+    /// 檢舉不成立，而且內容因此從隱藏狀態放回牆上。
+    ///
+    /// 和 DISMISSED 分開，是因為這兩件事在後台要分開看：駁回是「這次不算數」，
+    /// 退回是「我們把東西還給作者了」——後者是誤判的紀錄，值得單獨一欄翻。
+    /// </summary>
+    RESTORED
 }
 
 // ── 帳號管理 ─────────────────────────────────────────

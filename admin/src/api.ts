@@ -270,7 +270,9 @@ export const sanctionUser = (id: string, body: {
 
 // ── 檢舉 ─────────────────────────────────────────────
 
-export type ReportStatus = 'PENDING' | 'REVIEWING' | 'RESOLVED' | 'DISMISSED'
+// REVIEWING（處理中）拿掉了：它和 PENDING 是同一件事，而且從來沒有任何
+// 程式碼寫入過那個值。RESTORED 是新的——「駁回」之後內容真的被放回牆上。
+export type ReportStatus = 'PENDING' | 'RESOLVED' | 'DISMISSED' | 'RESTORED'
 
 export type ModerationReport = {
   id: string
@@ -289,6 +291,8 @@ export type ModerationReport = {
   resolution?: string | null
   /** 這篇現在是不是隱藏中。只有 RANT_POST 有值，其他型別是 null。 */
   targetHidden?: boolean | null
+  /** 處理結果有沒有寄信成功。null = 沒寄、true = 都寄出去了、false = 有失敗。 */
+  outcomeMailSent?: boolean | null
 }
 
 export const getReports = (status: ReportStatus | '', limit = 50) => {
