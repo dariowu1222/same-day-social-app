@@ -100,6 +100,29 @@ export default function RantPostCard({
     }
   }, [showReplyForm])
 
+  // 打開留言框時把輸入框捲進畫面。
+  //
+  // autoFocus 會讓瀏覽器自己捲一次，但它不知道底部導覽是 fixed 的 64px——
+  // 實測 375×812：捲完輸入框下緣在 772，導覽從 748 開始，正好被壓掉一截。
+  // 留言框現在排在回覆列表後面（見下方），貼文底下回覆一多就更容易落到畫面外。
+  //
+  // 等 220ms 再量：展開動畫是 200ms 的 grid-template-rows 0fr→1fr，
+  // 中途量到的是還沒長完的高度。
+  useEffect(() => {
+    if (!showReplyForm) return
+    const timer = setTimeout(() => {
+      const el = inputRef.current
+      if (!el) return
+      // 已經看得見就不要亂動畫面——沒必要的捲動比沒捲更惱人
+      if (el.getBoundingClientRect().bottom <= window.innerHeight - 96) return
+      el.scrollIntoView({
+        block: 'center',
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+      })
+    }, 220)
+    return () => clearTimeout(timer)
+  }, [showReplyForm])
+
   // 首次點開留言框 → 淡入情境提示，並標記該貼文已顯示（與詳情頁共用同一份 postId 記憶）
   useEffect(() => {
     if (!showReplyForm || !hintText) return
@@ -251,8 +274,29 @@ export default function RantPostCard({
         </div>
       </div>
 
-      {/* 回覆輸入區。入口是動作列的 💬（沒有回覆的貼文也一樣），
-          所以收合態不再畫任何東西——以前那顆假輸入框「留下回應…」拿掉了。 */}
+      {/* 回覆列表。開合交給動作列底下那一列（手機只有展開，收合是桌面限定）。 */}
+      {showReplies && post.replies.length > 0 && (
+        <div className="thread-reply-section">
+          {post.replies.map((reply) => (
+            <ReplyItem
+              key={reply.id}
+              reply={reply}
+              onReply={openReplyToReply}
+              onLike={(replyId) => likeReply(post.id, replyId).then(onLikedReply)}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* 回覆輸入區，排在回覆列表「後面」。
+          入口是動作列的 💬（沒有回覆的貼文也一樣），收合態不畫任何東西——
+          以前那顆假輸入框「留下回應…」拿掉了。
+
+          為什麼在後面：這個位置本來是給常駐假輸入框的，所以 composer 一直卡在
+          貼文和回覆中間。結果是點最底下那則的「回應」，輸入框卻跳到最上面——
+          手指在下面、框在上面，手機上鍵盤一彈還可能把它推出畫面。
+          對話由上往下讀，自己的那一則接在最後才對（IG 留言區就是這樣，
+          靠上面那條「↩ 回覆 @某人」說明對象）。 */}
       {showReplyForm && (
         <div className="reply-reveal">
           <div className="reply-form" style={{ marginTop: 6 }}>
@@ -312,21 +356,6 @@ export default function RantPostCard({
               </div>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* 回覆列表。開合全交給上面的 💬，所以這裡既沒有「查看 N 則回應」
-          也沒有「收起回應」——少掉兩列按鈕，也少掉一條分隔線。 */}
-      {showReplies && post.replies.length > 0 && (
-        <div className="thread-reply-section">
-          {post.replies.map((reply) => (
-            <ReplyItem
-              key={reply.id}
-              reply={reply}
-              onReply={openReplyToReply}
-              onLike={(replyId) => likeReply(post.id, replyId).then(onLikedReply)}
-            />
-          ))}
         </div>
       )}
 
