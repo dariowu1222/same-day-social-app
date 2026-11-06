@@ -46,7 +46,9 @@ public sealed class RantsController(RantService rantService) : ControllerBase
     [HttpPost("{rantId}/understand")]
     public ActionResult<ApiResponse<RantPost>> Understand(string rantId)
     {
-        var post = rantService.Understand(rantId);
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                     ?? User.FindFirst("sub")?.Value!;
+        var post = rantService.Understand(rantId, userId);
         return post == null
             ? NotFound(ApiResponse<RantPost>.Fail("RANT_NOT_FOUND", "找不到這篇樹洞文章。"))
             : ApiResponse<RantPost>.Ok(post);
@@ -94,7 +96,9 @@ public sealed class RantsController(RantService rantService) : ControllerBase
     [HttpPost("{rantId}/report")]
     public ActionResult<ApiResponse<RantPost>> Report(string rantId)
     {
-        var post = rantService.Report(rantId);
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                     ?? User.FindFirst("sub")?.Value!;
+        var post = rantService.Report(rantId, userId);
         return post == null
             ? NotFound(ApiResponse<RantPost>.Fail("RANT_NOT_FOUND", "找不到這篇樹洞文章。"))
             : ApiResponse<RantPost>.Ok(post);

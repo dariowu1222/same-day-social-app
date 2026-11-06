@@ -155,8 +155,17 @@ public sealed class RantService
             : null;
     }
 
-    public RantPost? Understand(string rantId, string? userId = null)
+    /// <summary>
+    /// 幫這篇按一個「我懂」。
+    ///
+    /// userId 是必填的，而且沒有退路。它原本是選填、空的時候退回 post.UserId
+    /// ——而呼叫端（RantsController）從來沒有傳過，所以每一個人按的讚都記在
+    /// 貼文作者自己頭上：第一次按就寫進一列，之後 Any() 恆為 true，整個 App 的
+    /// 樹洞愛心數封頂在 1。改成必填之後，漏傳會編不過，不會再安靜地記錯人。
+    /// </summary>
+    public RantPost? Understand(string rantId, string userId)
     {
+        if (string.IsNullOrWhiteSpace(userId)) return null;
         if (!PostIsVisible(rantId)) return null;
 
         if (db != null)
@@ -167,7 +176,7 @@ public sealed class RantService
                 return null;
             }
 
-            var reactionUserId = string.IsNullOrWhiteSpace(userId) ? post.UserId : userId.Trim();
+            var reactionUserId = userId.Trim();
             var existingReaction = db.RantReactions.Any(x =>
                 x.RantPostId == rantId &&
                 x.UserId == reactionUserId &&
@@ -290,8 +299,20 @@ public sealed class RantService
         return true;
     }
 
-    public RantPost? Report(string rantId, string? userId = null)
+    /// <summary>
+    /// 檢舉這篇。三個不同的人檢舉過就自動隱藏。
+    ///
+    /// userId 跟 Understand 一樣改成必填。原本空的時候退回 post.UserId，而呼叫端
+    /// 從來沒傳過，所以每一筆檢舉都記在「被檢舉的人」自己名下——第一筆寫進去之後
+    /// Any() 恆為 true，ReportCount 永遠卡在 1，三次自動隱藏整段是死碼。
+    /// 線上資料正是這個樣子：三列檢舉紀錄，三列的 user_id 都等於貼文作者。
+    ///
+    /// 成功檢舉到第三次時這裡會回 null（貼文當場隱藏，BuildPost 就撈不到了），
+    /// 呼叫端看到的是 404。那是對的：那一刻這篇確實已經不該被看見。
+    /// </summary>
+    public RantPost? Report(string rantId, string userId)
     {
+        if (string.IsNullOrWhiteSpace(userId)) return null;
         if (!PostIsVisible(rantId)) return null;
 
         if (db != null)
@@ -302,12 +323,16 @@ public sealed class RantService
                 return null;
             }
 
-            var reportUserId = string.IsNullOrWhiteSpace(userId) ? post.UserId : userId.Trim();
+            var reportUserId = userId.Trim();
             var existingReport = db.RantReports.Any(x => x.RantPostId == rantId && x.UserId == reportUserId);
             if (!existingReport)
             {
                 post.ReportCount += 1;
-                post.IsHidden = post.ReportCount >= 3;
+                // 只往「隱藏」的方向走，不會往回。原本是直接指派 post.ReportCount >= 3，
+                // 於是一篇被後台處置隱藏的貼文（is_hidden=true、report_count=0）只要被
+                // 任何人檢舉一次，就會被重新算成 1 >= 3 = false 而重見天日——使用者
+                // 用一個檢舉就解除了管理端的處置。
+                if (post.ReportCount >= 3) post.IsHidden = true;
                 db.RantReports.Add(new RantReportRecord
                 {
                     Id = $"report_{Guid.NewGuid():N}",
@@ -440,14 +465,27 @@ public sealed class RantService
     /// <summary>
     /// 這篇現在還看得到嗎。看不到就當作不存在：牆上既然濾掉了，按讚、回覆、檢舉
     /// 也不該還通得過——否則拿著舊畫面上的 id，照樣能往一篇已經隱形的貼文裡寫東西。
+    ///
+    /// 「看得到」有兩個條件，不是一個。這裡原本只問了作者的帳號狀態，沒問 is_hidden，
+    /// 而牆上（GetPublicPosts）與詳情頁（GetPost）兩邊都是兩個條件一起濾的。差這一個
+    /// 條件的後果是：被檢舉自動隱藏、或被後台處置隱藏的貼文，GET 回 404，四個互動
+    /// 端點卻照樣把整篇連同所有回覆交出去——等於替隱藏起來的內容開了一扇後門。
     /// </summary>
     private bool PostIsVisible(string rantId)
     {
-        var authorId = db != null
-            ? db.RantPosts.AsNoTracking().Where(x => x.Id == rantId).Select(x => x.UserId).FirstOrDefault()
-            : storage.ReadCollection<RantPost>("rantPosts").FirstOrDefault(x => x.Id == rantId)?.UserId;
-        return authorId != null
-               && AccountStateService.IsActive(db, storage, authorId, DateTimeOffset.UtcNow);
+        if (db != null)
+        {
+            var row = db.RantPosts.AsNoTracking()
+                .Where(x => x.Id == rantId)
+                .Select(x => new { x.UserId, x.IsHidden })
+                .FirstOrDefault();
+            return row is { IsHidden: false }
+                   && AccountStateService.IsActive(db, storage, row.UserId, DateTimeOffset.UtcNow);
+        }
+
+        var fromFile = storage.ReadCollection<RantPost>("rantPosts").FirstOrDefault(x => x.Id == rantId);
+        return fromFile is { IsHidden: false }
+               && AccountStateService.IsActive(db, storage, fromFile.UserId, DateTimeOffset.UtcNow);
     }
 
     /// <summary>JSON 模式的回覆是巢狀的，要連子回覆一起濾。</summary>
@@ -471,7 +509,9 @@ public sealed class RantService
             return null;
         }
 
-        var post = db.RantPosts.AsNoTracking().FirstOrDefault(x => x.Id == rantId);
+        // !IsHidden 跟 GetPost 同一套。擋在這裡而不是只擋在呼叫端，是因為
+        // 「指望每個呼叫端都記得檢查」已經漏過一次了（LikeReply 的可見性檢查）。
+        var post = db.RantPosts.AsNoTracking().FirstOrDefault(x => x.Id == rantId && !x.IsHidden);
         if (post == null)
         {
             return null;
