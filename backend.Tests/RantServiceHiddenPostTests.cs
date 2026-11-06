@@ -36,7 +36,7 @@ public sealed class RantServiceHiddenPostTests
 
         Assert.NotNull(service.Understand(PostId, Reporter));
         Assert.NotNull(service.Reply(PostId, Reporter, "還看得到嗎"));
-        Assert.NotNull(service.LikeReply(PostId, ReplyId));
+        Assert.NotNull(service.LikeReply(PostId, ReplyId, Reporter));
         Assert.NotNull(service.Report(PostId, Reporter));
     }
 
@@ -52,7 +52,7 @@ public sealed class RantServiceHiddenPostTests
 
         Assert.Null(service.Understand(PostId, Reporter));
         Assert.Null(service.Reply(PostId, Reporter, "還看得到嗎"));
-        Assert.Null(service.LikeReply(PostId, ReplyId));
+        Assert.Null(service.LikeReply(PostId, ReplyId, Reporter));
         Assert.Null(service.Report(PostId, Reporter));
 
         // 回 null 不等於沒寫。這篇有兩道守衛——PostIsVisible 擋在最前面、BuildPost
@@ -157,6 +157,60 @@ public sealed class RantServiceHiddenPostTests
         service.Understand(PostId, Reporter);
 
         Assert.Equal(1, service.Understand(PostId, Reporter)!.LikeCount);
+    }
+
+    // ── 回覆的讚也要一人一次 ──
+
+    /// <summary>
+    /// 貼文的愛心一直都有去重，回覆的沒有——原本只是 reply.LikeCount += 1，
+    /// 連按的人是誰都沒傳進來。同一個帳號可以一直按，上限只有速率限制。
+    /// </summary>
+    [Fact]
+    public void TheSamePersonLikingAReplyTwiceOnlyCountsOnce()
+    {
+        const string name = nameof(TheSamePersonLikingAReplyTwiceOnlyCountsOnce);
+        var service = Build(name, hidden: false);
+
+        service.LikeReply(PostId, ReplyId, Reporter);
+        var post = service.LikeReply(PostId, ReplyId, Reporter);
+
+        Assert.Equal(1, post!.Replies.Single(x => x.Id == ReplyId).LikeCount);
+
+        using var reloaded = TestWorld.Db(name);
+        Assert.Single(reloaded.RantReactions.Where(x => x.RantReplyId == ReplyId));
+    }
+
+    [Fact]
+    public void TwoPeopleLikingAReplyMakesTwo()
+    {
+        var service = Build(nameof(TwoPeopleLikingAReplyMakesTwo), hidden: false, extraUsers: ["user_l2"]);
+
+        service.LikeReply(PostId, ReplyId, Reporter);
+        var post = service.LikeReply(PostId, ReplyId, "user_l2");
+
+        Assert.Equal(2, post!.Replies.Single(x => x.Id == ReplyId).LikeCount);
+    }
+
+    /// <summary>
+    /// 回覆的讚與貼文的讚共用 rant_reactions，差別在 rant_reply_id 有沒有值。
+    /// 同一個人在同一篇底下按貼文、又按底下的回覆，是兩列不同的紀錄——
+    /// 舊的唯一索引（rant_post_id, user_id, reaction_type）會把第二列擋掉，
+    /// 所以 migration 把它改成只管 rant_reply_id is null 的那一半。
+    /// </summary>
+    [Fact]
+    public void LikingThePostAndLikingAReplyAreSeparateRecords()
+    {
+        const string name = nameof(LikingThePostAndLikingAReplyAreSeparateRecords);
+        var service = Build(name, hidden: false);
+
+        service.Understand(PostId, Reporter);
+        service.LikeReply(PostId, ReplyId, Reporter);
+
+        using var reloaded = TestWorld.Db(name);
+        var rows = reloaded.RantReactions.Where(x => x.RantPostId == PostId).ToList();
+        Assert.Equal(2, rows.Count);
+        Assert.Single(rows.Where(x => x.RantReplyId == null));
+        Assert.Single(rows.Where(x => x.RantReplyId == ReplyId));
     }
 
     // ── 測試資料 ──

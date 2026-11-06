@@ -142,7 +142,7 @@ public sealed class RantServiceAccountStatusTests
         Assert.Null(service.Understand(PostId, Replier));
         Assert.Null(service.Reply(PostId, Replier, "還看得到嗎"));
         Assert.Null(service.Report(PostId, Replier));
-        Assert.Null(service.LikeReply(PostId, ReplyIdOf(Replier)));
+        Assert.Null(service.LikeReply(PostId, ReplyIdOf(Replier), Replier));
     }
 
     [Fact]
@@ -156,7 +156,7 @@ public sealed class RantServiceAccountStatusTests
         Assert.NotNull(service.Understand(PostId, Replier));
         Assert.NotNull(service.Reply(PostId, Replier, "還看得到嗎"));
         Assert.NotNull(service.Report(PostId, Replier));
-        Assert.NotNull(service.LikeReply(PostId, ReplyIdOf(Replier)));
+        Assert.NotNull(service.LikeReply(PostId, ReplyIdOf(Replier), Replier));
     }
 
     /// <summary>
@@ -174,7 +174,7 @@ public sealed class RantServiceAccountStatusTests
             TestWorld.User(Author, AccountStatus.BANNED),
             TestWorld.User(Replier));
 
-        Assert.Null(service.LikeReply(PostId, ReplyIdOf(Replier)));
+        Assert.Null(service.LikeReply(PostId, ReplyIdOf(Replier), Replier));
     }
 
     /// <summary>
@@ -191,7 +191,7 @@ public sealed class RantServiceAccountStatusTests
         const string name = nameof(LikingAReplyOnAHiddenPostDoesNotEvenCountTheLike);
         var service = Build(name, TestWorld.User(Author, AccountStatus.BANNED), TestWorld.User(Replier));
 
-        Assert.Null(service.LikeReply(PostId, ReplyIdOf(Replier)));
+        Assert.Null(service.LikeReply(PostId, ReplyIdOf(Replier), Replier));
 
         using var reloaded = TestWorld.Db(name);
         Assert.Equal(0, reloaded.RantReplies.Single(x => x.Id == ReplyIdOf(Replier)).LikeCount);
@@ -206,7 +206,7 @@ public sealed class RantServiceAccountStatusTests
             TestWorld.User(Author, AccountStatus.SUSPENDED, TestWorld.SuspensionOver),
             TestWorld.User(Replier));
 
-        var post = service.LikeReply(PostId, ReplyIdOf(Replier));
+        var post = service.LikeReply(PostId, ReplyIdOf(Replier), Replier);
 
         Assert.NotNull(post);
         Assert.Equal(1, post!.Replies.Single(x => x.UserId == Replier).LikeCount);

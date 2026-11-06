@@ -59,10 +59,19 @@ public sealed class RantReactionRecordConfiguration : IEntityTypeConfiguration<R
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id).HasColumnName("id").HasMaxLength(64);
         builder.Property(x => x.RantPostId).HasColumnName("rant_post_id").HasMaxLength(64).IsRequired();
+        builder.Property(x => x.RantReplyId).HasColumnName("rant_reply_id").HasMaxLength(64);
         builder.Property(x => x.UserId).HasColumnName("user_id").HasMaxLength(64).IsRequired();
         builder.Property(x => x.ReactionType).HasColumnName("reaction_type").HasMaxLength(40);
         builder.Property(x => x.CreatedAt).HasColumnName("created_at");
-        builder.HasIndex(x => new { x.RantPostId, x.UserId, x.ReactionType }).IsUnique();
+        // 兩條唯一索引各管一半，彼此用 rant_reply_id 是否為 null 分開。
+        // 不分開的話，同一個人在同一篇底下按兩則不同回覆的讚會撞上貼文層級那條。
+        // （實際建索引的是 MigrationsSql/20261106_rant_reply_reactions.sql）
+        builder.HasIndex(x => new { x.RantPostId, x.UserId, x.ReactionType })
+            .IsUnique()
+            .HasFilter("rant_reply_id is null");
+        builder.HasIndex(x => new { x.RantReplyId, x.UserId, x.ReactionType })
+            .IsUnique()
+            .HasFilter("rant_reply_id is not null");
     }
 }
 

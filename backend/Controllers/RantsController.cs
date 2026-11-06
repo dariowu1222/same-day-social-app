@@ -85,7 +85,9 @@ public sealed class RantsController(RantService rantService) : ControllerBase
     [HttpPost("{rantId}/replies/{replyId}/understand")]
     public ActionResult<ApiResponse<RantPost>> LikeReply(string rantId, string replyId)
     {
-        var post = rantService.LikeReply(rantId, replyId);
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                     ?? User.FindFirst("sub")?.Value!;
+        var post = rantService.LikeReply(rantId, replyId, userId);
         return post == null
             ? NotFound(ApiResponse<RantPost>.Fail("REPLY_NOT_FOUND", "找不到這則回應。"))
             : ApiResponse<RantPost>.Ok(post);

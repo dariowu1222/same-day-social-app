@@ -41,6 +41,17 @@
   —— 「今日」AI 標籤分析的用量與花費，後台「AI 用量」分頁的資料來源。
   沒跑這支的話後台整頁會顯示 0 並提示要先建表（不會炸）。
 
+2026-11-06 新增（**要先跑再部署**）：
+
+- `backend/Infrastructure/Persistence/MigrationsSql/20261106_rant_reply_reactions.sql`
+  —— 樹洞回覆的讚去重。rant_reactions 多一欄 rant_reply_id，並把原本的唯一索引
+  改成只管貼文層級那一半（不然同一個人按同一篇底下的兩則回覆會撞索引）。
+  這支跟上面那幾支不同，**沒跑就部署會炸**：EF 會把新欄位放進每一筆
+  rant_reactions 的 INSERT，所以按貼文的愛心與按回覆的讚都會失敗。
+  讀取不受影響（愛心數是 COUNT 出來的），列表頁與詳情頁照常。
+  Supabase SQL 編輯器：
+  https://supabase.com/dashboard/project/uqacfftvowhehvkyafep/sql/new
+
 ## 暫時不做
 
 - 不串 Gemini / Claude API。OpenAI 只用在「今日」的標籤分析（AiTodayAnalyzer），沒設 Ai:ApiKey 就整條停用

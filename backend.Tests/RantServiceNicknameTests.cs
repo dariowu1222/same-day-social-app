@@ -92,7 +92,7 @@ public sealed class RantServiceNicknameTests
             Named(Replier, "改過名的回覆者"));
 
         Assert.Equal(NewName, service.Understand(PostId, Replier)!.Nickname);
-        Assert.Equal(NewName, service.LikeReply(PostId, ReplyIdOf(Replier))!.Nickname);
+        Assert.Equal(NewName, service.LikeReply(PostId, ReplyIdOf(Replier), Replier)!.Nickname);
     }
 
     // ── 顯示：查不到名字的時候 ──

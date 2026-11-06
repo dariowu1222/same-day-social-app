@@ -250,8 +250,20 @@ public sealed class RantService
         notifications?.Add(authorId, "RANT_REPLY", "你的樹洞有新回應 🌱", preview, "rant", rantId);
     }
 
-    public RantPost? LikeReply(string rantId, string replyId)
+    /// <summary>
+    /// 幫某一則回覆按「我懂」。
+    ///
+    /// 貼文的愛心一直都有去重（rant_reactions 一列一個人），回覆的沒有——這裡原本
+    /// 只有 reply.LikeCount += 1，連呼叫者是誰都沒傳進來，同一個帳號可以一直按，
+    /// 上限只有速率限制的每分鐘 60 次。現在跟貼文走同一張表，多帶一個 rant_reply_id。
+    ///
+    /// 數字仍然存在 rant_replies.like_count 這個計數欄位，不是每次 count 回來：
+    /// 列表頁一次載入一整頁的回覆，改成即時 count 等於每翻一頁多一支 GROUP BY。
+    /// 反應列在這裡的角色是「這個人按過了沒」，不是顯示來源。
+    /// </summary>
+    public RantPost? LikeReply(string rantId, string replyId, string userId)
     {
+        if (string.IsNullOrWhiteSpace(userId)) return null;
         // 這一行以前不在。PostIsVisible 的註解點名了「按讚、回覆、檢舉」三件事都要擋，
         // 但四個互動端點裡只有 Understand／Reply／Report 掛了它，LikeReply 漏了。
         // 漏的後果不是「多按到一個讚」：它回傳的是 BuildPost(rantId)，也就是整篇貼文。
@@ -263,8 +275,25 @@ public sealed class RantService
         {
             var reply = db.RantReplies.FirstOrDefault(x => x.Id == replyId && x.RantPostId == rantId);
             if (reply == null) return null;
-            reply.LikeCount += 1;
-            db.SaveChanges();
+
+            var alreadyLiked = db.RantReactions.Any(x =>
+                x.RantReplyId == replyId &&
+                x.UserId == userId &&
+                x.ReactionType == "UNDERSTAND");
+            if (!alreadyLiked)
+            {
+                db.RantReactions.Add(new RantReactionRecord
+                {
+                    Id = $"reaction_{Guid.NewGuid():N}",
+                    RantPostId = rantId,
+                    RantReplyId = replyId,
+                    UserId = userId.Trim(),
+                    ReactionType = "UNDERSTAND"
+                });
+                reply.LikeCount += 1;
+                db.SaveChanges();
+            }
+
             return BuildPost(rantId);
         }
 

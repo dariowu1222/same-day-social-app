@@ -37,6 +37,11 @@ public sealed class RantReactionRecord
 {
     public string Id { get; set; } = "";
     public string RantPostId { get; set; } = "";
+    /// <summary>
+    /// 有值＝這個讚是按在某一則回覆上，null＝按在貼文本身。
+    /// 兩種都留著 RantPostId，所以仍然查得到這個讚屬於哪一篇。
+    /// </summary>
+    public string? RantReplyId { get; set; }
     public string UserId { get; set; } = "";
     public string ReactionType { get; set; } = "UNDERSTAND";
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
