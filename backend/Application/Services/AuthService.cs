@@ -15,6 +15,7 @@ public sealed class AuthService
     private readonly IEmailSender emailSender;
     private readonly AppDbContext? db;
     private readonly AccountStateService? accountState;
+    private readonly EmailSendThrottle? emailThrottle;
 
     public AuthService(JsonStorageService storage, IEmailSender emailSender, IServiceProvider services)
     {
@@ -22,6 +23,7 @@ public sealed class AuthService
         this.emailSender = emailSender;
         db = services.GetService<AppDbContext>();
         accountState = services.GetService<AccountStateService>();
+        emailThrottle = services.GetService<EmailSendThrottle>();
     }
 
     public async Task<AuthServiceResult<RegistrationStartResponse>> RegisterAsync(RegisterCommand command, CancellationToken cancellationToken)
@@ -49,8 +51,17 @@ public sealed class AuthService
             return AuthServiceResult<RegistrationStartResponse>.Fail("ACCOUNT_EXISTS", "這個 Email 已經註冊過，請直接登入或使用忘記密碼。");
         }
 
-        var code = AuthSecurity.CreateVerificationCode();
+        // 同一個信箱的寄信冷卻。每 IP 每分鐘 10 次擋不住換 IP 繼續寄——
+        // 對收件人是信箱被灌爆，對這個服務更糟：寄信走 Gmail SMTP，有每日上限，
+        // 額度被耗光之後所有人的註冊信與重設密碼信都寄不出去。
         var now = DateTimeOffset.UtcNow;
+        if (emailThrottle != null && !emailThrottle.TryStartSend(email, now))
+        {
+            return AuthServiceResult<RegistrationStartResponse>.Fail(
+                "EMAIL_COOLDOWN", "驗證碼剛寄出，請稍候再試一次。");
+        }
+
+        var code = AuthSecurity.CreateVerificationCode();
         var token = new RegistrationVerificationTokenRecord
         {
             Id = $"reg_{Guid.NewGuid():N}",
@@ -83,12 +94,15 @@ public sealed class AuthService
         {
             token.UsedAt = DateTimeOffset.UtcNow;
             await db.SaveChangesAsync(cancellationToken);
+            emailThrottle?.ReleaseSend(email);
             return AuthServiceResult<RegistrationStartResponse>.Fail("SMTP_NOT_CONFIGURED", "尚未設定寄信服務，無法寄出建立帳號驗證碼。");
         }
         catch (Exception) when (!cancellationToken.IsCancellationRequested)
         {
             token.UsedAt = DateTimeOffset.UtcNow;
             await db.SaveChangesAsync(cancellationToken);
+            // 沒寄出去的信不該佔用冷卻，不然 SMTP 一時不通就得等滿一分鐘才能再試
+            emailThrottle?.ReleaseSend(email);
             return AuthServiceResult<RegistrationStartResponse>.Fail("EMAIL_SEND_FAILED", "驗證碼寄送失敗，請稍後再試或檢查寄信設定。");
         }
 
@@ -123,6 +137,8 @@ public sealed class AuthService
         var token = tokens.FirstOrDefault(x => AuthSecurity.VerifyVerificationCode(command.Code, x.CodeHash));
         if (token == null)
         {
+            await CountFailedAttemptAsync(tokens, t => t.FailedAttempts, (t, n) => t.FailedAttempts = n,
+                (t, at) => t.UsedAt = at, cancellationToken);
             return AuthServiceResult<AuthUserResponse>.Fail("INVALID_CODE", "驗證碼錯誤或已過期。");
         }
 
@@ -498,6 +514,16 @@ public sealed class AuthService
             return AuthServiceResult<PasswordResetRequestResponse>.Fail("INVALID_EMAIL", "請輸入正確的 Email。");
         }
 
+        // 冷卻要在查帳號之前。這支刻意對「查無此帳號」回覆成功（去帳號枚舉），
+        // 所以冷卻如果只套用在帳號存在的那條路上，就等於給了一個新的判斷方式：
+        // 同一個信箱連打兩次，會被擋下來的就是註冊過的。
+        // 同理，查無此帳號的那條路也照樣消耗額度，不歸還。
+        if (emailThrottle != null && !emailThrottle.TryStartSend(email, DateTimeOffset.UtcNow))
+        {
+            return AuthServiceResult<PasswordResetRequestResponse>.Fail(
+                "EMAIL_COOLDOWN", "驗證碼剛寄出，請稍候再試一次。");
+        }
+
         var account = await db.AuthAccounts.FirstOrDefaultAsync(x => x.Username == email, cancellationToken);
         if (account == null || await LoadSignInUserAsync(account, cancellationToken) == null)
         {
@@ -515,6 +541,16 @@ public sealed class AuthService
             ExpiresAt = now.AddMinutes(10),
             CreatedAt = now
         };
+        // 先把這個人手上還沒用掉的碼全部作廢。註冊那邊一直有做，這邊沒有——
+        // 所以可以先申請五次讓五組碼同時有效，猜中的機率直接乘五。
+        var oldTokens = await db.PasswordResetTokens
+            .Where(x => x.UserId == account.UserId && x.UsedAt == null)
+            .ToListAsync(cancellationToken);
+        foreach (var oldToken in oldTokens)
+        {
+            oldToken.UsedAt = now;
+        }
+
         db.PasswordResetTokens.Add(token);
         await db.SaveChangesAsync(cancellationToken);
 
@@ -605,10 +641,47 @@ public sealed class AuthService
         var token = tokens.FirstOrDefault(x => AuthSecurity.VerifyVerificationCode(code, x.CodeHash));
         if (token == null)
         {
+            await CountFailedAttemptAsync(tokens, t => t.FailedAttempts, (t, n) => t.FailedAttempts = n,
+                (t, at) => t.UsedAt = at, cancellationToken);
             return AuthServiceResult<(AuthAccountRecord, UserRecord, PasswordResetTokenRecord)>.Fail("INVALID_CODE", "驗證碼錯誤或已過期。");
         }
 
         return AuthServiceResult<(AuthAccountRecord, UserRecord, PasswordResetTokenRecord)>.Ok((account, user, token));
+    }
+
+    /// <summary>
+    /// 猜錯一次。到上限就把那組碼作廢（UsedAt 一填，後續查詢就不會再撈到它）。
+    ///
+    /// 為什麼要記在碼身上而不是只靠 IP 限流：碼是 6 位數、有效 10 分鐘，
+    /// 每 IP 每分鐘 10 次擋不住「一千個 IP 一起猜」——那樣十分鐘內大約有四成
+    /// 的機率猜中，也就是直接重設掉別人的密碼。
+    ///
+    /// 手上這批理論上只會有一組（申請新碼時會作廢舊的），但舊資料可能有好幾組，
+    /// 所以整批一起算：一次猜測本來就是對整批都試過一遍。
+    /// </summary>
+    private async Task CountFailedAttemptAsync<T>(
+        IReadOnlyCollection<T> tokens,
+        Func<T, int> readAttempts,
+        Action<T, int> writeAttempts,
+        Action<T, DateTimeOffset> markUsed,
+        CancellationToken cancellationToken)
+    {
+        if (tokens.Count == 0)
+        {
+            return;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        foreach (var token in tokens)
+        {
+            var attempts = readAttempts(token) + 1;
+            writeAttempts(token, attempts);
+            if (attempts >= AuthSecurity.MaxCodeAttempts)
+            {
+                markUsed(token, now);
+            }
+        }
+        await db!.SaveChangesAsync(cancellationToken);
     }
 
     private static (string Code, string Message)? ValidateRegister(RegisterCommand command)

@@ -123,6 +123,8 @@ builder.Services.AddAuthorization();
 builder.Services.AddSingleton<JsonStorageService>();
 builder.Services.AddSingleton<SameDaySocialApp.Application.Services.GoogleAuthService>();
 builder.Services.AddSingleton<SameDaySocialApp.Application.Services.FacebookAuthService>();
+// 同一個信箱的驗證信冷卻（每 IP 限流擋不住換 IP 對同一個信箱繼續寄）
+builder.Services.AddSingleton<SameDaySocialApp.Application.Services.EmailSendThrottle>();
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.AuthService>();
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.TodayAnalyzerService>();
 

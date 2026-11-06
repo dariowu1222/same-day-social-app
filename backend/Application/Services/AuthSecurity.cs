@@ -9,6 +9,18 @@ public static class AuthSecurity
     private const int HashSize = 32;
     private const int Iterations = 120_000;
 
+    /// <summary>
+    /// 一組驗證碼可以被猜錯幾次。
+    ///
+    /// 碼是 6 位數、有效 10 分鐘，而唯一的防線原本是每 IP 每分鐘 10 次。
+    /// 一個 IP 猜不完一百萬組，但一千個 IP 在十分鐘內可以猜掉四十萬組左右——
+    /// 也就是大約四成的機率直接重設掉別人的密碼。單一驗證碼自己要會數。
+    ///
+    /// 五次對真的打錯字的人夠用（6 位數，手輸很難連錯五次），對猜的人則是把
+    /// 每組碼的期望值從四十萬壓回五。
+    /// </summary>
+    public const int MaxCodeAttempts = 5;
+
     public static string HashPassword(string password)
     {
         var salt = RandomNumberGenerator.GetBytes(SaltSize);

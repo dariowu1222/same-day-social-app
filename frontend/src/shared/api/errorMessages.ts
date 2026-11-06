@@ -29,6 +29,10 @@ export function toUserMessage(code?: string, message?: string) {
       return '驗證碼錯誤或已過期，請確認後再輸入。'
     case 'EMAIL_SEND_FAILED':
       return '驗證碼寄送失敗，請稍後再試。'
+    // 同一個信箱的寄信冷卻。換 IP 就能對同一個信箱一直寄，對收件人是信箱被灌爆，
+    // 對我們是 Gmail SMTP 的每日額度被耗光、所有人的驗證信都寄不出去。
+    case 'EMAIL_COOLDOWN':
+      return '驗證碼剛寄出，請等一分鐘再試一次，並記得看看垃圾郵件匣。'
     case 'ACCOUNT_EXISTS':
       return '這個 Email 已經註冊過，請直接登入或使用忘記密碼。'
     // 牌是先發後滑的，卡片到手之後對方才被封鎖／註銷／停權。不說「失敗請再試」——

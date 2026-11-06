@@ -52,6 +52,17 @@
   Supabase SQL 編輯器：
   https://supabase.com/dashboard/project/uqacfftvowhehvkyafep/sql/new
 
+2026-11-07 新增（**要先跑再部署**）：
+
+- `backend/Infrastructure/Persistence/MigrationsSql/20261107_verification_code_attempts.sql`
+  —— 驗證碼的嘗試次數。registration_verification_tokens 與 password_reset_tokens
+  各多一欄 failed_attempts，猜錯五次那組碼就作廢。
+  **沒跑就部署會炸**：EF 會把新欄位放進這兩張表每一筆的 INSERT，所以
+  「寄註冊驗證碼」與「寄重設密碼驗證碼」兩條路都會當場失敗——新使用者
+  註冊不了，忘記密碼的人也收不到信。登入與其他功能不受影響。
+  Supabase SQL 編輯器：
+  https://supabase.com/dashboard/project/uqacfftvowhehvkyafep/sql/new
+
 ## 暫時不做
 
 - 不串 Gemini / Claude API。OpenAI 只用在「今日」的標籤分析（AiTodayAnalyzer），沒設 Ai:ApiKey 就整條停用

@@ -39,6 +39,7 @@ public sealed class PasswordResetTokenRecordConfiguration : IEntityTypeConfigura
         builder.Property(x => x.ExpiresAt).HasColumnName("expires_at");
         builder.Property(x => x.UsedAt).HasColumnName("used_at");
         builder.Property(x => x.CreatedAt).HasColumnName("created_at");
+        builder.Property(x => x.FailedAttempts).HasColumnName("failed_attempts").HasDefaultValue(0);
         builder.HasOne<UserRecord>()
             .WithMany()
             .HasForeignKey(x => x.UserId)
@@ -64,6 +65,7 @@ public sealed class RegistrationVerificationTokenRecordConfiguration : IEntityTy
         builder.Property(x => x.ExpiresAt).HasColumnName("expires_at");
         builder.Property(x => x.UsedAt).HasColumnName("used_at");
         builder.Property(x => x.CreatedAt).HasColumnName("created_at");
+        builder.Property(x => x.FailedAttempts).HasColumnName("failed_attempts").HasDefaultValue(0);
         builder.HasIndex(x => new { x.Email, x.ExpiresAt });
     }
 }
