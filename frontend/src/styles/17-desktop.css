@@ -304,6 +304,10 @@
   .reply-form .reply-form-actions { display: flex; }
   .reply-form-send { display: none; }
 
+  /* 展開回覆之後的「收起回應」。手機沒有這顆（展開就一直開著，要收起
+     就重新載入或點進詳情頁），桌面有滑鼠，多一次收合是划算的。 */
+  .thread-sub-indicator.thread-replies-collapse { display: flex; }
+
   /* ── 聊天室（單一對話）──
      .cr-page 是 position: fixed，四邊都照手機版面算：
        bottom 預留 64px 給底部導覽（桌面導覽已移到左側，這塊就成了空白）

@@ -282,6 +282,11 @@
 
 .thread-sub-avatars .thread-sub-avatar-xs:first-child { margin-left: 0; }
 
+/* 展開後那顆「收起回應」只給桌面。手機以滑動為主，展開之後再冒出一顆
+   收合鈕只是多一列要跨過的東西；桌面有滑鼠，收合才划算。
+   顯示規則在 17-desktop.css，跟留言框的「取消／送出」同一個 1024px 斷點。 */
+.thread-sub-indicator.thread-replies-collapse { display: none; }
+
 .thread-sub-count {
   font-size: 12px;
   color: #5b8f8a;

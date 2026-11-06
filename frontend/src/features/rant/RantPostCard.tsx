@@ -199,7 +199,12 @@ export default function RantPostCard({
             {/* 💬 現在一律是「留言」。
                 底下那顆假輸入框「留下回應…」拿掉了——它和下面的「查看 N 則回應」
                 是兩列長得很像的次要列疊在一起，中間還夾一條分隔線。
-                留言的入口收回這顆 icon，展開／收合交給那一列，一件事一個控制項。 */}
+                留言的入口收回這顆 icon，展開交給那一列，一件事一個控制項。
+
+                收合只給桌面（.thread-replies-collapse，見 17-desktop.css）：
+                手機以滑動為主，展開之後再冒出一顆收合鈕只是多一列要跨過的東西。
+                代價是手機上展開了就一直開著，直到重新載入列表——可以接受，
+                真要細讀本來就會點進詳情頁。 */}
             <button
               className={`post-action-btn${showReplyForm ? ' is-active' : ''}`}
               aria-label="留下回應"
@@ -226,10 +231,11 @@ export default function RantPostCard({
           {post.replies.length > 0 && (
             <button
               type="button"
-              className="thread-sub-indicator"
+              className={`thread-sub-indicator${showReplies ? ' thread-replies-collapse' : ''}`}
               aria-expanded={showReplies}
               onClick={(e) => { e.stopPropagation(); setShowReplies((v) => !v) }}
             >
+              {/* 展開後頭像就收起來——底下每一則自己都帶著臉，再堆一次是多的 */}
               {!showReplies && (
                 <span className="thread-sub-avatars">
                   {replyPeople.slice(0, 3).map((nickname) => (
@@ -237,7 +243,6 @@ export default function RantPostCard({
                   ))}
                 </span>
               )}
-              {/* 展開後頭像就多餘了——底下每一則自己都帶著臉 */}
               <span className="thread-sub-count">
                 {showReplies ? '收起回應' : `查看 ${post.replyCount} 則回應`}
               </span>
