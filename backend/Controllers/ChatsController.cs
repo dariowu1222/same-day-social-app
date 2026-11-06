@@ -161,6 +161,11 @@ public sealed class ChatsController(ChatService chatService, MediaUrlPolicy medi
     public ActionResult<ApiResponse<ChatMemberSetting>> UpdateSettings(string chatRoomId, [FromBody] UpdateChatSettingRequest request)
     {
         if (!IsMember(chatRoomId)) return Forbid();
+        // chat_member_settings.note_name 是 varchar(100)
+        if (!InputLimits.WithinLength(request.NoteName, 100))
+        {
+            return BadRequest(ApiResponse<ChatMemberSetting>.Fail("FIELD_TOO_LONG", "備註名最多 100 字。"));
+        }
         return ApiResponse<ChatMemberSetting>.Ok(
             chatService.UpdateMemberSetting(CallerId, chatRoomId, request.NoteName, request.Pinned, request.Muted));
     }
@@ -196,6 +201,11 @@ public sealed class ChatsController(ChatService chatService, MediaUrlPolicy medi
     {
         var other = OtherUserId(chatRoomId);
         if (other == null) return Forbid();
+        // chat_reports.reason 是 varchar(500)
+        if (!InputLimits.WithinLength(request?.Reason, 500))
+        {
+            return BadRequest(ApiResponse<bool>.Fail("FIELD_TOO_LONG", "檢舉說明最多 500 字。"));
+        }
         chatService.ReportUser(CallerId, other, chatRoomId, request?.Reason);
         return ApiResponse<bool>.Ok(true);
     }

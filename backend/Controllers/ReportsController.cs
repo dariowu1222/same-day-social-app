@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using SameDaySocialApp.Application.Dto;
 using SameDaySocialApp.Application.Services;
+using SameDaySocialApp.Application.Validation;
 using SameDaySocialApp.Domain.Enums;
 
 namespace SameDaySocialApp.Controllers;
@@ -22,6 +23,13 @@ public sealed class ReportsController(ReportService reports) : ControllerBase
     [HttpPost]
     public ActionResult<ApiResponse<SubmitReportResponse>> Submit([FromBody] SubmitReportRequest request)
     {
+        // reports.detail 是 varchar(1000)。超長會一路撞到 SaveChanges 丟 Npgsql
+        // 例外變成 500，使用者看到的是「伺服器錯誤」而不是「說明太長了」。
+        if (!InputLimits.WithinLength(request.Detail, 1000))
+        {
+            return BadRequest(ApiResponse<SubmitReportResponse>.Fail("FIELD_TOO_LONG", "檢舉說明最多 1000 字。"));
+        }
+
         var result = reports.Submit(
             CallerId, request.TargetType, request.TargetId, request.Category, request.Detail);
 

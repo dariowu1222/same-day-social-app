@@ -27,9 +27,11 @@ public sealed class PushController(
     [HttpPost("tokens")]
     public ActionResult<ApiResponse<bool>> Register([FromBody] RegisterPushTokenRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.Token))
+        // device_tokens.token 是 varchar(512)。超長會一路撞到 SaveChanges
+        // 丟 Npgsql 例外變成 500；FCM 的 token 大約 160 字，512 綽綽有餘。
+        if (string.IsNullOrWhiteSpace(request.Token) || request.Token.Trim().Length > 512)
         {
-            return BadRequest(ApiResponse<bool>.Fail("INVALID_TOKEN", "缺少裝置識別碼。"));
+            return BadRequest(ApiResponse<bool>.Fail("INVALID_TOKEN", "缺少或不正確的裝置識別碼。"));
         }
 
         pushService.RegisterToken(CallerId, request.Token.Trim(), request.Platform?.Trim() ?? "android");
