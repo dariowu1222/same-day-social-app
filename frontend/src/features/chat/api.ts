@@ -24,7 +24,9 @@ export async function getMessages(chatRoomId: string) {
   return request<ChatMessage[]>(`/api/chats/${chatRoomId}/messages`)
 }
 
-export type QuoteInfo = { quotedMessageId: string; quotedSenderName: string; quotedContent: string }
+// 只有「引用哪一則」。引用的是誰、說了什麼由伺服器查原訊息決定，
+// 而且必須是同一間房的訊息（見 ChatService.ResolveQuote）。
+export type QuoteInfo = { quotedMessageId: string }
 
 export async function sendMessage(chatRoomId: string, content: string, quote?: QuoteInfo) {
   return request<ChatMessage>(`/api/chats/${chatRoomId}/messages`, { method: 'POST', body: JSON.stringify({ content, ...quote }) })

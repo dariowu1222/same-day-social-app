@@ -4,15 +4,17 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.SignalR;
 using SameDaySocialApp.Application.Dto;
 using SameDaySocialApp.Application.Services;
+using SameDaySocialApp.Application.Validation;
 using SameDaySocialApp.Domain.Entities;
 using SameDaySocialApp.Hubs;
+using SameDaySocialApp.Infrastructure.Media;
 
 namespace SameDaySocialApp.Controllers;
 
 [ApiController]
 [Route("api/chats")]
 [Authorize]
-public sealed class ChatsController(ChatService chatService, IHubContext<ChatHub> chatHub) : ControllerBase
+public sealed class ChatsController(ChatService chatService, MediaUrlPolicy mediaUrls, IHubContext<ChatHub> chatHub) : ControllerBase
 {
     private string CallerId => User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
                                ?? User.FindFirst("sub")?.Value!;
@@ -57,10 +59,30 @@ public sealed class ChatsController(ChatService chatService, IHubContext<ChatHub
         return ApiResponse<PartnerQuota>.Ok(new PartnerQuota(used, limit, used >= limit));
     }
 
+    [EnableRateLimiting("write")]
     [HttpPost("{chatRoomId}/messages")]
     public async Task<ActionResult<ApiResponse<ChatMessage>>> SendMessage(string chatRoomId, [FromBody] SendMessageRequest request)
     {
         if (!IsMember(chatRoomId)) return Forbid();
+
+        // Content 宣告為不可為 null，但 JSON 送 null 照樣會進來，
+        // 而服務層第一件事就是 content.Trim()——以前這裡是一個 500。
+        var content = request.Content ?? "";
+        if (content.Length > InputLimits.MaxMessageLength)
+        {
+            return BadRequest(ApiResponse<ChatMessage>.Fail(
+                "FIELD_TOO_LONG", $"訊息最多 {InputLimits.MaxMessageLength} 字。"));
+        }
+
+        // 圖片與語音訊息的「內容」就是一串網址，而前端看到像媒體的字串會直接
+        // <img src> / <audio src> 下去。網址指向攻擊者的伺服器，對方一打開對話，
+        // 瀏覽器就替他送出一次請求——IP、裝置、確切的上線時間全都有了。
+        // 純文字與一般連結不受影響（見 MediaUrlPolicy）。
+        if (!mediaUrls.IsAllowedAsMessage(content))
+        {
+            return BadRequest(ApiResponse<ChatMessage>.Fail(
+                "INVALID_MEDIA_URL", "圖片或語音必須是從這個 App 上傳的。"));
+        }
 
         // 檢舉經後台審核成立之後這間房就唯讀了。前端已經把輸入列換成說明，
         // 但那只是畫面——舊的分頁、送到一半的請求都還是會打進來。
@@ -78,9 +100,7 @@ public sealed class ChatsController(ChatService chatService, IHubContext<ChatHub
                 "CHAT_ROOM_EXPIRED", "這個聊天室因為太久沒有往來已經關閉，無法再傳送訊息。"));
         }
 
-        var message = chatService.SendMessage(
-            chatRoomId, CallerId, request.Content,
-            request.QuotedMessageId, request.QuotedSenderName, request.QuotedContent);
+        var message = chatService.SendMessage(chatRoomId, CallerId, content, request.QuotedMessageId);
         await chatHub.Clients.Group(ChatHub.RoomGroup(chatRoomId)).SendAsync("messageReceived", message);
 
         // 房間群組只有在聊天頁才 join，但未讀徽章在任何分頁都要會動。
@@ -189,7 +209,13 @@ public sealed class ChatsController(ChatService chatService, IHubContext<ChatHub
             .UserIds.FirstOrDefault(u => u != CallerId);
 }
 
-public sealed record SendMessageRequest(string Content, string? QuotedMessageId = null, string? QuotedSenderName = null, string? QuotedContent = null);
+// QuotedSenderName 與 QuotedContent 以前也在這裡，由客戶端自己填，而且三欄之間
+// 沒有對帳：quotedMessageId 指向 A、名字寫 B、內容寫一段 B 從來沒說過的話，
+// 照樣會被存下來。現在只收 id，其餘由 ChatService.ResolveQuote 去查。
+//
+// 已經上架的 App 仍然會送那兩欄，不過 System.Text.Json 預設忽略對不上的欄位，
+// 舊版本照常能傳訊息，只是引用改由伺服器決定——對它們來說反而是修好的。
+public sealed record SendMessageRequest(string Content, string? QuotedMessageId = null);
 public sealed record UpdateChatSettingRequest(string? NoteName = null, bool? Pinned = null, bool? Muted = null);
 public sealed record ReportChatRequest(string? Reason = null);
 

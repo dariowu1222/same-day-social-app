@@ -350,10 +350,10 @@ public sealed class ChatService
     }
 
     public ChatMessage SendMessage(
-        string chatRoomId, string senderId, string content,
-        string? quotedMessageId = null, string? quotedSenderName = null, string? quotedContent = null)
+        string chatRoomId, string senderId, string content, string? quotedMessageId = null)
     {
         var id = $"message_{Guid.NewGuid():N}";
+        var quote = ResolveQuote(chatRoomId, quotedMessageId);
 
         if (db != null)
         {
@@ -363,9 +363,9 @@ public sealed class ChatService
                 ChatRoomId = chatRoomId,
                 SenderId = senderId,
                 Content = content.Trim(),
-                QuotedMessageId = quotedMessageId,
-                QuotedSenderName = quotedSenderName,
-                QuotedContent = quotedContent
+                QuotedMessageId = quote?.Id,
+                QuotedSenderName = quote?.SenderName,
+                QuotedContent = quote?.Content
             };
             db.ChatMessages.Add(messageRecord);
             db.SaveChanges();
@@ -378,12 +378,67 @@ public sealed class ChatService
             ChatRoomId = chatRoomId,
             SenderId = senderId,
             Content = content.Trim(),
-            QuotedMessageId = quotedMessageId,
-            QuotedSenderName = quotedSenderName,
-            QuotedContent = quotedContent
+            QuotedMessageId = quote?.Id,
+            QuotedSenderName = quote?.SenderName,
+            QuotedContent = quote?.Content
         };
         return storage.InsertOne("chatMessages", message);
     }
+
+    /// <summary>
+    /// 引用的是誰、說了什麼，全部由伺服器查。
+    ///
+    /// 這三欄以前整組由客戶端送上來，彼此之間沒有對帳：quotedMessageId 指向 A，
+    /// quotedSenderName 寫 B，quotedContent 寫一段 B 從來沒說過的話，照樣會被存下來。
+    /// 做出來的東西看起來就是對方親口說過的句子，可以拿去檢舉或用來騷擾——
+    /// 而且它真的存在資料庫裡，事後調閱也是這樣。
+    ///
+    /// 房間不對就不給引用：不限定的話，任何人都能把自己別間房的訊息「搬」到這一間，
+    /// 等於把第三人的私訊轉貼給無關的人看。
+    ///
+    /// 名字即時從 users 取，和樹洞同一條規則（RantService.WithCurrentNames）：
+    /// 存下來的那一份是發話當下的稽核紀錄，顯示用的要是現在的名字。
+    /// </summary>
+    private (string Id, string SenderName, string Content)? ResolveQuote(string chatRoomId, string? quotedMessageId)
+    {
+        var id = quotedMessageId?.Trim();
+        if (string.IsNullOrEmpty(id))
+        {
+            return null;
+        }
+
+        var quoted = db != null
+            ? db.ChatMessages.AsNoTracking()
+                .Where(x => x.Id == id && x.ChatRoomId == chatRoomId)
+                .Select(x => new { x.Id, x.SenderId, x.Content, x.IsRecalled })
+                .FirstOrDefault()
+            : storage.ReadCollection<ChatMessage>("chatMessages")
+                .Where(x => x.Id == id && x.ChatRoomId == chatRoomId)
+                .Select(x => new { x.Id, x.SenderId, x.Content, x.IsRecalled })
+                .FirstOrDefault();
+
+        if (quoted == null)
+        {
+            return null;
+        }
+
+        var nickname = db != null
+            ? db.Users.AsNoTracking().Where(u => u.Id == quoted.SenderId).Select(u => u.Nickname).FirstOrDefault()
+            : storage.ReadCollection<User>("users").FirstOrDefault(u => u.Id == quoted.SenderId)?.Nickname;
+
+        // 收回的訊息不能靠引用復活。原本那段話由客戶端自己填，收回之後照樣引用得出來。
+        var content = quoted.IsRecalled ? "（訊息已收回）" : quoted.Content;
+
+        return (
+            quoted.Id,
+            Truncate(string.IsNullOrWhiteSpace(nickname) ? "同頻使用者" : nickname.Trim(), 100),
+            // quoted_content 是 varchar(2000)。舊訊息裡有整串 base64 的（最長 120 KB），
+            // 不截斷的話引用一則就是一個 Npgsql 例外。
+            Truncate(content, 2000));
+    }
+
+    private static string Truncate(string value, int max)
+        => value.Length <= max ? value : value[..max];
 
     // 收回訊息：限本人、限發出後 2 分鐘內
     public ChatMessage? RecallMessage(string messageId, string callerId)

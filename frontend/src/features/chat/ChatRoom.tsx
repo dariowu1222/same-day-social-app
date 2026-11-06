@@ -238,9 +238,9 @@ export default function ChatRoom({
   function doSend() {
     const text = draft.trim()
     if (!text) return
-    const q: QuoteInfo | undefined = quote
-      ? { quotedMessageId: quote.id, quotedSenderName: quoteName(quote), quotedContent: quotePreview(quote.content) }
-      : undefined
+    // 只帶引用哪一則。名字與內容由伺服器查原訊息決定——這三欄以前整組由這裡填，
+    // 彼此之間沒有對帳，可以做出一句對方從來沒說過的話。
+    const q: QuoteInfo | undefined = quote ? { quotedMessageId: quote.id } : undefined
     onSendContent?.(text, q)
     onDraftChange('')
     setQuote(null)
@@ -291,8 +291,16 @@ export default function ChatRoom({
     setSafetyBannerOpen(false)
   }
 
+  // 正在輸入時，上方那條「回覆 OOO」。手上就是原訊息本身。
   function quoteName(msg: ChatMessage) {
     return msg.senderId === currentUserId ? '你' : displayName
+  }
+
+  // 已送出的泡泡裡那條引用。伺服器存的是發話者當時的暱稱，但引用自己說過的話
+  // 寫「你」比寫自己的名字自然，所以在還載得到原訊息時換掉。
+  function quotedName(msg: ChatMessage) {
+    const quoted = messages.find((m) => m.id === msg.quotedMessageId)
+    return quoted?.senderId === currentUserId ? '你' : msg.quotedSenderName
   }
   function quotePreview(content: string) {
     const t = content.trim()
@@ -441,8 +449,8 @@ export default function ChatRoom({
                 >
                   {row.message.quotedContent && (
                     <div className={`cr-quote-block${row.isOut ? ' out' : ''}`}>
-                      <span className="cr-quote-block-name">{row.message.quotedSenderName}</span>
-                      <span className="cr-quote-block-text">{row.message.quotedContent}</span>
+                      <span className="cr-quote-block-name">{quotedName(row.message)}</span>
+                      <span className="cr-quote-block-text">{quotePreview(row.message.quotedContent)}</span>
                     </div>
                   )}
                   {row.message.isRecalled
