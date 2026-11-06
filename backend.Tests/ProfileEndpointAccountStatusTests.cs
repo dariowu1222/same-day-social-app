@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using SameDaySocialApp.Application.Dto;
@@ -88,7 +90,18 @@ public sealed class ProfileEndpointAccountStatusTests
         var services = new ServiceCollection();
         services.AddSingleton(db);
 
-        var controller = new ProfileController(TestWorld.Storage(), TestWorld.MediaUrls(), services.BuildServiceProvider());
+        // 呼叫者是別人：這組測試問的是「這個人的帳號狀態會不會讓別人查不到他」
+        var controller = new ProfileController(TestWorld.Storage(), TestWorld.MediaUrls(), services.BuildServiceProvider())
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(
+                        new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, "user_somebody_else")], "test")),
+                },
+            },
+        };
         return controller.Get(Target, CancellationToken.None);
     }
 }

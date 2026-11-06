@@ -8,6 +8,7 @@ using SameDaySocialApp.Application.Validation;
 using SameDaySocialApp.Domain.Entities;
 using SameDaySocialApp.Infrastructure.Media;
 using SameDaySocialApp.Infrastructure.Persistence;
+using SameDaySocialApp.Infrastructure.Persistence.Models;
 
 namespace SameDaySocialApp.Controllers;
 
@@ -33,6 +34,10 @@ public sealed class ProfileController(JsonStorageService storage, MediaUrlPolicy
     [HttpGet("{userId}")]
     public async Task<ActionResult<ApiResponse<User>>> Get(string userId, CancellationToken cancellationToken)
     {
+        var callerId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                       ?? User.FindFirst("sub")?.Value;
+        var isSelf = callerId == userId;
+
         if (db != null)
         {
             try
@@ -40,8 +45,16 @@ public sealed class ProfileController(JsonStorageService storage, MediaUrlPolicy
                 var record = await db.Users.FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
                 if (record != null)
                 {
-                    return AccountStateService.IsActive(record.Status, record.SuspendedUntil, DateTimeOffset.UtcNow)
-                        ? ApiResponse<User>.Ok(record.ToDomain())
+                    if (!AccountStateService.IsActive(record.Status, record.SuspendedUntil, DateTimeOffset.UtcNow))
+                    {
+                        return NotFound(ApiResponse<User>.Fail("USER_NOT_FOUND", "找不到使用者。"));
+                    }
+                    if (isSelf)
+                    {
+                        return ApiResponse<User>.Ok(record.ToDomain());
+                    }
+                    return await IsVisibleToAsync(callerId, userId, cancellationToken)
+                        ? ApiResponse<User>.Ok(PublicViewOf(record.ToDomain()))
                         : NotFound(ApiResponse<User>.Fail("USER_NOT_FOUND", "找不到使用者。"));
                 }
             }
@@ -53,10 +66,105 @@ public sealed class ProfileController(JsonStorageService storage, MediaUrlPolicy
         {
             user = null;
         }
-        return user == null
-            ? NotFound(ApiResponse<User>.Fail("USER_NOT_FOUND", "找不到使用者。"))
-            : ApiResponse<User>.Ok(user);
+        if (user == null)
+        {
+            return NotFound(ApiResponse<User>.Fail("USER_NOT_FOUND", "找不到使用者。"));
+        }
+        if (isSelf)
+        {
+            return ApiResponse<User>.Ok(user);
+        }
+        return await IsVisibleToAsync(callerId, userId, cancellationToken)
+            ? ApiResponse<User>.Ok(PublicViewOf(user))
+            : NotFound(ApiResponse<User>.Fail("USER_NOT_FOUND", "找不到使用者。"));
     }
+
+    /// <summary>
+    /// 「公開個人檔案」關掉之後還看得到的人：自己，以及已經配對成功的人
+    /// （設定頁上寫的就是「關閉後僅配對成功的人能看到」）。
+    ///
+    /// 這個開關原本整個沒有作用——user_settings.profile_public 存在，但沒有
+    /// 任何一支讀取端點看它。使用者以為自己關掉了，實際上誰都查得到。
+    ///
+    /// 「配對成功」在資料上的樣子就是兩個人同在一間聊天室。
+    /// </summary>
+    private async Task<bool> IsVisibleToAsync(string? callerId, string userId, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(callerId))
+        {
+            return false;
+        }
+
+        if (db != null)
+        {
+            // 沒有設定列＝預設公開（欄位的 default 就是 true）
+            var isPublic = await db.UserSettings.AsNoTracking()
+                .Where(x => x.UserId == userId)
+                .Select(x => (bool?)x.ProfilePublic)
+                .FirstOrDefaultAsync(cancellationToken) ?? true;
+            if (isPublic)
+            {
+                return true;
+            }
+
+            return await db.ChatRoomUsers.AsNoTracking().AnyAsync(
+                mine => mine.UserId == callerId
+                        && db.ChatRoomUsers.Any(theirs => theirs.ChatRoomId == mine.ChatRoomId && theirs.UserId == userId),
+                cancellationToken);
+        }
+
+        var setting = storage.ReadCollection<UserSettingRecord>("userSettings").FirstOrDefault(x => x.UserId == userId);
+        if (setting == null || setting.ProfilePublic)
+        {
+            return true;
+        }
+        return storage.ReadCollection<ChatRoom>("chatRooms")
+            .Any(room => room.UserIds.Contains(callerId) && room.UserIds.Contains(userId));
+    }
+
+    /// <summary>
+    /// 別人看到的版本。
+    ///
+    /// 這支以前回的是整包 User，任何登入者拿一個 user id 就查得到：
+    ///   - status_reason：後台寫的處置原因。這個人被停權過、為什麼被停權，
+    ///     都在這一欄裡，而它會回給任何人。
+    ///   - last_active_at：等於可以用 user id 盯著任何一個人何時在線。
+    ///   - 會員等級與到期日、帳號建立時間、以及這個人自己的交友條件
+    ///     （年齡區間、距離）——那是他拿來篩別人的設定，不是要給人看的。
+    ///
+    /// 生日留著：聊天室的資料卡顯示的是年齡與星座（ChatRoom 的 getAge /
+    /// getZodiac），星座要月日才算得出來。這是這個 App 的產品功能，
+    /// 不是順手帶出去的欄位。
+    /// </summary>
+    private static User PublicViewOf(User user) => new()
+    {
+        Id = user.Id,
+        Nickname = user.Nickname,
+        Bio = user.Bio,
+        PhotoDataUrls = user.PhotoDataUrls,
+        InterestTags = user.InterestTags,
+        ValueTags = user.ValueTags,
+        PersonalityTags = user.PersonalityTags,
+        AppearanceTags = user.AppearanceTags,
+        Gender = user.Gender,
+        AgeRange = user.AgeRange,
+        Birthday = user.Birthday,
+        Relationship = user.Relationship,
+        Height = user.Height,
+        Weight = user.Weight,
+        Occupation = user.Occupation,
+        School = user.School,
+        BloodType = user.BloodType,
+        DatingGoal = user.DatingGoal,
+        LookingFor = user.LookingFor,
+        PreferredArea = user.PreferredArea,
+        Languages = user.Languages,
+        ActiveTime = user.ActiveTime,
+        VoiceFirst = user.VoiceFirst,
+        MeetSoon = user.MeetSoon,
+        LocationArea = user.LocationArea,
+        ResponsePreference = user.ResponsePreference,
+    };
 
     // 掛速率限制（每人每分鐘 60 次，見 Program.cs 的 "write" policy）。
     // 這支以前是全開的，而暱稱改一次就會換掉這個人在樹洞所有歷史貼文上顯示的名字
