@@ -47,6 +47,8 @@ builder.Services.Configure<SameDaySocialApp.Controllers.MaintenanceOptions>(
     builder.Configuration.GetSection("Maintenance"));
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<IMediaStorage, SupabaseMediaStorage>();
+// 寫入端點用它判斷「這個網址是不是自家的」（頭像、發文圖片、聊天訊息）
+builder.Services.AddSingleton<MediaUrlPolicy>();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>

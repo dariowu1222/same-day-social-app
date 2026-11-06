@@ -3,15 +3,22 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using SameDaySocialApp.Application.Dto;
 using SameDaySocialApp.Application.Services;
+using SameDaySocialApp.Application.Validation;
 using SameDaySocialApp.Domain.Entities;
 using SameDaySocialApp.Domain.Enums;
+using SameDaySocialApp.Infrastructure.Media;
 
 namespace SameDaySocialApp.Controllers;
 
 [ApiController]
 [Route("api/rants")]
-public sealed class RantsController(RantService rantService) : ControllerBase
+public sealed class RantsController(RantService rantService, MediaUrlPolicy mediaUrls) : ControllerBase
 {
+    // rant_posts.content 是 varchar(3000)、rant_replies.content 是 varchar(1000)。
+    // 超過就直接撞上 SaveChanges 丟 Npgsql 例外變成 500，使用者只看到「伺服器錯誤」。
+    private const int MaxPostLength = 3000;
+    private const int MaxReplyLength = 1000;
+
     [HttpGet]
     public ActionResult<ApiResponse<List<RantPost>>> Get([FromQuery] string? cursor, [FromQuery] int limit = 20)
     {
@@ -35,7 +42,27 @@ public sealed class RantsController(RantService rantService) : ControllerBase
     {
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
                      ?? User.FindFirst("sub")?.Value!;
-        var result = rantService.Create(userId, request.Content, request.Mode, request.HashTags, request.ImageUrls ?? (request.ImageUrl is null ? null : [request.ImageUrl]), request.AudioUrl, request.ThumbUrls);
+
+        // Content 宣告為不可為 null，但 JSON 送 null 一樣會進來，
+        // 下游的 content.Trim() 會 NRE 變成 500。
+        var content = request.Content ?? "";
+        if (content.Length > MaxPostLength)
+        {
+            return BadRequest(ApiResponse<RantPost>.Fail("FIELD_TOO_LONG", $"內容最多 {MaxPostLength} 字。"));
+        }
+        if (!InputLimits.WithinList(request.HashTags, InputLimits.MaxTagCount, InputLimits.MaxTagLength))
+        {
+            return BadRequest(ApiResponse<RantPost>.Fail(
+                "FIELD_TOO_LONG", $"標籤最多 {InputLimits.MaxTagCount} 個，每個最多 {InputLimits.MaxTagLength} 字。"));
+        }
+
+        var images = request.ImageUrls ?? (request.ImageUrl is null ? null : [request.ImageUrl]);
+        if (!MediaIsOurs([.. images ?? [], .. request.ThumbUrls ?? [], request.AudioUrl]))
+        {
+            return BadRequest(ApiResponse<RantPost>.Fail("INVALID_MEDIA_URL", "圖片或語音必須是從這個 App 上傳的。"));
+        }
+
+        var result = rantService.Create(userId, content, request.Mode, request.HashTags, images, request.AudioUrl, request.ThumbUrls);
         if (result.Moderation.IsBlocked)
             return BadRequest(ApiResponse<RantPost>.Fail(result.Moderation.Code!, result.Moderation.Message!));
         return ApiResponse<RantPost>.Ok(result.Post!, result.Moderation.Warning);
@@ -61,7 +88,18 @@ public sealed class RantsController(RantService rantService) : ControllerBase
     {
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
                      ?? User.FindFirst("sub")?.Value!;
-        var post = rantService.Reply(rantId, userId, request.Content, request.ImageUrl, request.AudioUrl, request.ParentReplyId, request.ThumbUrl);
+
+        var content = request.Content ?? "";
+        if (content.Length > MaxReplyLength)
+        {
+            return BadRequest(ApiResponse<RantPost>.Fail("FIELD_TOO_LONG", $"回覆最多 {MaxReplyLength} 字。"));
+        }
+        if (!MediaIsOurs([request.ImageUrl, request.ThumbUrl, request.AudioUrl]))
+        {
+            return BadRequest(ApiResponse<RantPost>.Fail("INVALID_MEDIA_URL", "圖片或語音必須是從這個 App 上傳的。"));
+        }
+
+        var post = rantService.Reply(rantId, userId, content, request.ImageUrl, request.AudioUrl, request.ParentReplyId, request.ThumbUrl);
         return post == null
             ? NotFound(ApiResponse<RantPost>.Fail("RANT_NOT_FOUND", "找不到這篇樹洞文章。"))
             : ApiResponse<RantPost>.Ok(post);
@@ -105,6 +143,18 @@ public sealed class RantsController(RantService rantService) : ControllerBase
             ? NotFound(ApiResponse<RantPost>.Fail("RANT_NOT_FOUND", "找不到這篇樹洞文章。"))
             : ApiResponse<RantPost>.Ok(post);
     }
+
+    /// <summary>
+    /// 圖片、縮圖、語音都必須是自家物件儲存發出來的。
+    ///
+    /// 樹洞是公開牆，一篇貼文會出現在所有人的畫面上。網址放自己的伺服器，
+    /// 就等於在每個看過這篇的人身上裝一個追蹤像素——IP、裝置、看的時間全都有了。
+    /// 換成假的系統提示圖片就是釣魚。
+    ///
+    /// null 與空字串是「這則沒有附媒體」，照常放行。
+    /// </summary>
+    private bool MediaIsOurs(IEnumerable<string?> urls)
+        => urls.Where(u => !string.IsNullOrWhiteSpace(u)).All(mediaUrls.IsOwn);
 }
 
 // 這兩個 record 以前的第一個欄位是 Nickname，由客戶端自己填。userId 取自 JWT、

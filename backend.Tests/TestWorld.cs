@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using SameDaySocialApp.Application.Services;
 using SameDaySocialApp.Domain.Enums;
+using SameDaySocialApp.Infrastructure.Media;
 using SameDaySocialApp.Infrastructure.Persistence;
 using SameDaySocialApp.Infrastructure.Persistence.Models;
 
@@ -60,6 +61,24 @@ internal static class TestWorld
     /// 資料庫路徑下它一行都不會被呼叫，但還是指到各自的暫存資料夾，不碰專案目錄。
     /// </summary>
     public static JsonStorageService Storage() => new(new TestEnvironment());
+
+    /// <summary>測試裡「自家物件儲存」的公開網址前綴。</summary>
+    public const string OwnMediaPrefix = "https://storage.test/storage/v1/object/public/media/";
+
+    /// <summary>
+    /// 媒體網址政策。儲存體當成已設定，所以 data: 一律不收、
+    /// 只有 OwnMediaPrefix 開頭的 https 網址算自家的——跟正式環境同一條規則。
+    /// </summary>
+    public static MediaUrlPolicy MediaUrls() => new(new ConfiguredStorage());
+
+    private sealed class ConfiguredStorage : IMediaStorage
+    {
+        public bool IsConfigured => true;
+        public string PublicUrlPrefix => OwnMediaPrefix;
+
+        public Task<string> UploadAsync(MediaFolder folder, byte[] bytes, string contentType, CancellationToken ct = default)
+            => throw new NotSupportedException("測試不會真的上傳");
+    }
 
     private sealed class TestEnvironment : IWebHostEnvironment
     {

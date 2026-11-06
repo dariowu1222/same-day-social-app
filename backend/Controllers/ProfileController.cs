@@ -4,14 +4,16 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using SameDaySocialApp.Application.Dto;
 using SameDaySocialApp.Application.Services;
+using SameDaySocialApp.Application.Validation;
 using SameDaySocialApp.Domain.Entities;
+using SameDaySocialApp.Infrastructure.Media;
 using SameDaySocialApp.Infrastructure.Persistence;
 
 namespace SameDaySocialApp.Controllers;
 
 [ApiController]
 [Route("api/profile")]
-public sealed class ProfileController(JsonStorageService storage, IServiceProvider services) : ControllerBase
+public sealed class ProfileController(JsonStorageService storage, MediaUrlPolicy mediaUrls, IServiceProvider services) : ControllerBase
 {
     private readonly AppDbContext? db = services.GetService<AppDbContext>();
 
@@ -89,6 +91,12 @@ public sealed class ProfileController(JsonStorageService storage, IServiceProvid
             return BadRequest(ApiResponse<User>.Fail("INVALID_NICKNAME", "暱稱需為 2 到 20 個字。"));
         }
 
+        var tooLong = TooLongField(request);
+        if (tooLong != null)
+        {
+            return BadRequest(ApiResponse<User>.Fail("FIELD_TOO_LONG", tooLong));
+        }
+
         if (db != null)
         {
             try
@@ -96,6 +104,10 @@ public sealed class ProfileController(JsonStorageService storage, IServiceProvid
                 var record = await db.Users.FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
                 if (record != null)
                 {
+                    if (!PhotosAreOurs(request.PhotoDataUrls, record.PhotoDataUrls))
+                    {
+                        return BadRequest(ApiResponse<User>.Fail("INVALID_PHOTO_URL", "照片必須是從這個 App 上傳的。"));
+                    }
                     if (nickname is { Length: > 0 }) record.Nickname = nickname;
                     if (request.Bio != null) record.Bio = request.Bio.Trim();
                     if (request.InterestTags != null) record.InterestTags = [.. request.InterestTags];
@@ -127,6 +139,11 @@ public sealed class ProfileController(JsonStorageService storage, IServiceProvid
                 }
             }
             catch { /* DB 欄位尚未 migrate，fallback 到 JSON */ }
+        }
+
+        if (!PhotosAreOurs(request.PhotoDataUrls, storage.FindById<User>("users", userId)?.PhotoDataUrls))
+        {
+            return BadRequest(ApiResponse<User>.Fail("INVALID_PHOTO_URL", "照片必須是從這個 App 上傳的。"));
         }
 
         var user = storage.UpdateOne<User>("users", userId, target =>
@@ -161,6 +178,59 @@ public sealed class ProfileController(JsonStorageService storage, IServiceProvid
         return user == null
             ? NotFound(ApiResponse<User>.Fail("USER_NOT_FOUND", "找不到使用者。"))
             : ApiResponse<User>.Ok(user);
+    }
+
+    /// <summary>
+    /// 照片網址必須是自家物件儲存發出來的。
+    ///
+    /// 不然任何人都能把頭像指向自己的伺服器：別人一看到配對卡或聊天列表，
+    /// 瀏覽器就替他送出一次請求，IP、裝置、確切的上線時間全都有了。
+    ///
+    /// 例外是「這個人本來就有的那幾張」。個人資料頁是整包欄位一起送的，
+    /// 不是只送改動的那幾個，所以舊資料裡那幾張 picsum 的假照片（種子資料直接
+    /// 寫進資料庫的，沒有經過這支端點）會在每次存檔時原樣回來。擋掉的是
+    /// 「新加一個外部網址」，不是「有外部網址的人從此不能改資料」。
+    /// </summary>
+    private bool PhotosAreOurs(List<string>? requested, IEnumerable<string>? existing)
+    {
+        if (requested == null) return true;
+        var kept = existing?.ToHashSet() ?? [];
+        return requested.All(url => mediaUrls.IsOwn(url) || kept.Contains(url));
+    }
+
+    /// <summary>
+    /// 超長的欄位。有長度的那些（varchar(n)）原本會一路撞到 SaveChanges 才丟
+    /// Npgsql 例外變成 500；text[] 的那幾個則根本沒有上限。
+    /// 回 null 表示都在範圍內。
+    /// </summary>
+    private static string? TooLongField(UpdateProfileRequest request)
+    {
+        if (!InputLimits.WithinLength(request.Bio, 500)) return "自我介紹最多 500 字。";
+        if (!InputLimits.WithinLength(request.Occupation, 60)) return "職業最多 60 字。";
+        if (!InputLimits.WithinLength(request.School, 60)) return "學校最多 60 字。";
+        if (!InputLimits.WithinLength(request.Gender, 40)) return "性別欄位太長。";
+        if (!InputLimits.WithinLength(request.Relationship, 40)) return "感情狀態欄位太長。";
+        if (!InputLimits.WithinLength(request.BloodType, 10)) return "血型欄位太長。";
+        if (!InputLimits.WithinLength(request.DatingGoal, 40)) return "交友目標欄位太長。";
+        if (!InputLimits.WithinLength(request.LookingFor, 40)) return "想找的對象欄位太長。";
+        if (!InputLimits.WithinLength(request.PreferredArea, 40)) return "偏好地區欄位太長。";
+        if (!InputLimits.WithinLength(request.ActiveTime, 40)) return "活躍時段欄位太長。";
+
+        foreach (var tags in new[]
+                 {
+                     request.InterestTags, request.ValueTags,
+                     request.PersonalityTags, request.AppearanceTags, request.Languages,
+                 })
+        {
+            if (!InputLimits.WithinList(tags, InputLimits.MaxTagCount, InputLimits.MaxTagLength))
+            {
+                return $"標籤最多 {InputLimits.MaxTagCount} 個，每個最多 {InputLimits.MaxTagLength} 字。";
+            }
+        }
+
+        return InputLimits.WithinList(request.PhotoDataUrls, InputLimits.MaxPhotos, MediaUrlPolicy.MaxUrlLength)
+            ? null
+            : $"照片最多 {InputLimits.MaxPhotos} 張。";
     }
 
     private static bool IsAdult(DateOnly birthday)

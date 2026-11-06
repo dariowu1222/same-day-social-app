@@ -88,7 +88,7 @@ public sealed class ProfileEndpointAccountStatusTests
         var services = new ServiceCollection();
         services.AddSingleton(db);
 
-        var controller = new ProfileController(TestWorld.Storage(), services.BuildServiceProvider());
+        var controller = new ProfileController(TestWorld.Storage(), TestWorld.MediaUrls(), services.BuildServiceProvider());
         return controller.Get(Target, CancellationToken.None);
     }
 }

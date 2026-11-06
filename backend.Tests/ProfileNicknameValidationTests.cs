@@ -122,7 +122,7 @@ public sealed class ProfileNicknameValidationTests
         var services = new ServiceCollection();
         services.AddSingleton(db);
 
-        var controller = new ProfileController(TestWorld.Storage(), services.BuildServiceProvider())
+        var controller = new ProfileController(TestWorld.Storage(), TestWorld.MediaUrls(), services.BuildServiceProvider())
         {
             // 改別人的資料會被 Forbid 擋掉，所以呼叫者要是本人
             ControllerContext = new ControllerContext
