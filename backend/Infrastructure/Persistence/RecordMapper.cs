@@ -207,8 +207,10 @@ public static class RecordMapper
     public static RantPost ToDomain(this RantPostRecord record, IEnumerable<RantReplyRecord> replies, int likeCount)
     {
         var allReplies = replies.OrderBy(x => x.CreatedAt).ToList();
+        var byId = allReplies.ToDictionary(x => x.Id);
 
-        // Build children lookup: parentId -> list of child records
+        // 子回覆查找表。指向不存在的父親的那些 key 留著無妨：下面只會用
+        // 「已經擺好的那一則」的 id 去查，查不到的 key 不會被看到。
         var byParent = allReplies
             .Where(x => x.ParentReplyId != null)
             .GroupBy(x => x.ParentReplyId!)
@@ -223,16 +225,62 @@ public static class RecordMapper
             ImageUrl = r.ImageUrl,
             ThumbUrl = r.ThumbUrl,
             AudioUrl = r.AudioUrl,
+            // 攤平之後這一欄就是引用對象：前端靠它畫「某某：原文」那個引用框
             ParentReplyId = r.ParentReplyId,
             LikeCount = r.LikeCount,
             CreatedAt = r.CreatedAt,
-            Replies = byParent.GetValueOrDefault(r.Id, []).Select(BuildReply).ToList()
+            Replies = []
         };
 
-        var domainReplies = allReplies
-            .Where(x => x.ParentReplyId == null)
-            .Select(BuildReply)
-            .ToList();
+        // ── 只留兩層：第一層回覆，底下一串攤平的子孫 ──
+        //
+        // 為什麼不照實巢狀：資料庫那邊沒有任何深度上限（Reply 收到 parentReplyId
+        // 就直接寫，不檢查存不存在、是不是同一篇、現在多深），而 System.Text.Json
+        // 的預設 MaxDepth 是 64。一則回覆佔兩層，加上 ApiResponse → data 陣列 →
+        // RantPost → replies 這三層起手，大約第 31 層回覆就會讓整個公開列表頁
+        // 序列化丟例外——GET /api/rants 沒有 [Authorize]，也就是整面牆對所有人掛掉。
+        // 線上目前最深七層，離得不遠：前端的「回應」每按一次就深一層，而畫面上
+        // 完全看不出來。
+        //
+        // 攤平不改變畫面。前端本來就把子孫全部 flattenReplies 成單層再渲染
+        // （ReplyItem），深度優先——這裡用同樣的順序收集，所以輸出一模一樣，
+        // 只是不再把那個深度帶過網路。
+        void Collect(RantReplyRecord parent, List<RantReply> into, HashSet<string> placed)
+        {
+            foreach (var child in byParent.GetValueOrDefault(parent.Id, []))
+            {
+                if (!placed.Add(child.Id)) continue;   // 資料成環時不會無限下去
+                into.Add(BuildReply(child));
+                Collect(child, into, placed);
+            }
+        }
+
+        var placed = new HashSet<string>();
+        var domainReplies = new List<RantReply>();
+
+        void Promote(RantReplyRecord r)
+        {
+            if (!placed.Add(r.Id)) return;
+            var node = BuildReply(r);
+            Collect(r, node.Replies, placed);
+            domainReplies.Add(node);
+        }
+
+        // 「第一層」＝沒有父親，或父親不在這份清單裡。後者有兩種來源：父親的作者
+        // 被停權／註銷而整則被濾掉，以及 parent_reply_id 指到別篇貼文（寫入端
+        // 從來沒驗過）。兩種都讓它自己升上來——那一則的作者沒被處置，沒理由連坐
+        // 消失，而消失之後它還算在 replyCount 裡，畫面上就是「顯示 2 則，點開只有 1 則」。
+        foreach (var root in allReplies.Where(x => x.ParentReplyId == null || !byId.ContainsKey(x.ParentReplyId)))
+        {
+            Promote(root);
+        }
+
+        // 收尾：成環的那幾則從上面進不來。把它們也擺進去，不然 ReplyCount 會
+        // 多於畫面上實際看得到的則數——「顯示 2 則回應，點開只有 1 則」。
+        foreach (var stray in allReplies)
+        {
+            Promote(stray);
+        }
 
         return new RantPost
         {
