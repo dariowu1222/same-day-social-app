@@ -6,7 +6,7 @@ import {
   User, Flag, Pencil, Pin, BellOff, BellRing, LogOut, Ban,
   Reply, Copy, RotateCcw, ShieldCheck, AlertTriangle,
 } from 'lucide-react'
-import type { ChatMessage, ChatRoom as ChatRoomType, ChatMemberSetting } from './types'
+import type { ChatMessage, ChatRoom as ChatRoomType, ChatMemberSetting, PeerState } from './types'
 import type { QuoteInfo } from './api'
 import type { UserProfile } from '../profile/types'
 import { getAge, getZodiac, ZODIAC_ICON, testAvatarPhoto } from '../../shared/lib/userDisplay'
@@ -37,8 +37,9 @@ type Props = {
       鎖定不代表離開，退不退由使用者自己按。 */
   expired?: boolean
   /** 對方被停權／封鎖／註銷：一樣唯讀。對方自己在後端中介軟體就被擋住了，
-      但這一側不擋的話，使用者會照常打字、照常看到訊息送出去，而對面永遠讀不到。 */
-  peerGone?: boolean
+      但這一側不擋的話，使用者會照常打字、照常看到訊息送出去，而對面永遠讀不到。
+      帶狀態不是帶布林——三種要對使用者說的話不一樣。 */
+  peerState?: PeerState | null
   onUpdateSetting?: (patch: { noteName?: string | null; pinned?: boolean; muted?: boolean }) => void
   onLeave?: () => void
   onBlock?: () => void
@@ -70,7 +71,7 @@ type RenderRow =
 export default function ChatRoom({
   room, otherProfile, otherUserId, currentUserId,
   messages, draft, onDraftChange, onSendContent, onRecall,
-  setting, reported = false, expired = false, peerGone = false,
+  setting, reported = false, expired = false, peerState = null,
   onUpdateSetting, onLeave, onBlock, onReport, onBack,
 }: Props) {
   // const navigate = useNavigate() // 任務功能暫時下架（後端保留）
@@ -83,7 +84,7 @@ export default function ChatRoom({
   // 三種情況讓房間唯讀：檢舉成立、閒置到期、對方帳號不能用。差別只在說明文案。
   // 凡是「最後要送出一則訊息」的 UI 都看這個旗標；只跟檢舉本身有關的
   // （選單裡的「檢舉對方」）仍然只看 reported，另外兩種不該把那條路也關掉。
-  const readOnly = reported || expired || peerGone
+  const readOnly = reported || expired || peerState != null
   const [toast, setToast] = useState('')
   // 多圖上傳中的張數（0 = 沒有在上傳）
   const [uploadingCount, setUploadingCount] = useState(0)
@@ -544,14 +545,21 @@ export default function ChatRoom({
               <p className="cr-frozen-title">你檢舉的對象已經被處置。</p>
               <p className="cr-frozen-desc">這段對話已經關閉，先前的訊息還看得到，但不能再傳送。</p>
             </>
-          ) : peerGone ? (
-            // 刻意不寫「對方被停權」或「審核中」：
-            // 對方可能是被誤報的，而這句話會跟著他留在別人心裡；而且同一個狀態
-            // 也涵蓋永久封鎖與自行註銷，講「審核中」對那兩種是假的。
-            // 只說做得到的事——現在傳不出去，之前的都還在。
+          ) : peerState === 'SUSPENDED' ? (
             <>
-              <p className="cr-frozen-title">這個帳號目前無法使用。</p>
-              <p className="cr-frozen-desc">先前的訊息都還在，可以回頭看，只是暫時不能傳送。</p>
+              <p className="cr-frozen-title">這個帳號目前停權中。</p>
+              <p className="cr-frozen-desc">
+                我們的審查人員正在進行審核，在那之前暫時不能傳送訊息，請見諒。
+                先前的訊息都還在，可以回頭看。
+              </p>
+            </>
+          ) : peerState != null ? (
+            // 封鎖與註銷沒有人在審，不能跟著說「審核中」——那是騙人的。
+            // 兩者合用一句：註銷是當事人自己的決定，不該對外說明；
+            // 封鎖則沒有必要把處置結果公告給他的聊天對象。
+            <>
+              <p className="cr-frozen-title">這個帳號已經無法使用。</p>
+              <p className="cr-frozen-desc">先前的訊息都還在，可以回頭看，只是不能再傳送了。</p>
             </>
           ) : (
             <>

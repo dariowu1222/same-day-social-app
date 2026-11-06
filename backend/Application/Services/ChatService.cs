@@ -166,26 +166,32 @@ public sealed class ChatService
     }
 
     /// <summary>
-    /// 這間房的對方還能不能收訊息。停權、封鎖、註銷都算不能。
+    /// 這間房的對方怎麼了。null＝正常，其餘是 AccountStatus 的字串。
     ///
     /// 為什麼要擋送出這一側：被處置的那個人自己在 Program.cs 的中介軟體就被
     /// 401 擋住了，但另一邊完全不受影響——他照常打字、照常看到訊息送出去，
     /// 而對面永遠不會讀到。那比「不能傳」更糟，因為他不知道。
     /// </summary>
-    public bool IsPeerActive(string userId, string chatRoomId)
+    public string? PeerStateOf(string userId, string chatRoomId)
     {
-        if (db == null) return true;
+        if (db == null) return null;
 
-        var peerId = db.ChatRoomUsers.AsNoTracking()
+        var peer = db.ChatRoomUsers.AsNoTracking()
             .Where(x => x.ChatRoomId == chatRoomId && x.UserId != userId)
-            .Select(x => x.UserId)
+            .Join(db.Users.AsNoTracking(), m => m.UserId, u => u.Id,
+                  (_, u) => new { u.Status, u.SuspendedUntil })
             .FirstOrDefault();
 
         // 一人房（對方已經退出）不在這條規則裡，交給既有的流程處理
-        if (peerId == null) return true;
+        if (peer == null) return null;
 
-        return AccountStateService.IsActive(db, storage, peerId, DateTimeOffset.UtcNow);
+        return AccountStateService.IsActive(peer.Status, peer.SuspendedUntil, DateTimeOffset.UtcNow)
+            ? null
+            : peer.Status;
     }
+
+    /// <summary>對方還收不收得到訊息。null 以外的狀態都收不到。</summary>
+    public bool IsPeerActive(string userId, string chatRoomId) => PeerStateOf(userId, chatRoomId) == null;
 
     public HashSet<string> GetFrozenRoomIds(string userId, ICollection<string>? scope = null)
     {
@@ -643,7 +649,7 @@ public sealed class ChatService
         if (db == null)
         {
             return GetRoomsByUser(userId)
-                .Select(room => new ChatRoomOverview(room, PeerOf(room, userId), null, null, null, false, true))
+                .Select(room => new ChatRoomOverview(room, PeerOf(room, userId), null, null, null, false, null))
                 .ToList();
         }
 
@@ -691,7 +697,9 @@ public sealed class ChatService
                 u => (
                     Nickname: u.Nickname,
                     Photo: u.PhotoDataUrls.FirstOrDefault(),
-                    Active: AccountStateService.IsActive(u.Status, u.SuspendedUntil, now)));
+                    // 停權到期的人已經回來了，狀態欄位還停在 SUSPENDED 是正常的
+                    // （寫回 ACTIVE 的排程不是期限一到就跑），所以要 IsActive 說了算。
+                    State: AccountStateService.IsActive(u.Status, u.SuspendedUntil, now) ? null : u.Status));
 
         return rooms.Select(room =>
         {
@@ -704,8 +712,11 @@ public sealed class ChatService
                 peer.Photo,
                 ToPreview(lastMessages.GetValueOrDefault(room.Id)),
                 frozen.Contains(room.Id),
-                // 查不到那個人（資料被清掉）也當成不能傳——送出去不會有人收到
-                peerId != null && peers.ContainsKey(peerId) && peer.Active);
+                // 查不到那個人（資料被清掉）也當成不能傳——送出去不會有人收到。
+                // 說不出是哪一種，就用 DELETED：那是「這個人不在了」最接近的說法。
+                peerId != null && peers.ContainsKey(peerId)
+                    ? peer.State
+                    : AccountStatus.DELETED.ToString());
         }).ToList();
     }
 
@@ -946,9 +957,14 @@ public sealed record ChatRoomOverview(
     bool Reported,
 
     /// <summary>
-    /// 對方的帳號還能不能用（停權／封鎖／註銷都算不能）。
+    /// 對方的帳號怎麼了。null＝正常，其餘是 AccountStatus 的字串
+    /// （SUSPENDED／BANNED／DELETED）。
+    ///
+    /// 為什麼帶的是狀態而不是一個布林：三者要對使用者說的話不一樣。
+    /// 停權是暫時的、而且真的有人在審，可以說「審核中、請見諒」；
+    /// 永久封鎖與自行註銷都沒有人在審，對那兩種說「審核中」就是騙人。
     ///
     /// 房間本身不會因此消失——既有的對話留著是刻意的（見這個檔案開頭那段），
     /// 但「還能打字」是另一回事：訊息送出去也沒有人收得到，而送出的人完全不知道。
     /// </summary>
-    bool PeerActive = true);
+    string? PeerState = null);

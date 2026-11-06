@@ -31,10 +31,13 @@ export function toUserMessage(code?: string, message?: string) {
       return '驗證碼寄送失敗，請稍後再試。'
     // 同一個信箱的寄信冷卻。換 IP 就能對同一個信箱一直寄，對收件人是信箱被灌爆，
     // 對我們是 Gmail SMTP 的每日額度被耗光、所有人的驗證信都寄不出去。
-    // 對方被停權／封鎖／註銷。畫面上本來就會換成說明，這一句是防萬一
-    // （例如停權剛好發生在這個人按下送出的那一刻）。
-    case 'CHAT_PEER_UNAVAILABLE':
-      return '這個帳號目前無法使用，暫時不能傳送訊息。'
+    // 對方被停權／封鎖／註銷。畫面上本來就會換成說明，這幾句是防萬一
+    // （例如停權剛好發生在這個人按下送出的那一刻），講法要和那塊說明一致。
+    case 'CHAT_PEER_SUSPENDED':
+      return '這個帳號目前停權中，審核完成前暫時不能傳送訊息，請見諒。'
+    case 'CHAT_PEER_BANNED':
+    case 'CHAT_PEER_DELETED':
+      return '這個帳號已經無法使用，不能再傳送訊息。'
     case 'EMAIL_COOLDOWN':
       return '驗證碼剛寄出，請等一分鐘再試一次，並記得看看垃圾郵件匣。'
     case 'ACCOUNT_EXISTS':

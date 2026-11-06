@@ -47,9 +47,13 @@ export type ChatRoomOverview = {
   /** 檢舉已成立（後台審核認定）：這間房對你唯讀，只剩「退出聊天室」。
       送出檢舉但還沒審核時為 false。 */
   reported?: boolean
-  /** 對方的帳號還能不能用（停權／封鎖／註銷都算不能）。false 時這間房也是唯讀。 */
-  peerActive?: boolean
+  /** 對方的帳號怎麼了。null／undefined＝正常，其餘這間房唯讀。
+      三種狀態要對使用者說的話不一樣，所以帶狀態不是帶布林。 */
+  peerState?: PeerState | null
 }
+
+/** 停權是暫時的、真的有人在審；封鎖與註銷都沒有人在審。 */
+export type PeerState = 'SUSPENDED' | 'BANNED' | 'DELETED'
 
 /** 列表用的精簡對方資料。完整 profile 只在進房時才抓（peek sheet 需要）。 */
 export type ChatPeer = { nickname?: string | null; photoUrl?: string | null }

@@ -7,7 +7,7 @@ import {
   getMemberSettings, updateChatSetting, leaveChatRoom, blockChatUser, reportChatUser,
   type QuoteInfo,
 } from './api'
-import type { ChatMessage, ChatRoom as ChatRoomType, ChatMemberSetting, ChatPeer } from './types'
+import type { ChatMessage, ChatRoom as ChatRoomType, ChatMemberSetting, ChatPeer, PeerState } from './types'
 import { getProfile } from '../profile/api'
 import type { UserProfile } from '../profile/types'
 import ChatRoom from './ChatRoom'
@@ -76,7 +76,7 @@ export default function ChatPage() {
   const [reportedRooms, setReportedRooms] = useState<Set<string>>(() => new Set())
   // 對方被停權／封鎖／註銷的房間。對方自己在中介軟體就被擋住了，但這一側
   // 不受影響——照常打字、照常看到訊息送出去，而對面永遠讀不到。
-  const [peerGoneRooms, setPeerGoneRooms] = useState<Set<string>>(() => new Set())
+  const [peerStateByRoom, setPeerStateByRoom] = useState<Record<string, PeerState>>({})
   // toast 自己消失。房內用的是同一套（ChatRoom.tsx 的 toastTimer）。
   useEffect(() => {
     if (!toast) return
@@ -218,8 +218,10 @@ export default function ChatPage() {
     setPeers(nextPeers)
     setRoomMessages(nextMessages)
     setReportedRooms(new Set(overviewRes.data.filter((item) => item.reported).map((item) => item.room.id)))
-    setPeerGoneRooms(new Set(
-      overviewRes.data.filter((item) => item.peerActive === false).map((item) => item.room.id)))
+    setPeerStateByRoom(Object.fromEntries(
+      overviewRes.data
+        .filter((item) => item.peerState)
+        .map((item) => [item.room.id, item.peerState as PeerState])))
   }
 
   async function loadMessages(roomId: string) {
@@ -408,7 +410,7 @@ export default function ChatPage() {
           pinnedAt: setting?.pinnedAt ? new Date(setting.pinnedAt) : null,
           unreadCount: unreadByRoom[room.id] ?? 0,
           reported: reportedRooms.has(room.id),
-          peerGone: peerGoneRooms.has(room.id),
+          peerState: peerStateByRoom[room.id] ?? null,
         }
       })
       .sort((a, b) => {
@@ -459,7 +461,7 @@ export default function ChatPage() {
         setting={settings[activeRoom.id]}
         reported={reportedRooms.has(activeRoom.id)}
         expired={activeRoom.expiredAt != null}
-        peerGone={peerGoneRooms.has(activeRoom.id)}
+        peerState={peerStateByRoom[activeRoom.id] ?? null}
         onUpdateSetting={updateSetting}
         onLeave={leaveActiveRoom}
         onBlock={blockActiveRoom}
@@ -627,7 +629,7 @@ type ChatSummary = {
   pinnedAt: Date | null
   reported: boolean
   expired: boolean
-  peerGone: boolean
+  peerState: PeerState | null
 }
 
 type RoomAction = 'pin' | 'leave' | 'report'
@@ -708,8 +710,8 @@ function ChatCard({ summary, onOpen, highlight, menuOpen, onToggleMenu, onAction
                 兩個同時成立只標嚴重的那個，兩顆標籤並排會把預覽擠到看不見 */}
             {summary.reported
               ? <span className="chat-card-tag">已處置</span>
-              : summary.peerGone
-                ? <span className="chat-card-tag">對方無法使用</span>
+              : summary.peerState
+                ? <span className="chat-card-tag">{summary.peerState === 'SUSPENDED' ? '對方停權中' : '帳號已停用'}</span>
                 : summary.expired && <span className="chat-card-tag">已關閉</span>}
             {summary.preview}
           </span>
@@ -788,7 +790,7 @@ function buildRoomSummary(room: ChatRoomType, messages: ChatMessage[], peers: Re
     pinnedAt: null,
     // 這三個預設值由呼叫端用 settings / unreadByRoom / reportedRooms 覆寫
     reported: false,
-    peerGone: false,
+    peerState: null,
     // 到期與否房間自己就帶著（overview 的 room.expiredAt），不必再繞一層
     expired: room.expiredAt != null,
   }

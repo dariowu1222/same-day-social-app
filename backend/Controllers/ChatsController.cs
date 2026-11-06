@@ -6,6 +6,7 @@ using SameDaySocialApp.Application.Dto;
 using SameDaySocialApp.Application.Services;
 using SameDaySocialApp.Application.Validation;
 using SameDaySocialApp.Domain.Entities;
+using SameDaySocialApp.Domain.Enums;
 using SameDaySocialApp.Hubs;
 using SameDaySocialApp.Infrastructure.Media;
 
@@ -103,10 +104,16 @@ public sealed class ChatsController(ChatService chatService, MediaUrlPolicy medi
         // 對方被停權／封鎖／註銷。他自己在 Program.cs 的中介軟體就被 401 擋住了，
         // 但這一側完全不受影響——照常打字、照常看到訊息送出去，而對面永遠讀不到。
         // 那比「不能傳」更糟，因為送出的人不知道。
-        if (!chatService.IsPeerActive(CallerId, chatRoomId))
+        var peerState = chatService.PeerStateOf(CallerId, chatRoomId);
+        if (peerState != null)
         {
+            // 畫面上本來就會換成說明，這一句是防萬一（例如停權剛好發生在
+            // 這個人按下送出的那一刻），所以講法要和那塊說明一致。
             return BadRequest(ApiResponse<ChatMessage>.Fail(
-                "CHAT_PEER_UNAVAILABLE", "對方的帳號目前無法使用，暫時不能傳送訊息。"));
+                "CHAT_PEER_" + peerState,
+                peerState == AccountStatus.SUSPENDED.ToString()
+                    ? "這個帳號目前停權中，審核完成前暫時不能傳送訊息。"
+                    : "這個帳號已經無法使用，不能再傳送訊息。"));
         }
 
         var message = chatService.SendMessage(chatRoomId, CallerId, content, request.QuotedMessageId);

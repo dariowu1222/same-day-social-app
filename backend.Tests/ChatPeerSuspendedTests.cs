@@ -105,7 +105,7 @@ public sealed class ChatPeerSuspendedTests
         const string name = nameof(TheRoomListReportsThePeerAsUnavailable);
         var (service, _) = Build(name, AccountStatus.SUSPENDED, TestWorld.StillSuspended);
 
-        Assert.False(service.GetRoomOverviews(Me).Single().PeerActive);
+        Assert.Equal(AccountStatus.SUSPENDED.ToString(), service.GetRoomOverviews(Me).Single().PeerState);
     }
 
     [Fact]
@@ -113,7 +113,39 @@ public sealed class ChatPeerSuspendedTests
     {
         var (service, _) = Build(nameof(TheRoomListReportsAnOrdinaryPeerAsFine), AccountStatus.ACTIVE);
 
-        Assert.True(service.GetRoomOverviews(Me).Single().PeerActive);
+        Assert.Null(service.GetRoomOverviews(Me).Single().PeerState);
+    }
+
+    /// <summary>
+    /// 三種狀態要分得出來。停權是暫時的、真的有人在審，可以說「審核中」；
+    /// 封鎖與註銷都沒有人在審，對那兩種說審核中就是騙人。
+    /// 帶的是狀態不是布林，就是為了這件事。
+    /// </summary>
+    [Theory]
+    [InlineData(AccountStatus.SUSPENDED)]
+    [InlineData(AccountStatus.BANNED)]
+    [InlineData(AccountStatus.DELETED)]
+    public void TheExactStateComesThroughSoTheCopyCanDiffer(AccountStatus status)
+    {
+        var (service, _) = Build(nameof(TheExactStateComesThroughSoTheCopyCanDiffer) + status, status);
+
+        Assert.Equal(status.ToString(), service.PeerStateOf(Me, RoomId));
+        Assert.Equal(status.ToString(), service.GetRoomOverviews(Me).Single().PeerState);
+    }
+
+    /// <summary>
+    /// 對方那列使用者資料整個不見時也要擋住。說不出是哪一種，就用 DELETED——
+    /// 那是「這個人不在了」最接近的說法，而且不會謊稱有人在審核。
+    /// </summary>
+    [Fact]
+    public void AMissingPeerRecordIsTreatedAsGone()
+    {
+        const string name = nameof(AMissingPeerRecordIsTreatedAsGone);
+        var (service, db) = Build(name, AccountStatus.ACTIVE);
+        db.Users.Remove(db.Users.Single(x => x.Id == Peer));
+        db.SaveChanges();
+
+        Assert.Equal(AccountStatus.DELETED.ToString(), service.GetRoomOverviews(Me).Single().PeerState);
     }
 
     // ── 測試資料 ──
