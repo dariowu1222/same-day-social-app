@@ -27,7 +27,7 @@ export const REPORT_OPTIONS: ReportOption[] = [
   { value: 'SCAM', label: '詐騙或廣告', hint: '金錢詐騙、商業推銷' },
   { value: 'IMPERSONATION', label: '假冒他人', hint: '冒用身分或照片' },
   { value: 'HATE', label: '仇恨言論', hint: '針對特定族群的貶抑' },
-  { value: 'SELF_HARM', label: '擔心對方想傷害自己', hint: '我們會優先關心對方，不會讓他知道是誰說的' },
+  { value: 'SELF_HARM', label: '擔心對方想傷害自己', hint: '不會讓對方知道是誰說的' },
   { value: 'OTHER', label: '其他', hint: '請在下方補充說明' },
 ]
 

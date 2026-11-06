@@ -1,6 +1,12 @@
 // 檢舉面板：樹洞貼文／回應、聊天訊息、使用者共用。
-// 選到「擔心對方想傷害自己」時，整個面板會換成關懷的語氣並列出求助資源——
-// 那不是舉發違規，是替人求救，用同一套「檢舉」措辭會讓想幫忙的人猶豫。
+//
+// 選到「擔心對方想傷害自己」時會多出求助專線，送出鈕也從「送出檢舉」換成
+// 「通知我們」——那不是舉發違規，是替人求救，用同一套措辭會讓想幫忙的人猶豫。
+//
+// 但標題與引言不跟著換。原本那兩句是「謝謝你願意留意」與「我們會優先關心對方」，
+// 前者少了受詞、讀起來像半截話；後者是一個這個產品接不住的承諾——沒有人
+// 真的會去聯絡對方，而在自我傷害的情境下給錯的保證比不給更糟。
+// 要講的只有一件事：不會讓對方知道是誰說的（寫在那個選項的說明裡）。
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
@@ -109,18 +115,14 @@ export default function ReportSheet({ targetType, targetId, title = '檢舉', on
     <div className="report-mask" onClick={onClose}>
       <div className="report-sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-label={title}>
         <div className="report-head">
-          <span className="report-title">{isSelfHarm ? '謝謝你願意留意' : title}</span>
+          <span className="report-title">{title}</span>
           <button type="button" className="report-close" onClick={onClose} aria-label="關閉">
             <X size={18} />
           </button>
         </div>
 
         <div className="report-body">
-          <p className="report-lead">
-            {isSelfHarm
-              ? '我們會優先關心對方，也不會讓他知道是誰說的。'
-              : '請選擇最接近的原因，這會幫助我們更快處理。'}
-          </p>
+          <p className="report-lead">請選擇最接近的原因，這會幫助我們更快處理。</p>
 
           <div className="report-options">
             {REPORT_OPTIONS.map((opt) => (

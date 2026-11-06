@@ -45,10 +45,12 @@ public sealed class ReportsController(ReportService reports) : ControllerBase
             return BadRequest(ApiResponse<SubmitReportResponse>.Fail(result.Error, message));
         }
 
-        // 自我傷害的檢舉不談「違規處理」，回覆聚焦在關懷與求助資源
+        // 自我傷害的檢舉不談「違規處理」——回覆帶的是求助資源（前端那一側會列出專線）。
+        // 不寫「我們會盡快關心對方」：沒有人真的會去聯絡對方，而在這個情境下
+        // 給一個接不住的保證，比不給更糟。只講真的做得到的那一件事。
         var isSelfHarm = request.Category == ReportCategory.SELF_HARM;
         var note = isSelfHarm
-            ? "謝謝你願意留意身邊的人。我們會盡快關心對方。"
+            ? "已收到你的通報，不會讓對方知道是誰說的。"
             : result.AlreadyReported
                 ? "你已經檢舉過這則內容，我們正在處理。"
                 : "已收到你的檢舉，我們會盡快審核。";
