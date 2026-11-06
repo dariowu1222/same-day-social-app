@@ -35,6 +35,23 @@ export function toUserMessage(code?: string, message?: string) {
     // 再試幾次結果都一樣，而使用者沒有做錯任何事。
     case 'MATCH_UNAVAILABLE':
       return '這個人已經不在了，這張卡就跳過吧。'
+    // 媒體上傳。這些碼以前到不了使用者眼前——uploadMedia 把錯誤吞掉、
+    // 退回原本的 data URL，於是整串 base64 被寫進資料庫，而畫面上一切正常。
+    case 'MEDIA_TOO_LARGE':
+      return '檔案太大了，請換一張小一點的。'
+    case 'MEDIA_TYPE_NOT_ALLOWED':
+    case 'MEDIA_TYPE_MISMATCH':
+    case 'MEDIA_INVALID':
+      return '這個檔案格式不支援，請換一個。'
+    case 'MEDIA_NOT_CONFIGURED':
+      return '目前無法上傳檔案，請稍後再試。'
+    case 'MEDIA_UPLOAD_FAILED':
+      return '上傳失敗，請稍後再試一次。'
+    case 'INVALID_MEDIA_URL':
+    case 'INVALID_PHOTO_URL':
+      return '圖片或語音必須是從這個 App 上傳的，請重新選一次。'
+    case 'FIELD_TOO_LONG':
+      return message ?? '內容太長了，請精簡一點。'
     default:
       return message ?? '操作失敗，請稍後再試。'
   }

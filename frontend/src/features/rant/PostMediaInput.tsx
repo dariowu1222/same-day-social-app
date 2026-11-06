@@ -2,7 +2,7 @@
 // 留言仍用 shared/ui/MediaInput（單圖）；此元件只給說說看發文頁。
 import { useRef, useState } from 'react'
 import { Image as ImageIcon, Mic, MicOff, X } from 'lucide-react'
-import { uploadImageWithThumb, uploadMedia } from '../../shared/api/media'
+import { uploadErrorMessage, uploadImageWithThumb, uploadMedia } from '../../shared/api/media'
 import { useAudioRecorder } from '../../shared/hooks/useAudioRecorder'
 
 export const MAX_POST_IMAGES = 9
@@ -25,8 +25,15 @@ type Props = {
 export default function PostMediaInput({ value, onChange, folder = 'rants' }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
+  // 上傳失敗以前是悄悄退回整串 base64 當網址用，這裡說一聲
+  const [error, setError] = useState('')
   const { isRecording, toggle: toggleRecording } = useAudioRecorder(async (dataUrl) => {
-    onChange({ ...value, audioUrl: await uploadMedia(dataUrl, folder) })
+    try {
+      setError('')
+      onChange({ ...value, audioUrl: await uploadMedia(dataUrl, folder) })
+    } catch (err) {
+      setError(uploadErrorMessage(err))
+    }
   })
 
   const remaining = MAX_POST_IMAGES - value.imageUrls.length
@@ -37,6 +44,7 @@ export default function PostMediaInput({ value, onChange, folder = 'rants' }: Pr
     e.target.value = ''
     if (files.length === 0) return
     setUploading(true)
+    setError('')
     try {
       // 平行縮圖 + 上傳（Promise.all 保留選取順序），多圖大幅加速
       const uploaded = await Promise.all(files.map((file) => uploadImageWithThumb(file, folder)))
@@ -45,6 +53,8 @@ export default function PostMediaInput({ value, onChange, folder = 'rants' }: Pr
         imageUrls: [...value.imageUrls, ...uploaded.map((u) => u.url)].slice(0, MAX_POST_IMAGES),
         thumbUrls: [...value.thumbUrls, ...uploaded.map((u) => u.thumbUrl)].slice(0, MAX_POST_IMAGES),
       })
+    } catch (err) {
+      setError(uploadErrorMessage(err))
     } finally {
       setUploading(false)
     }
@@ -60,6 +70,7 @@ export default function PostMediaInput({ value, onChange, folder = 'rants' }: Pr
 
   return (
     <div className="post-media-input">
+      {error && <p className="media-input-error">{error}</p>}
       {/* 圖片縮圖列 */}
       {value.imageUrls.length > 0 && (
         <div className="post-media-thumbs">

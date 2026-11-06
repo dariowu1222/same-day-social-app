@@ -1,6 +1,6 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { Image, Mic, MicOff, X } from 'lucide-react'
-import { uploadImageWithThumb, uploadMedia } from '../api/media'
+import { uploadErrorMessage, uploadImageWithThumb, uploadMedia } from '../api/media'
 import { useAudioRecorder } from '../hooks/useAudioRecorder'
 
 export type MediaState = {
@@ -19,20 +19,33 @@ export const EMPTY_MEDIA: MediaState = { imageUrl: null, thumbUrl: null, audioUr
 
 export default function MediaInput({ value, onChange, folder = 'rants' }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null)
+  // 上傳失敗以前是悄悄退回整串 base64 當網址用，這裡說一聲
+  const [error, setError] = useState('')
   const { isRecording, toggle: toggleRecording } = useAudioRecorder(async (dataUrl) => {
-    onChange({ ...value, audioUrl: await uploadMedia(dataUrl, folder) })
+    try {
+      setError('')
+      onChange({ ...value, audioUrl: await uploadMedia(dataUrl, folder) })
+    } catch (err) {
+      setError(uploadErrorMessage(err))
+    }
   })
 
   async function handleImagePick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
-    const { url, thumbUrl } = await uploadImageWithThumb(file, folder)
-    onChange({ ...value, imageUrl: url, thumbUrl })
+    try {
+      setError('')
+      const { url, thumbUrl } = await uploadImageWithThumb(file, folder)
+      onChange({ ...value, imageUrl: url, thumbUrl })
+    } catch (err) {
+      setError(uploadErrorMessage(err))
+    }
   }
 
   return (
     <div className="media-input-wrap">
+      {error && <p className="media-input-error">{error}</p>}
       {/* 預覽區 */}
       {(value.imageUrl || value.audioUrl) && (
         <div className="media-preview-row">

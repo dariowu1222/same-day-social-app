@@ -494,6 +494,17 @@ blockquote {
   gap: 6px;
 }
 
+/* 上傳失敗的說明。以前這條路是靜音的：失敗就把整串 base64 當網址用。 */
+.media-input-error {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #c0533c;
+}
+
+/* 淺色的 #c0533c 在深色底上讀不出來 */
+[data-theme="dark"] .media-input-error { color: #e8907a; }
+
 /* Icon toolbar row */
 .media-toolbar {
   display: flex;

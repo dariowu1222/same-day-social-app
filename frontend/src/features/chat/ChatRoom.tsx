@@ -10,7 +10,7 @@ import type { ChatMessage, ChatRoom as ChatRoomType, ChatMemberSetting } from '.
 import type { QuoteInfo } from './api'
 import type { UserProfile } from '../profile/types'
 import { getAge, getZodiac, ZODIAC_ICON, testAvatarPhoto } from '../../shared/lib/userDisplay'
-import { uploadMedia } from '../../shared/api/media'
+import { uploadMedia, uploadErrorMessage } from '../../shared/api/media'
 import { useAudioRecorder } from '../../shared/hooks/useAudioRecorder'
 import { SAFETY_KEYS, safetyDismissed, dismissSafety } from '../../shared/lib/storageKeys'
 import { detectRisks, detectMeetupIntent, detectAbuse, MEETUP_SAFETY_TIPS, type RiskCategory } from './safety'
@@ -324,6 +324,10 @@ export default function ChatRoom({
       for (const url of urls) {
         await onSendContent(url)
       }
+    } catch (err) {
+      // 以前 uploadMedia 失敗會悄悄退回整串 base64，照常「送出」成功，
+      // 於是一張幾百 KB 的圖被當成訊息內容寫進資料庫。
+      showToast(uploadErrorMessage(err))
     } finally {
       setUploadingCount(0)
     }

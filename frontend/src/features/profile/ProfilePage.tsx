@@ -5,7 +5,7 @@ import { getProfile, updateProfile } from "./api"
 import { CalendarPicker } from "./CalendarPicker"
 import { ProfileCardFullscreen } from "./ProfileCardFullscreen"
 import { getZodiac, getAge, isAdultBirthday, fileToResizedBase64, ZODIAC_ICON } from "./profileUtils"
-import { uploadMedia } from "../../shared/api/media"
+import { uploadMedia, uploadErrorMessage } from "../../shared/api/media"
 import AgeRangeSlider, { AGE_FLOOR, AGE_CEIL } from "../../shared/ui/AgeRangeSlider"
 import {
   GENDER_OPTIONS, RELATIONSHIP_OPTIONS, DATING_GOAL_OPTIONS, LOOKING_FOR_OPTIONS,
@@ -258,10 +258,15 @@ export default function ProfilePage() {
     if (remaining <= 0) return
     const picked = Array.from(files).slice(0, remaining)
     const dataUrls = await Promise.all(picked.map(fileToResizedBase64))
-    // 上傳物件儲存，存 URL（後端未設定時 passthrough 回 data URL）
-    const urls = await Promise.all(dataUrls.map(d => uploadMedia(d, 'avatars')))
-    setPhotos(prev => [...prev, ...urls])
-    setPhotosDirty(true)
+    // 上傳物件儲存，存 URL。失敗就說一聲——以前是悄悄把整串 base64 當成網址
+    // 存進 users.photo_data_urls，而配對 API 每次都把整張 users 表載進記憶體。
+    try {
+      const urls = await Promise.all(dataUrls.map(d => uploadMedia(d, 'avatars')))
+      setPhotos(prev => [...prev, ...urls])
+      setPhotosDirty(true)
+    } catch (err) {
+      showToast(uploadErrorMessage(err))
+    }
   }
 
   function removePhoto(index: number) {
