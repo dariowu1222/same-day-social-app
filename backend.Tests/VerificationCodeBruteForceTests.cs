@@ -223,5 +223,10 @@ public sealed class VerificationCodeBruteForceTests
 
         public Task SendAdminReverifyCodeAsync(string toEmail, string code, CancellationToken ct)
             => Task.CompletedTask;
+        public Task SendReportOutcomeToReporterAsync(string toEmail, bool upheld, CancellationToken ct)
+            => Task.CompletedTask;
+
+        public Task SendReportOutcomeToReportedAsync(string toEmail, bool upheld, bool contentHidden, CancellationToken ct)
+            => Task.CompletedTask;
     }
 }

@@ -27,21 +27,21 @@ public sealed class ModerationRestoreTests
     private const string ReportId = "report_under_review";
 
     [Fact]
-    public void HidingThroughAReviewStillWorks()
+    public async Task HidingThroughAReviewStillWorks()
     {
         var (service, db) = Build(nameof(HidingThroughAReviewStillWorks), hidden: false, reportCount: 1);
 
-        service.Review(ReportId, Admin, ReportStatus.RESOLVED, null, hideTarget: true);
+        await service.ReviewAsync(ReportId, Admin, ReportStatus.RESOLVED, null, hideTarget: true);
 
         Assert.True(db.RantPosts.Single().IsHidden);
     }
 
     [Fact]
-    public void ReviewingWithFalseGivesThePostBack()
+    public async Task ReviewingWithFalseGivesThePostBack()
     {
         var (service, db) = Build(nameof(ReviewingWithFalseGivesThePostBack), hidden: true, reportCount: 3);
 
-        service.Review(ReportId, Admin, ReportStatus.DISMISSED, null, hideTarget: false);
+        await service.ReviewAsync(ReportId, Admin, ReportStatus.DISMISSED, null, hideTarget: false);
 
         Assert.False(db.RantPosts.Single().IsHidden);
     }
@@ -52,11 +52,11 @@ public sealed class ModerationRestoreTests
     /// 而且沒有人動過後台。
     /// </summary>
     [Fact]
-    public void GivingThePostBackAlsoClearsTheReportCount()
+    public async Task GivingThePostBackAlsoClearsTheReportCount()
     {
         var (service, db) = Build(nameof(GivingThePostBackAlsoClearsTheReportCount), hidden: true, reportCount: 3);
 
-        service.Review(ReportId, Admin, ReportStatus.DISMISSED, null, hideTarget: false);
+        await service.ReviewAsync(ReportId, Admin, ReportStatus.DISMISSED, null, hideTarget: false);
 
         Assert.Equal(0, db.RantPosts.Single().ReportCount);
     }
@@ -66,11 +66,11 @@ public sealed class ModerationRestoreTests
     /// 這一條走的是真正的 RantService.Report，不是只看欄位。
     /// </summary>
     [Fact]
-    public void AfterBeingGivenBackOneMoreReportDoesNotHideItAgain()
+    public async Task AfterBeingGivenBackOneMoreReportDoesNotHideItAgain()
     {
         const string name = nameof(AfterBeingGivenBackOneMoreReportDoesNotHideItAgain);
         var (service, db) = Build(name, hidden: true, reportCount: 3);
-        service.Review(ReportId, Admin, ReportStatus.DISMISSED, null, hideTarget: false);
+        await service.ReviewAsync(ReportId, Admin, ReportStatus.DISMISSED, null, hideTarget: false);
 
         var rants = Rants(db);
         db.Users.Add(TestWorld.User("user_fourth_reporter"));
@@ -84,11 +84,11 @@ public sealed class ModerationRestoreTests
 
     /// <summary>「不動內容」那顆（hideTarget 為 null）要真的不動——結案不等於隱藏。</summary>
     [Fact]
-    public void ReviewingWithNullLeavesTheContentAlone()
+    public async Task ReviewingWithNullLeavesTheContentAlone()
     {
         var (service, db) = Build(nameof(ReviewingWithNullLeavesTheContentAlone), hidden: true, reportCount: 3);
 
-        service.Review(ReportId, Admin, ReportStatus.RESOLVED, null, hideTarget: null);
+        await service.ReviewAsync(ReportId, Admin, ReportStatus.RESOLVED, null, hideTarget: null);
 
         Assert.True(db.RantPosts.Single().IsHidden);
         Assert.Equal(3, db.RantPosts.Single().ReportCount);
@@ -103,7 +103,7 @@ public sealed class ModerationRestoreTests
     /// 舊的那幾筆還在累計，下一筆檢舉一進來就立刻又超過門檻。
     /// </summary>
     [Fact]
-    public void AfterBeingGivenBackANewReportThroughTheRealPathDoesNotHideItAgain()
+    public async Task AfterBeingGivenBackANewReportThroughTheRealPathDoesNotHideItAgain()
     {
         const string name = nameof(AfterBeingGivenBackANewReportThroughTheRealPathDoesNotHideItAgain);
         var (service, db) = Build(name, hidden: true, reportCount: 0);
@@ -112,7 +112,7 @@ public sealed class ModerationRestoreTests
         AddResolvedHarassment(db, "report_b", "user_r2");
         AddResolvedHarassment(db, "report_c", "user_r3");
 
-        service.Review(ReportId, Admin, ReportStatus.DISMISSED, null, hideTarget: false);
+        await service.ReviewAsync(ReportId, Admin, ReportStatus.DISMISSED, null, hideTarget: false);
         service.Submit("user_r4", ReportTargetType.RANT_POST, PostId, ReportCategory.HARASSMENT, null);
 
         Assert.False(db.RantPosts.Single().IsHidden);
@@ -120,7 +120,7 @@ public sealed class ModerationRestoreTests
 
     /// <summary>沒有退回過的貼文，權重照常累積——別把自動隱藏修壞了。</summary>
     [Fact]
-    public void WithoutARestoreTheWeightsStillAddUpAndHideThePost()
+    public async Task WithoutARestoreTheWeightsStillAddUpAndHideThePost()
     {
         const string name = nameof(WithoutARestoreTheWeightsStillAddUpAndHideThePost);
         var (service, db) = Build(name, hidden: false, reportCount: 0);
@@ -134,12 +134,12 @@ public sealed class ModerationRestoreTests
 
     /// <summary>管理者自己這一筆的狀態不能被順手蓋掉。</summary>
     [Fact]
-    public void RestoringDoesNotOverwriteTheStatusTheAdminChose()
+    public async Task RestoringDoesNotOverwriteTheStatusTheAdminChose()
     {
         const string name = nameof(RestoringDoesNotOverwriteTheStatusTheAdminChose);
         var (service, db) = Build(name, hidden: true, reportCount: 0);
 
-        service.Review(ReportId, Admin, ReportStatus.RESOLVED, null, hideTarget: false);
+        await service.ReviewAsync(ReportId, Admin, ReportStatus.RESOLVED, null, hideTarget: false);
 
         Assert.Equal(ReportStatus.RESOLVED.ToString(), db.Reports.Single(x => x.Id == ReportId).Status);
     }
@@ -149,7 +149,7 @@ public sealed class ModerationRestoreTests
     /// 而且那是一張關懷單，不是內容違規的指控。
     /// </summary>
     [Fact]
-    public void RestoringLeavesASelfHarmFlagAlone()
+    public async Task RestoringLeavesASelfHarmFlagAlone()
     {
         const string name = nameof(RestoringLeavesASelfHarmFlagAlone);
         var (service, db) = Build(name, hidden: true, reportCount: 0);
@@ -166,11 +166,70 @@ public sealed class ModerationRestoreTests
         });
         db.SaveChanges();
 
-        service.Review(ReportId, Admin, ReportStatus.DISMISSED, null, hideTarget: false);
+        await service.ReviewAsync(ReportId, Admin, ReportStatus.DISMISSED, null, hideTarget: false);
 
         Assert.Equal(
             ReportStatus.PENDING.ToString(),
             db.Reports.Single(x => x.Id == "report_welfare").Status);
+    }
+
+    // ── 駁回就該讓貼文回到牆上 ──
+
+    /// <summary>
+    /// 管理者的預期：「我駁回了，這應該要重新出現在樹洞那邊才對。」
+    /// 隱藏是依檢舉權重算出來的，駁回一筆就該重算一次——判定不成立之後
+    /// 東西還是不見，沒有道理。
+    /// </summary>
+    [Fact]
+    public async Task DismissingTheOnlyReportPutsThePostBackOnTheWall()
+    {
+        var (service, db) = Build(nameof(DismissingTheOnlyReportPutsThePostBackOnTheWall), hidden: true, reportCount: 0);
+
+        await service.ReviewAsync(ReportId, Admin, ReportStatus.DISMISSED, null, hideTarget: null);
+
+        Assert.False(db.RantPosts.Single().IsHidden);
+    }
+
+    /// <summary>
+    /// 但一篇被三個人檢舉的貼文，判定其中一筆是亂檢舉，不該讓另外兩筆一起失效。
+    /// 扣掉之後仍然超過門檻就維持隱藏。
+    /// </summary>
+    [Fact]
+    public async Task DismissingOneOfSeveralDoesNotExposeAPostTheRestStillCover()
+    {
+        const string name = nameof(DismissingOneOfSeveralDoesNotExposeAPostTheRestStillCover);
+        var (service, db) = Build(name, hidden: true, reportCount: 0);
+        AddResolvedHarassment(db, "report_a", "user_r1");
+        AddResolvedHarassment(db, "report_b", "user_r2");
+        AddResolvedHarassment(db, "report_c", "user_r3");
+
+        await service.ReviewAsync(ReportId, Admin, ReportStatus.DISMISSED, null, hideTarget: null);
+
+        Assert.True(db.RantPosts.Single().IsHidden);
+    }
+
+    /// <summary>「成立」不會把東西放出來——那是相反的判斷。</summary>
+    [Fact]
+    public async Task ResolvingDoesNotPutThePostBack()
+    {
+        var (service, db) = Build(nameof(ResolvingDoesNotPutThePostBack), hidden: true, reportCount: 0);
+
+        await service.ReviewAsync(ReportId, Admin, ReportStatus.RESOLVED, null, hideTarget: null);
+
+        Assert.True(db.RantPosts.Single().IsHidden);
+    }
+
+    /// <summary>本來就看得到的貼文，駁回不該去動它（也不該把計數歸零）。</summary>
+    [Fact]
+    public async Task DismissingAReportOnAVisiblePostChangesNothing()
+    {
+        var (service, db) = Build(nameof(DismissingAReportOnAVisiblePostChangesNothing), hidden: false, reportCount: 2);
+
+        await service.ReviewAsync(ReportId, Admin, ReportStatus.DISMISSED, null, hideTarget: null);
+
+        var post = db.RantPosts.Single();
+        Assert.False(post.IsHidden);
+        Assert.Equal(2, post.ReportCount);
     }
 
     // ── 後台要看得到目前狀態 ──
@@ -180,7 +239,7 @@ public sealed class ModerationRestoreTests
     /// 整批一次查完，不要每一列各問一次。
     /// </summary>
     [Fact]
-    public void TheQueueCanSeeWhichTargetsAreHidden()
+    public async Task TheQueueCanSeeWhichTargetsAreHidden()
     {
         const string name = nameof(TheQueueCanSeeWhichTargetsAreHidden);
         var (service, db) = Build(name, hidden: true, reportCount: 3);
@@ -195,7 +254,7 @@ public sealed class ModerationRestoreTests
     }
 
     [Fact]
-    public void AskingAboutNothingCostsNothing()
+    public async Task AskingAboutNothingCostsNothing()
     {
         var (service, _) = Build(nameof(AskingAboutNothingCostsNothing), hidden: true, reportCount: 1);
 

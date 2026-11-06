@@ -62,11 +62,13 @@ public sealed class ModerationController(ReportService reports, AdminAccessServi
     }
 
     [HttpPost("reports/{reportId}/review")]
-    public ActionResult<ApiResponse<bool>> Review(string reportId, [FromBody] ReviewReportRequest request)
+    public async Task<ActionResult<ApiResponse<bool>>> Review(
+        string reportId, [FromBody] ReviewReportRequest request, CancellationToken cancellationToken)
     {
         if (Denied()) return NotFound();
 
-        var updated = reports.Review(reportId, CallerId, request.Status, request.Resolution, request.HideTarget);
+        var updated = await reports.ReviewAsync(
+            reportId, CallerId, request.Status, request.Resolution, request.HideTarget, cancellationToken);
         return updated == null
             ? NotFound(ApiResponse<bool>.Fail("REPORT_NOT_FOUND", "找不到這筆檢舉。"))
             : ApiResponse<bool>.Ok(true);

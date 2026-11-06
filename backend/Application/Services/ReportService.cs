@@ -4,6 +4,7 @@ using Npgsql;
 using Microsoft.Extensions.Logging;
 using SameDaySocialApp.Domain.Entities;
 using SameDaySocialApp.Domain.Enums;
+using SameDaySocialApp.Infrastructure.Email;
 using SameDaySocialApp.Infrastructure.Persistence;
 using SameDaySocialApp.Infrastructure.Persistence.Models;
 
@@ -14,12 +15,14 @@ public sealed class ReportService
     private readonly AppDbContext? db;
     private readonly NotificationService? notifications;
     private readonly ILogger<ReportService>? logger;
+    private readonly IEmailSender? emailSender;
 
     public ReportService(IServiceProvider services)
     {
         db = services.GetService<AppDbContext>();
         notifications = services.GetService<NotificationService>();
         logger = services.GetService<ILogger<ReportService>>();
+        emailSender = services.GetService<IEmailSender>();
     }
 
     /// <summary>
@@ -271,17 +274,23 @@ public sealed class ReportService
     /// 審核處置。hideTarget: true 隱藏內容、false 解除隱藏、null 不更動內容。
     /// 每次處置都寫入軌跡，事後可稽核誰做了什麼。
     /// </summary>
-    public Report? Review(
+    public async Task<Report?> ReviewAsync(
         string reportId,
         string actorId,
         ReportStatus status,
         string? resolution,
-        bool? hideTarget)
+        bool? hideTarget,
+        CancellationToken cancellationToken = default)
     {
         if (db == null) return null;
 
         var record = db.Reports.FirstOrDefault(x => x.Id == reportId);
         if (record == null) return null;
+
+        // 狀態有沒有真的變。後台的結案按鈕在送出期間沒有 disabled，連點兩下就是
+        // 兩個請求；「已處理」清單裡也還給得出「處理這筆」。少了這一行，
+        // 當事人會為同一筆檢舉收到兩封一樣的信。
+        var previousStatus = record.Status;
 
         // 先記下原本的狀態。下面那則通知只能在「這一次才變成成立」時發，而讀完
         // 就覆蓋的話，PENDING→RESOLVED 跟 RESOLVED→RESOLVED 在後面看起來一模一樣。
@@ -315,6 +324,21 @@ public sealed class ReportService
 
         db.SaveChanges();
 
+        // 駁回＝這筆檢舉不成立，那「東西還是不見」就沒有道理。
+        //
+        // 放在 SaveChanges 之後才算得準：上面那行 record.Status 只改了記憶體裡的
+        // 追蹤物件，資料庫裡還是舊狀態，這時候加總會把剛駁回的這一筆也算進去。
+        //
+        // 只有在扣掉之後真的低於門檻才放出來。一篇被三個人檢舉的貼文，
+        // 管理者判定其中一筆是亂檢舉，不該讓另外兩筆成立的檢舉一起失效——
+        // 那種情況要退回，用「退回給作者」那顆（它會把其餘的一併駁回）。
+        if (status == ReportStatus.DISMISSED
+            && !hideTarget.HasValue
+            && RestoreIfBelowThreshold(record.TargetType, record.TargetId))
+        {
+            db.SaveChanges();
+        }
+
         // 檢舉成立才通知檢舉人。這是整條流程對他唯一的回音——沒有它，
         // 他不會知道自己的檢舉有沒有被看過，而聊天室也會在他毫無預期時變成唯讀。
         // 駁回不通知：那多半只會變成爭論的起點，而且「沒有處置」本身就是結果。
@@ -334,6 +358,14 @@ public sealed class ReportService
                 "你的檢舉已處理",
                 "我們確認了你的檢舉並對該帳號做出處置。與對方的對話已經關閉，你可以隨時退出。",
                 "chat");
+        }
+
+        // 寄信給檢舉人與被檢舉人。只在狀態真的改變時寄，而且 SELF_HARM 一封都不寄。
+        if (previousStatus != status.ToString()
+            && (status == ReportStatus.RESOLVED || status == ReportStatus.DISMISSED))
+        {
+            var stillHidden = IsTargetHidden(record.TargetType, record.TargetId);
+            await SendOutcomeEmailsAsync(record, status == ReportStatus.RESOLVED, stillHidden, cancellationToken);
         }
 
         LogAudit(actorId, $"REVIEW_{status}", reportId,
@@ -365,6 +397,100 @@ public sealed class ReportService
         // 檢舉就立刻又被藏起來——對原作者來說就是「它又不見了」，而且沒有人動過後台。
         // 既有的 rant_reports 列留著，稽核軌跡不受影響。
         if (!hidden) post.ReportCount = 0;
+    }
+
+    /// <summary>這則檢舉的標的現在是不是隱藏中。非樹洞貼文一律 false（還不支援隱藏）。</summary>
+    private bool IsTargetHidden(string targetType, string targetId)
+    {
+        if (db == null || targetType != ReportTargetType.RANT_POST.ToString()) return false;
+        return db.RantPosts.AsNoTracking().Any(x => x.Id == targetId && x.IsHidden);
+    }
+
+    /// <summary>
+    /// 把處理結果寄給檢舉人與被檢舉人。
+    ///
+    /// 為什麼兩邊都寄：檢舉的人需要知道自己的檢舉有沒有被看過（不然下次就不檢舉了），
+    /// 被檢舉的人需要知道自己的東西為什麼不見了——「哪天發現東西不見卻不知道
+    /// 發生過什麼事」是最糟的體驗，而且那正是會讓人離開的那一種。
+    ///
+    /// 三件事刻意不做：
+    ///  1. SELF_HARM 一封都不寄。那是替人求救，不是舉發違規；寄一封
+    ///     「你被檢舉了」給一個可能正在受傷的人，傷害遠大於資訊價值。
+    ///     （站內已經有一則關懷通知，見 NotifySelfHarmConcern。）
+    ///  2. 不寄處理說明（resolution）。那是後台內部的備註欄，寫的時候沒有
+    ///     預期會被當事人看到。
+    ///  3. 兩封信都不提對方是誰。對被檢舉人尤其重要——那是報復的起點。
+    ///
+    /// 寄信失敗不能讓審核失敗：信寄不出去頂多是當事人沒收到通知，
+    /// 而處置本身已經生效了。失敗各自吞掉並留 log。
+    /// </summary>
+    private async Task SendOutcomeEmailsAsync(
+        ReportRecord record, bool upheld, bool contentHidden, CancellationToken cancellationToken)
+    {
+        if (db == null || emailSender == null) return;
+        if (record.Category == ReportCategory.SELF_HARM.ToString()) return;
+
+        var recipients = new[] { record.ReporterId, record.ReportedUserId }
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct()
+            .ToList();
+        if (recipients.Count == 0) return;
+
+        var emails = db.AuthAccounts.AsNoTracking()
+            .Where(x => recipients.Contains(x.UserId))
+            .Select(x => new { x.UserId, x.Username })
+            .ToDictionary(x => x.UserId, x => x.Username);
+
+        await SendOneAsync(record.ReporterId, "檢舉人", email =>
+            emailSender.SendReportOutcomeToReporterAsync(email, upheld, cancellationToken));
+
+        await SendOneAsync(record.ReportedUserId, "被檢舉人", email =>
+            emailSender.SendReportOutcomeToReportedAsync(email, upheld, contentHidden, cancellationToken));
+
+        async Task SendOneAsync(string? userId, string who, Func<string, Task> send)
+        {
+            if (string.IsNullOrWhiteSpace(userId)) return;
+            if (!emails.TryGetValue(userId, out var email) || string.IsNullOrWhiteSpace(email)) return;
+
+            try
+            {
+                await send(email);
+            }
+            catch (Exception ex)
+            {
+                logger?.LogWarning(ex, "檢舉處理結果寄信失敗（{Who}） reportId={ReportId}", who, record.Id);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 這篇現在還有沒有足夠的檢舉撐住隱藏狀態；沒有就放回牆上。有動到回 true。
+    ///
+    /// 隱藏是 ApplyAutoModeration 依「非 DISMISSED 的檢舉權重總和」算出來的，
+    /// 那是一個會變的量——駁回一筆就該重算一次，否則判定不成立之後東西還是不見。
+    /// 呼叫前請先 SaveChanges，這裡是直接對資料庫加總。
+    /// </summary>
+    private bool RestoreIfBelowThreshold(string targetType, string targetId)
+    {
+        if (db == null || targetType != ReportTargetType.RANT_POST.ToString()) return false;
+
+        var post = db.RantPosts.FirstOrDefault(x => x.Id == targetId);
+        if (post == null || !post.IsHidden) return false;
+
+        var selfHarm = ReportCategory.SELF_HARM.ToString();
+        var dismissed = ReportStatus.DISMISSED.ToString();
+        var weight = db.Reports.AsNoTracking()
+            .Where(x => x.TargetType == targetType
+                        && x.TargetId == targetId
+                        && x.Category != selfHarm
+                        && x.Status != dismissed)
+            .Sum(x => (int?)x.Severity) ?? 0;
+
+        if (weight >= AutoHideThreshold) return false;
+
+        post.IsHidden = false;
+        post.ReportCount = 0;
+        return true;
     }
 
     /// <summary>
