@@ -408,6 +408,59 @@ public sealed class ReportService
         if (!hidden) post.ReportCount = 0;
     }
 
+
+    /// <summary>
+    /// 把處理完超過保留期的檢舉「清空內容」——不是刪列。
+    ///
+    /// 要清的是真正佔空間、而且放久了只剩風險沒有價值的兩欄：
+    /// detail（檢舉人寫的補充）與 context_snapshot（被檢舉內容的全文快照）。
+    /// 骨架留著（誰、對誰、什麼分類、什麼結論、什麼時候），那幾欄加起來不到 200 bytes。
+    ///
+    /// 為什麼不整列刪掉——這點很重要，不要「順手優化」成 DELETE：
+    ///
+    ///  1. 聊天室的凍結沒有自己的狀態欄位。ChatService.GetFrozenRoomIds 是即時去問
+    ///     「reports 裡還有沒有這一列 RESOLVED」算出來的。刪掉那一列，被處置的
+    ///     騷擾者就能重新傳訊息給受害者，而受害者不會收到任何通知。
+    ///  2. PushService 的推播靜音用一模一樣的條件，刪掉之後推播也會恢復。
+    ///  3. ReportService.CountAgainstUser（後台的「累計被檢舉 N 次」）算的是
+    ///     非 DISMISSED 的列。刪掉之後累犯看起來跟乾淨的人一樣。
+    ///  4. ux_reports_target_reporter 這條唯一索引是「同一個人不能重複檢舉同一個
+    ///     東西」的唯一依據，刪列就解開了。
+    ///  5. moderation_audits.report_id 是純字串沒有外鍵，刪列會留下指不到東西的 id，
+    ///     日後申訴時查不出當初為什麼那樣判。
+    ///
+    /// 以處理時間（reviewed_at）起算，不是建立時間：使用者要的是「處理完保留 30 天」。
+    /// 可以重複打：已經清空的列不會再被掃到。
+    /// </summary>
+    public PurgeOutcome PurgeOldOutcomes(int retentionDays = 30)
+    {
+        if (db == null) return new PurgeOutcome(0, false);
+
+        var cutoff = DateTimeOffset.UtcNow.AddDays(-Math.Max(1, retentionDays));
+        var resolved = ReportStatus.RESOLVED.ToString();
+        var restored = ReportStatus.RESTORED.ToString();
+
+        var stale = db.Reports
+            .Where(x => (x.Status == resolved || x.Status == restored)
+                        && x.ReviewedAt != null
+                        && x.ReviewedAt < cutoff
+                        && (x.Detail != null || x.ContextSnapshot != null))
+            .ToList();
+
+        foreach (var report in stale)
+        {
+            report.Detail = null;
+            report.ContextSnapshot = null;
+        }
+
+        if (stale.Count > 0)
+        {
+            db.SaveChanges();
+        }
+
+        return new PurgeOutcome(stale.Count, true);
+    }
+
     /// <summary>這則檢舉的標的現在是不是隱藏中。非樹洞貼文一律 false（還不支援隱藏）。</summary>
     private bool IsTargetHidden(string targetType, string targetId)
     {
@@ -580,3 +633,6 @@ public sealed class ReportService
         return value.Length <= max ? value : value[..max] + "…";
     }
 }
+
+/// <summary>清空一次的結果。Ran 為 false 代表沒有資料庫，什麼都沒做。</summary>
+public sealed record PurgeOutcome(int Redacted, bool Ran);

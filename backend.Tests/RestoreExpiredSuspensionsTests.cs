@@ -154,7 +154,7 @@ public sealed class RestoreExpiredSuspensionsTests
             NullLogger<ChatExpiryService>.Instance);
 
         return new MaintenanceController(
-            Service(db), chatExpiry,
+            Service(db), chatExpiry, new ReportService(provider),
             Options.Create(new MaintenanceOptions { TriggerSecret = secret }),
             NullLogger<MaintenanceController>.Instance);
     }

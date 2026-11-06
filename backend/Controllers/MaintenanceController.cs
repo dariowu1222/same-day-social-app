@@ -20,6 +20,9 @@ public sealed record RestoreExpiredSuspensionsResult(int Restored);
 
 public sealed record ChatExpiryResult(int Notified, int Expired, int Scanned, bool StorageReady);
 
+/// <summary>Redacted = 這次清空了幾筆。Ran = false 代表沒有資料庫，什麼都沒做。</summary>
+public sealed record PurgeReportContentResult(int Redacted, bool Ran);
+
 /// <summary>
 /// 由排程打的維護端點。
 ///
@@ -35,6 +38,7 @@ public sealed record ChatExpiryResult(int Notified, int Expired, int Scanned, bo
 public sealed class MaintenanceController(
     AdminUserService users,
     ChatExpiryService chatExpiry,
+    ReportService reports,
     IOptions<MaintenanceOptions> options,
     ILogger<MaintenanceController> logger) : ControllerBase
 {
@@ -109,6 +113,43 @@ public sealed class MaintenanceController(
         var outcome = chatExpiry.Run();
         return ApiResponse<ChatExpiryResult>.Ok(new ChatExpiryResult(
             outcome.Notified, outcome.Expired, outcome.Scanned, outcome.StorageReady));
+    }
+
+
+    /// <summary>
+    /// 清掉處理完超過 30 天的檢舉內容（detail 與 context_snapshot）。
+    ///
+    /// 清空而不是刪列：聊天室的凍結與推播靜音都是「reports 裡還存在那一列
+    /// RESOLVED」即時算出來的，刪掉等於解除對騷擾者的處置，而受害者不會
+    /// 收到任何通知。詳見 ReportService.PurgeOldOutcomes 的說明。
+    ///
+    /// 可以重複打：已經清空的列不會再被掃到。
+    /// </summary>
+    [AllowAnonymous]
+    [HttpPost("purge-report-content")]
+    public ActionResult<ApiResponse<PurgeReportContentResult>> PurgeReportContent(
+        [FromHeader(Name = "X-Maintenance-Trigger")] string? secret)
+    {
+        var expected = options.Value.TriggerSecret;
+        if (string.IsNullOrWhiteSpace(expected))
+        {
+            return NotFound(ApiResponse<PurgeReportContentResult>.Fail("MAINTENANCE_DISABLED", "維護端點未啟用。"));
+        }
+
+        if (!FixedTimeEquals(secret, expected))
+        {
+            logger.LogWarning("檢舉內容清理端點收到錯誤的密鑰");
+            return Unauthorized(ApiResponse<PurgeReportContentResult>.Fail("UNAUTHORIZED", "密鑰不符。"));
+        }
+
+        var outcome = reports.PurgeOldOutcomes();
+        if (outcome.Redacted > 0)
+        {
+            logger.LogInformation("清掉 {Count} 筆逾期檢舉的內容欄位", outcome.Redacted);
+        }
+
+        return ApiResponse<PurgeReportContentResult>.Ok(
+            new PurgeReportContentResult(outcome.Redacted, outcome.Ran));
     }
 
     private static bool FixedTimeEquals(string? provided, string expected)

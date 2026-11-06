@@ -1,0 +1,63 @@
+# 清掉處理完超過 30 天的檢舉內容
+#
+# 清的是 detail（檢舉人寫的補充）與 context_snapshot（被檢舉內容的全文快照）——
+# 那兩欄是這張表真正佔空間的地方，放久了也只剩風險沒有價值。
+#
+# **清空，不是刪列。** 聊天室的凍結與推播靜音都沒有自己的狀態欄位，兩者都是
+# 「reports 裡還存在那一列 RESOLVED」即時算出來的；刪掉那一列，被處置的騷擾者
+# 就能重新傳訊息給受害者，而受害者不會收到任何通知。詳見
+# ReportService.PurgeOldOutcomes 上面那段。
+#
+# 為什麼不是後端自己跑 BackgroundService：跟其他幾支排程同一個理由——
+# Render 免費方案閒置 15 分鐘就休眠，PeriodicTimer 不會跑。
+#
+# 一週一次就夠：保留期是 30 天，晚幾天清不會有人察覺，而每跑一次都要叫醒
+# 免費方案的服務。週一 UTC 2 點 = 台灣時間早上 10 點，落在 keep-render-awake
+# 的保活視窗內。
+
+name: Purge old report content
+
+on:
+  schedule:
+    - cron: '0 2 * * 1'
+  workflow_dispatch: {}
+
+# 兩次同時跑不會壞（已經清空的不會再被掃到），但沒必要
+concurrency:
+  group: purge-report-content
+  cancel-in-progress: false
+
+jobs:
+  purge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 叫醒服務
+        env:
+          BASE: https://tongpin-api-twu8.onrender.com
+        # 免費方案冷啟動要 50 秒上下。失敗不中斷——真正要跑的是下一步。
+        run: curl -sS -o /dev/null --max-time 120 "$BASE/health" || true
+
+      - name: 清理逾期的檢舉內容
+        env:
+          BASE: https://tongpin-api-twu8.onrender.com
+          SECRET: ${{ secrets.MAINTENANCE_TRIGGER_SECRET }}
+        run: |
+          if [ -z "$SECRET" ]; then
+            echo "沒有設定 MAINTENANCE_TRIGGER_SECRET，跳過。"
+            echo "（後端那側沒設 Maintenance__TriggerSecret 時端點本來就回 404）"
+            exit 0
+          fi
+          body=$(mktemp)
+          code=$(curl -sS -o "$body" -w '%{http_code}' --max-time 300 \
+                   -X POST "$BASE/api/maintenance/purge-report-content" \
+                   -H "X-Maintenance-Trigger: $SECRET")
+          echo "HTTP $code"
+          cat "$body"
+          echo
+          # 404 = 端點沒啟用（密鑰沒設）。那是設定狀態，不是故障，不要讓排程一直紅。
+          if [ "$code" = "404" ]; then
+            echo "維護端點未啟用，視為跳過。"
+            exit 0
+          fi
+          [ "$code" = "200" ]

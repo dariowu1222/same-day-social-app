@@ -319,7 +319,127 @@ public sealed class ModerationRestoreTests
         Assert.Empty(service.HiddenRantPosts(["", "   "]));
     }
 
+    // ── 逾期清理：清空內容，但不刪列 ──
+
+    [Fact]
+    public void ContentOlderThanTheRetentionWindowIsCleared()
+    {
+        const string name = nameof(ContentOlderThanTheRetentionWindowIsCleared);
+        var (service, db) = Build(name, hidden: false, reportCount: 0);
+        MarkHandled(db, ReportStatus.RESOLVED, daysAgo: 31);
+
+        var outcome = service.PurgeOldOutcomes();
+
+        var report = db.Reports.Single();
+        Assert.Equal(1, outcome.Redacted);
+        Assert.Null(report.Detail);
+        Assert.Null(report.ContextSnapshot);
+    }
+
+    /// <summary>
+    /// 清空不是刪列。聊天室的凍結與推播靜音都是「reports 裡還存在這一列
+    /// RESOLVED」即時算出來的——刪掉那一列，被處置的騷擾者就能重新傳訊息給
+    /// 受害者，而受害者不會收到任何通知。骨架一定要留著。
+    /// </summary>
+    [Fact]
+    public void ClearingContentNeverRemovesTheRowItself()
+    {
+        const string name = nameof(ClearingContentNeverRemovesTheRowItself);
+        var (service, db) = Build(name, hidden: false, reportCount: 0);
+        MarkHandled(db, ReportStatus.RESOLVED, daysAgo: 400);
+
+        service.PurgeOldOutcomes();
+
+        var report = db.Reports.Single();
+        Assert.Equal(ReportStatus.RESOLVED.ToString(), report.Status);
+        Assert.Equal(Author, report.ReportedUserId);
+        Assert.Equal("user_reporter", report.ReporterId);
+        Assert.NotNull(report.ReviewedAt);
+    }
+
+    [Fact]
+    public void RestoredReportsAreClearedToo()
+    {
+        const string name = nameof(RestoredReportsAreClearedToo);
+        var (service, db) = Build(name, hidden: false, reportCount: 0);
+        MarkHandled(db, ReportStatus.RESTORED, daysAgo: 31);
+
+        Assert.Equal(1, service.PurgeOldOutcomes().Redacted);
+    }
+
+    /// <summary>還在保留期內的不要動——那正是審核的人會回頭看的那幾筆。</summary>
+    [Fact]
+    public void RecentlyHandledContentIsLeftAlone()
+    {
+        const string name = nameof(RecentlyHandledContentIsLeftAlone);
+        var (service, db) = Build(name, hidden: false, reportCount: 0);
+        MarkHandled(db, ReportStatus.RESOLVED, daysAgo: 29);
+
+        Assert.Equal(0, service.PurgeOldOutcomes().Redacted);
+        Assert.NotNull(db.Reports.Single().ContextSnapshot);
+    }
+
+    /// <summary>
+    /// 已駁回不在清理範圍內——使用者指定的是「已處理」與「已退回」兩種。
+    ///
+    /// 這一條同時釘住狀態過濾本身：另一條「待處理不清」是靠 reviewed_at 為 null
+    /// 擋掉的，把狀態條件改成永遠成立也不會讓它轉紅。
+    ///
+    /// 附帶一提，只清這兩種會讓留下來的內容偏向「不成立的檢舉」，久了翻舊帳時
+    /// 看到的都是誤報。要不要把已駁回也納入是產品決定，不是我該自己擴大的範圍。
+    /// </summary>
+    [Fact]
+    public void DismissedReportsAreOutsideTheCleanupScope()
+    {
+        const string name = nameof(DismissedReportsAreOutsideTheCleanupScope);
+        var (service, db) = Build(name, hidden: false, reportCount: 0);
+        MarkHandled(db, ReportStatus.DISMISSED, daysAgo: 400);
+
+        Assert.Equal(0, service.PurgeOldOutcomes().Redacted);
+        Assert.NotNull(db.Reports.Single().ContextSnapshot);
+    }
+
+    /// <summary>還沒處理的永遠不清，不管它躺了多久。</summary>
+    [Fact]
+    public void PendingReportsAreNeverCleared()
+    {
+        const string name = nameof(PendingReportsAreNeverCleared);
+        var (service, db) = Build(name, hidden: false, reportCount: 0);
+        var report = db.Reports.Single();
+        report.Detail = "補充說明";
+        report.ContextSnapshot = "被檢舉的內容";
+        report.CreatedAt = DateTimeOffset.UtcNow.AddDays(-400);
+        db.SaveChanges();
+
+        Assert.Equal(0, service.PurgeOldOutcomes().Redacted);
+        Assert.NotNull(db.Reports.Single().ContextSnapshot);
+    }
+
+    /// <summary>重複跑是安全的：已經清空的不會再被掃到，數字是 0 不是又一次。</summary>
+    [Fact]
+    public void RunningItTwiceIsANoOp()
+    {
+        const string name = nameof(RunningItTwiceIsANoOp);
+        var (service, db) = Build(name, hidden: false, reportCount: 0);
+        MarkHandled(db, ReportStatus.RESOLVED, daysAgo: 31);
+
+        Assert.Equal(1, service.PurgeOldOutcomes().Redacted);
+        Assert.Equal(0, service.PurgeOldOutcomes().Redacted);
+    }
+
     // ── 測試資料 ──
+
+    /// <summary>把那筆檢舉標成處理完畢、附上內容、並把處理時間往前推。</summary>
+    private static void MarkHandled(AppDbContext db, ReportStatus status, int daysAgo)
+    {
+        var report = db.Reports.Single();
+        report.Status = status.ToString();
+        report.ReviewedAt = DateTimeOffset.UtcNow.AddDays(-daysAgo);
+        report.ReviewedBy = Admin;
+        report.Detail = "檢舉人寫的補充";
+        report.ContextSnapshot = "被檢舉內容的全文快照";
+        db.SaveChanges();
+    }
 
     /// <summary>一筆已結案的騷擾檢舉。權重 60，三筆就超過 150 的自動隱藏門檻。</summary>
     private static void AddResolvedHarassment(AppDbContext db, string id, string reporterId)
