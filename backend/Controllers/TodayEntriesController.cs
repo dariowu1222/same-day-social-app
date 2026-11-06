@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using SameDaySocialApp.Application.Dto;
 using SameDaySocialApp.Application.Services;
 using SameDaySocialApp.Domain.Entities;
@@ -15,6 +16,11 @@ public sealed class TodayEntriesController(TodayEntryService todayEntryService) 
     private string CallerId => User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
                                ?? User.FindFirst("sub")?.Value!;
 
+    // 掛速率限制（每人每分鐘 60 次，見 Program.cs 的 "write" policy）。
+    // 這支以前是全開的，而 UseAi=true 會排一個 OpenAI 分析工作——一支腳本
+    // 不停打這裡就能直接燒額度。每天的上限另外在 TodayEntryService 擋
+    // （AiDailyQuota），因為限流只看頻率，擋不住「慢慢打一整天」。
+    [EnableRateLimiting("write")]
     [HttpPost]
     public ActionResult<ApiResponse<object>> Create([FromBody] CreateTodayEntryRequest request)
     {

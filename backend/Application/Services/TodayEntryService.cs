@@ -14,6 +14,7 @@ public sealed class TodayEntryService
     private readonly AppDbContext? db;
     private readonly TodayAiEnrichmentQueue? aiQueue;
     private readonly AiTodayAnalyzer? aiAnalyzer;
+    private readonly AiDailyQuota? aiQuota;
     private readonly ILogger<TodayEntryService> logger;
 
     public TodayEntryService(
@@ -28,6 +29,7 @@ public sealed class TodayEntryService
         db = services.GetService<AppDbContext>();
         aiQueue = services.GetService<TodayAiEnrichmentQueue>();
         aiAnalyzer = services.GetService<AiTodayAnalyzer>();
+        aiQuota = services.GetService<AiDailyQuota>();
     }
 
     /// <summary>
@@ -101,8 +103,49 @@ public sealed class TodayEntryService
             return;
         }
 
+        // 每人每天的上限。要不要跑 AI 原本完全由前端那顆核取方塊決定，而一支腳本
+        // 可以不停建立今日並帶 UseAi=true，直接燒 OpenAI 的額度；佇列是有界的，
+        // 所以第二個後果是正常使用者的分析被擠掉。
+        if (aiQuota != null
+            && !aiQuota.TryConsume(entry.UserId, DateOnly.FromDateTime(DateTimeOffset.UtcNow.UtcDateTime), () => AiUsedToday(entry.UserId)))
+        {
+            logger.LogInformation(
+                "今日 AI 分析略過：今天已用滿 {Limit} 次 userId={UserId} entryId={EntryId}",
+                AiDailyQuota.PerUserPerDay, entry.UserId, entry.Id);
+            return;
+        }
+
         aiQueue.Enqueue(new TodayAiEnrichmentQueue.Job(entry.Id, content, responseMode));
         logger.LogInformation("今日 AI 分析已排入佇列 entryId={EntryId}", entry.Id);
+    }
+
+    /// <summary>
+    /// 這個人今天已經跑掉幾次 AI 分析。只在重啟之後的第一次會被問到
+    /// （見 AiDailyQuota），所以多一次 join 不影響一般路徑。
+    ///
+    /// ai_usage_logs 沒有 user_id——帳務記錄是掛在今日記錄上的，所以要繞一次
+    /// today_entries。查不到就當成 0：這一條是額度的起點，不是守門本身。
+    /// </summary>
+    private int AiUsedToday(string userId)
+    {
+        if (db == null)
+        {
+            return 0;
+        }
+
+        try
+        {
+            var since = DateTimeOffset.UtcNow.Date;
+            return db.AiUsageLogs.AsNoTracking()
+                .Where(log => log.CreatedAt >= since
+                              && db.TodayEntries.Any(entry => entry.Id == log.TodayEntryId && entry.UserId == userId))
+                .Count();
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "讀不到今天的 AI 用量，額度從 0 起算 userId={UserId}", userId);
+            return 0;
+        }
     }
 
     /// <summary>

@@ -131,6 +131,8 @@ builder.Services.Configure<SameDaySocialApp.Application.Services.AiAnalyzerOptio
     builder.Configuration.GetSection("Ai"));
 builder.Services.AddSingleton<SameDaySocialApp.Application.Services.AiTodayAnalyzer>();
 builder.Services.AddSingleton<SameDaySocialApp.Application.Services.TodayAiEnrichmentQueue>();
+// 每人每天的 AI 分析次數。計數在記憶體，重啟後從 ai_usage_logs 補起點。
+builder.Services.AddSingleton<SameDaySocialApp.Application.Services.AiDailyQuota>();
 builder.Services.AddHostedService<SameDaySocialApp.Application.Services.TodayAiEnrichmentWorker>();
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.TodayEntryService>();
 builder.Services.AddScoped<SameDaySocialApp.Application.Services.MatchService>();
