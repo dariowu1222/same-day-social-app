@@ -208,6 +208,25 @@ public sealed class ModerationRestoreTests
         Assert.True(db.RantPosts.Single().IsHidden);
     }
 
+    /// <summary>
+    /// 線上真實的狀況：那篇已經被隱藏，而它唯一那筆檢舉早就是 DISMISSED 了
+    /// （管理者先按過一次駁回，但當時的程式碼不會動隱藏狀態）。
+    /// 重算刻意不擋「狀態沒變」，所以再按一次駁回就救得回來——
+    /// 不然現存這一篇只能靠改資料庫。
+    /// </summary>
+    [Fact]
+    public async Task DismissingAnAlreadyDismissedReportStillRestoresTheOldPost()
+    {
+        const string name = nameof(DismissingAnAlreadyDismissedReportStillRestoresTheOldPost);
+        var (service, db) = Build(name, hidden: true, reportCount: 0);
+        db.Reports.Single().Status = ReportStatus.DISMISSED.ToString();
+        db.SaveChanges();
+
+        await service.ReviewAsync(ReportId, Admin, ReportStatus.DISMISSED, null, hideTarget: null);
+
+        Assert.False(db.RantPosts.Single().IsHidden);
+    }
+
     /// <summary>「成立」不會把東西放出來——那是相反的判斷。</summary>
     [Fact]
     public async Task ResolvingDoesNotPutThePostBack()
