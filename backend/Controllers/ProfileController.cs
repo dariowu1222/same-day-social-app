@@ -336,7 +336,14 @@ public sealed class ProfileController(JsonStorageService storage, MediaUrlPolicy
             }
         }
 
-        return InputLimits.WithinList(request.PhotoDataUrls, InputLimits.MaxPhotos, MediaUrlPolicy.MaxUrlLength)
+        // 照片這裡只管「幾張」，不管每一則多長。
+        //
+        // 長度交給 PhotosAreOurs：MediaUrlPolicy.IsOwn 自己就會拒絕超過
+        // MaxUrlLength 的網址，而它還帶著「本來就在這筆記錄上的照片照收」那個例外。
+        // 兩道都檢查長度的話，先跑的這一道會把例外廢掉——photo_data_urls 裡還留著
+        // base64 的舊帳號會卡在 FIELD_TOO_LONG，連暱稱都改不了，而那正是那個例外
+        // 要避免的事。（線上目前沒有這種帳號，但規則不該自相矛盾。）
+        return (request.PhotoDataUrls?.Count ?? 0) <= InputLimits.MaxPhotos
             ? null
             : $"照片最多 {InputLimits.MaxPhotos} 張。";
     }

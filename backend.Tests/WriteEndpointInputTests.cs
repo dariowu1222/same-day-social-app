@@ -72,6 +72,36 @@ public sealed class WriteEndpointInputTests
         Assert.Equal([Theirs, Own], Payload(result).PhotoDataUrls);
     }
 
+    /// <summary>
+    /// 「本來就在這筆記錄上的照片照收」那個例外，不能被長度檢查廢掉。
+    ///
+    /// 這條是真的踩過：照片的長度檢查原本跑在例外之前，於是 photo_data_urls 裡
+    /// 還留著 base64 的舊帳號會卡在 FIELD_TOO_LONG——連暱稱都改不了，而那正是
+    /// 那個例外要避免的事。長度現在只由 MediaUrlPolicy.IsOwn 把關，它看得到例外。
+    /// </summary>
+    [Fact]
+    public async Task AnOversizedPhotoAlreadyOnTheRecordDoesNotLockTheWholeProfile()
+    {
+        const string name = nameof(AnOversizedPhotoAlreadyOnTheRecordDoesNotLockTheWholeProfile);
+        var legacyBase64 = "data:image/jpeg;base64," + new string('A', 200_000);
+        var db = SeedUser(name, existingPhotos: [legacyBase64]);
+
+        var result = await Controller(db).Update(
+            Me, Request(bio: "改個自我介紹", photos: [legacyBase64]), CancellationToken.None);
+
+        Assert.Equal("改個自我介紹", Payload(result).Bio);
+    }
+
+    /// <summary>但同樣超長的網址如果是「新加的」，照擋。</summary>
+    [Fact]
+    public async Task AnOversizedPhotoThatIsNewIsStillRejected()
+    {
+        const string name = nameof(AnOversizedPhotoThatIsNewIsStillRejected);
+        var result = await UpdateProfile(name, photos: ["data:image/jpeg;base64," + new string('A', 200_000)]);
+
+        AssertRejected<User>(result, "INVALID_PHOTO_URL");
+    }
+
     [Fact]
     public async Task TooManyPhotosAreRejected()
     {
