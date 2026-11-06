@@ -33,7 +33,18 @@ export default function ChatPage() {
   // 「App 已經停在聊天頁時點推播通知」——元件不重新掛載，?room= 就被忽略了。
   // 由網址驅動還順便拿到：重新整理不會掉出房間、網址可以直接分享。
   const [searchParams, setSearchParams] = useSearchParams()
-  const activeRoomId = searchParams.get('room')
+  // 格式不對的 ?room= 一律當成沒帶。
+  //
+  // searchParams.get 會把 %2F、%2E%2E、%3F 解碼回來，所以
+  // /chat?room=../../../api/<某端點>%3F 這種連結點開之後，進房時自動送出的
+  // POST /api/chats/{room}/read 會被瀏覽器正規化成對那個端點的請求，
+  // 帶著受害者自己的 Bearer token。檢舉、封鎖、退出聊天室都不需要 body，
+  // 所以真的打得動。
+  //
+  // 送出那一側已經改成逐段編碼（apiPath），這裡是第二道：房號本來就只會是
+  // 英數、底線、連字號（線上 chat_rooms 全部符合），其餘的不必送出去問。
+  const roomParam = searchParams.get('room')
+  const activeRoomId = roomParam && /^[A-Za-z0-9_-]{1,64}$/.test(roomParam) ? roomParam : null
   // 用 replace 不累積瀏覽歷史，維持改動前的返回行為
   const setActiveRoomId = useCallback(
     (roomId: string | null) => setSearchParams(roomId ? { room: roomId } : {}, { replace: true }),

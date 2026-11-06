@@ -1,4 +1,4 @@
-import { request } from '../../shared/api/httpClient'
+import { apiPath, request } from '../../shared/api/httpClient'
 import type { SocialTask } from './types'
 
 export async function getTasks() {
@@ -6,5 +6,5 @@ export async function getTasks() {
 }
 
 export async function joinTask(taskId: string, userId: string) {
-  return request<SocialTask>(`/api/tasks/${taskId}/join`, { method: 'POST', body: JSON.stringify({ userId }) })
+  return request<SocialTask>(apiPath`/api/tasks/${taskId}/join`, { method: 'POST', body: JSON.stringify({ userId }) })
 }

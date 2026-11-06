@@ -68,6 +68,26 @@ async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: numbe
   }
 }
 
+/**
+ * 把路徑參數逐段編碼的樣板字串：apiPath`/api/chats/${roomId}/read`
+ *
+ * 為什麼需要：各 api.ts 都是直接把 id 內插進路徑的，而有些 id 來自網址
+ * （ChatPage 的 ?room=）。searchParams.get 會把 %2F、%2E%2E、%3F 解碼回來，
+ * 所以一個 /chat?room=../../../api/<某端點>%3F 的連結，會讓已登入的受害者
+ * 在不知情的情況下對那個端點送出一發帶著自己 Bearer token 的 POST——
+ * 瀏覽器會把 .. 正規化掉，? 之後的 /read 被當成 query。
+ *
+ * 檢舉、封鎖、退出聊天室這些端點都不需要 body，所以真的打得動。
+ *
+ * 編碼之後 ../ 變成 ..%2F，路徑停在原本那一段，什麼都跳不出去。
+ */
+export function apiPath(parts: TemplateStringsArray, ...values: unknown[]): string {
+  return parts.reduce(
+    (acc, part, i) => acc + part + (i < values.length ? encodeURIComponent(String(values[i])) : ''),
+    '',
+  )
+}
+
 // 唯一的傳輸層：負責 token、逾時、重試、401 處理、錯誤翻譯。
 // 各 feature 的 api.ts 只呼叫這個 request()，不自己拼 fetch。
 export async function request<T>(path: string, options?: RequestInit): Promise<ApiResponse<T>> {

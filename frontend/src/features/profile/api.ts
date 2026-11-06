@@ -1,8 +1,8 @@
-import { request } from '../../shared/api/httpClient'
+import { apiPath, request } from '../../shared/api/httpClient'
 import type { UserProfile } from './types'
 
 export async function getProfile(userId: string) {
-  return request<UserProfile>(`/api/profile/${userId}`)
+  return request<UserProfile>(apiPath`/api/profile/${userId}`)
 }
 
 export async function updateProfile(userId: string, payload: {
@@ -32,7 +32,7 @@ export async function updateProfile(userId: string, payload: {
   voiceFirst?: boolean
   meetSoon?: boolean
 }) {
-  return request<UserProfile>(`/api/profile/${userId}`, {
+  return request<UserProfile>(apiPath`/api/profile/${userId}`, {
     method: 'PUT',
     body: JSON.stringify(payload),
   })

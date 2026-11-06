@@ -1,4 +1,4 @@
-import { request, setAuthToken } from '../../shared/api/httpClient'
+import { apiPath, request, setAuthToken } from '../../shared/api/httpClient'
 
 export async function registerAccount(payload: {
   nickname: string
@@ -62,7 +62,7 @@ export async function getBlockedUsers() {
 }
 
 export async function unblockUser(blockedId: string) {
-  return request<boolean>(`/api/account/blocks/${blockedId}`, { method: 'DELETE' })
+  return request<boolean>(apiPath`/api/account/blocks/${blockedId}`, { method: 'DELETE' })
 }
 
 export type UserSetting = {
