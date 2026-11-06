@@ -41,6 +41,10 @@
   —— 「今日」AI 標籤分析的用量與花費，後台「AI 用量」分頁的資料來源。
   沒跑這支的話後台整頁會顯示 0 並提示要先建表（不會炸）。
 
+> 線上資料庫（Supabase `uqacfftvowhehvkyafep`）的狀態：下面 2026-11-06 與 2026-11-07
+> 這兩支**已於 2026-11-06 由 dashboard SQL 編輯器執行完畢並驗證**（欄位、條件索引、
+> 外鍵都在，並以 rollback 交易試過 EF 實際的 INSERT）。檔案留著是給新環境建置用的。
+
 2026-11-06 新增（**要先跑再部署**）：
 
 - `backend/Infrastructure/Persistence/MigrationsSql/20261106_rant_reply_reactions.sql`
