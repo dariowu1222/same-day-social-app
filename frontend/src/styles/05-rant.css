@@ -325,19 +325,8 @@ blockquote {
   color: #244845;
 }
 
-.reply-toggle-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
-  color: #4e9188;
-  padding: 2px 0;
-  font-family: inherit;
-  text-align: left;
-}
-
-.reply-toggle-btn:hover {
+/* 展開中的 💬：填滿 + 加深，表示「再按一次會收起」 */
+.post-action-btn.is-active {
   color: #244845;
 }
 
@@ -454,14 +443,139 @@ blockquote {
 .reply-form {
   display: grid;
   gap: 8px;
-  border-top: 1px solid #f0ede5;
-  padding-top: 10px;
+  border-top: 0.5px solid #f0ede5;
+  padding-top: 8px;
 }
 
 .reply-form-actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+/* ── 打開留言框的展開動畫 ──
+   外面多包一層純粹為了動畫，.reply-form 自己不能用：它的 grid 已經拿去排
+   提示列、快捷鍵、輸入列了。
+
+   用 grid-template-rows 從 0fr 長到 1fr，而不是 max-height。max-height 要先
+   猜一個數字：猜小了，有提示列或附圖的時候會被切掉；猜大了，動畫前半段在
+   跑一段根本不存在的高度，看起來就是「先頓一下才動」。0fr→1fr 的終點就是
+   內容的實際高度，多高都對。
+
+   overflow 寫兩次不是手殘。clip 跟 hidden 一樣會把還沒長出來的部分切掉，
+   但 hidden 會生出一個可以被程式捲動的容器——輸入框 autoFocus 的瞬間框還是
+   0 高度，瀏覽器為了「把焦點捲進視野」會去捲它，而 hidden 的容器捲過去就
+   回不來了（使用者沒有捲軸可以捲回來），結果是留言框永遠偏移一截。
+   clip 不產生捲動容器，所以沒這個問題；前面那行 hidden 是給不支援 clip 的
+   舊瀏覽器墊底的。
+
+   只做「展開」不做「收合」：收合是在卡片外面點一下觸發的，那一下通常是為了
+   去做別的事（點另一篇、捲開），讓它立刻消失比較跟得上手。要收合動畫的話
+   .reply-form 得改成常駐掛載，另外談。 */
+.reply-reveal {
+  display: grid;
+  grid-template-rows: 1fr;
+  overflow: hidden;
+  overflow: clip;
+  animation: reply-reveal 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* grid item 預設 min-height: auto，內容會把 0fr 的那列頂開，動畫就等於沒做 */
+.reply-reveal > * {
+  min-height: 0;
+}
+
+/* 透明度不是從 0 開始。全透明會變成「淡入」，高度的變化反而看不出來；
+   從 0.35 起跳，主角還是那條往下拉開的邊。 */
+@keyframes reply-reveal {
+  from { grid-template-rows: 0fr; opacity: 0.35; }
+  to   { grid-template-rows: 1fr; opacity: 1; }
+}
+
+/* 展開會逐格重算版面，要求減少動態就直接到位 */
+@media (prefers-reduced-motion: reduce) {
+  .reply-reveal { animation: none; }
+}
+
+/* ── 樹洞列表的留言框：照片／錄音 icon、輸入框、送出排成一列 ──
+   原本是三列（輸入框一列、icon 一列、送出又一列），光一個空白回覆框就吃掉
+   卡片一半的高度，比它底下那篇貼文還醒目。併成一列之後約 50px。
+
+   用 grid 而不是 flex，是為了附圖時的預覽：預覽圖得整條橫在輸入列上面，
+   不能擠在 icon 那一欄裡（那會把左欄撐成 100px 高，輸入框跟著飄到中間）。
+   grid 可以讓預覽自己佔一列、其餘三個照常排第二列。 */
+.reply-form-bar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+}
+
+/* MediaInput 自己包了一層 div，裡面是「預覽列 + icon 列」上下疊。
+   display: contents 讓那層 div 不佔版面，預覽列與 icon 列直接變成上面那個
+   grid 的格子——不用為了排版去改 MediaInput，它還有別的地方在用。 */
+.reply-form-bar .media-input-wrap {
+  display: contents;
+}
+
+.reply-form-bar .media-preview-row {
+  grid-column: 1 / -1;
+  padding: 0;
+}
+
+.reply-form-bar .media-toolbar {
+  padding: 0;
+}
+
+/* 輸入框。原本吃的是全站 input 的預設樣式（12px 內距、8px 直角、1px 實線框），
+   那是給表單欄位用的，擺在卡片裡就是一塊方磚。改成跟送出鈕同一個語彙的膠囊。 */
+.reply-field {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 14px;
+  border: 0.5px solid #ddd5c8;
+  border-radius: 999px;
+  background: #fffdf8;
+  font-size: 14px;
+  line-height: 1.4;
+  color: #263238;
+  outline: none;
+}
+
+.reply-field::placeholder {
+  color: #b0a090;
+}
+
+/* 聚焦框用 inset 陰影，不用 outline——outline 畫在邊框外面，會被上面那層
+   .reply-reveal 的 overflow: clip 從左右切掉。
+   用 :focus-visible 而不是 :focus：滑鼠點進來不畫，鍵盤 Tab 進來才畫。
+   （在這之前這裡什麼都沒設，露出來的是 Chrome 預設的橘色外框。） */
+.reply-field:focus-visible {
+  border-color: #7ab7ad;
+  box-shadow: inset 0 0 0 1.5px #7ab7ad;
+}
+
+/* 38px 維持不變。跟輸入框同高，而且這是整個留言框唯一的主要動作，
+   縮成 32px 省下的 6px 不值得拿命中率去換。 */
+.reply-form-send {
+  width: 38px;
+  height: 38px;
+}
+
+/* 手機不給文字按鈕：送出是右邊那顆 icon，取消＝點卡片外面（見 RantPostCard）。
+   桌面在 17-desktop.css 換回來。
+   這條只打到列表卡片——詳情頁的 .reply-form-actions 在 .reply-extra-row 裡面。 */
+.reply-form .reply-form-actions {
+  display: none;
+}
+
+/* 桌面那兩顆文字按鈕吃全站 button 預設的 12px 內距，有 44px 高，跟旁邊
+   38px 的輸入框併成一列會把整列再撐高一截。只在這張卡片裡收斂成膠囊。 */
+.reply-form .reply-form-actions > button {
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .reply-open-btn {

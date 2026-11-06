@@ -10,7 +10,7 @@ import MediaInput, { EMPTY_MEDIA, type MediaState } from '../../shared/ui/MediaI
 import PostImageGallery from './PostImageGallery'
 import ReplyItem from './ReplyItem'
 import PostMenu from './PostMenu'
-import { COMPOSE_HINTS, QUICK_REPLIES, getHintSeenSet, markHintSeen, appendQuickReply } from './rantCompose'
+import { COMPOSE_HINTS, QUICK_REPLIES, getHintSeenSet, markHintSeen, appendQuickReply, pickReplyPlaceholder, DEFAULT_REPLY_PLACEHOLDER } from './rantCompose'
 import { MODE_LABELS } from './rantModes'
 
 function avatarLetter(nickname: string) {
@@ -37,12 +37,21 @@ export default function RantDetailPage() {
   const [composeFocused, setComposeFocused] = useState(false)
   const [showHint, setShowHint] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
+  // 留言框的預設提示：進到這篇貼文時抽一次，之後就不動。
+  // 列表頁是每次打開留言框抽，詳情頁的留言框一直開著，所以改成每篇抽一次。
+  const [placeholder, setPlaceholder] = useState(DEFAULT_REPLY_PLACEHOLDER)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const hintText = post ? COMPOSE_HINTS[post.mode] : undefined
   const quickReplies = post ? (QUICK_REPLIES[post.mode] ?? []) : []
 
   useEffect(() => { loadPost() }, [rantId])
+
+  // 只看 post?.id：送出回覆後 loadPost() 會換一個 post 物件，但還是同一篇，
+  // 不該趁人剛送完就換一句。
+  useEffect(() => {
+    if (post) setPlaceholder((prev) => pickReplyPlaceholder(post.mode, prev))
+  }, [post?.id])
 
   // 首次點開留言框 → 淡入情境提示，並標記該貼文已顯示（之後永不再跳）
   useEffect(() => {
@@ -224,7 +233,7 @@ export default function RantDetailPage() {
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
               onFocus={() => setComposeFocused(true)}
-              placeholder={replyTarget ? `回覆 @${replyTarget.nickname}…` : '留下回應...'}
+              placeholder={replyTarget ? `回覆 @${replyTarget.nickname}…` : placeholder}
             />
             <button className="reply-send-btn" onClick={handleReply} disabled={!canReply || submitting} aria-label="送出">
               <ArrowUp size={18} strokeWidth={2.2} />

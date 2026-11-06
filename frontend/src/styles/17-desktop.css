@@ -294,6 +294,16 @@
     padding: 0;
   }
 
+  /* ── 樹洞列表的留言框：換回文字按鈕 ──
+     手機沒有「取消」是因為點卡片外面就能收起來；滑鼠點旁邊的機率比手指高太多，
+     誤觸把人家打到一半的話收掉不划算，所以桌面要一顆明確的按鈕。
+     （RantPostCard 判斷要不要「點外面收起」用同一個 1024px 斷點。）
+
+     不用指定格子：圓形送出鈕 display: none 之後就不是 grid item 了，
+     這兩顆文字按鈕會自己遞補到第三欄，跟 icon、輸入框同一列。 */
+  .reply-form .reply-form-actions { display: flex; }
+  .reply-form-send { display: none; }
+
   /* ── 聊天室（單一對話）──
      .cr-page 是 position: fixed，四邊都照手機版面算：
        bottom 預留 64px 給底部導覽（桌面導覽已移到左側，這塊就成了空白）

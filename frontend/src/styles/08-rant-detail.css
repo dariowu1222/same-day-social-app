@@ -209,12 +209,14 @@
   font-family: inherit;
 }
 
-/* 回覆列表 */
+/* 回覆列表。
+   不畫 border-top：上面的留言框（.reply-form / .thread-compose-btn）本身
+   已經有一條，兩條距離很近地疊在一起，就是「兩條線不知道我要看哪個部分」。
+   留一點上緣空白代替分隔。 */
 .thread-reply-section {
   display: flex;
   flex-direction: column;
-  border-top: 1px solid #f0ede5;
-  padding-top: 4px;
+  margin-top: 6px;
 }
 
 /* 每一筆 reply item 的右側 wrapper */
@@ -417,6 +419,13 @@
 .reply-form .reply-nudge { margin-left: 0; margin-right: 0; }
 .reply-form .quick-reply-scroll { padding-left: 0; padding-right: 0; }
 
+/* 快捷鍵那排原本整條比卡片寬 24px——grid item 的 min-width 預設是 auto，
+   會被裡面那排按鈕的寬度頂開，所以它不是「可以橫滑的一排」，是「整排溢出
+   卡片外面」：按鈕蓋過卡片圓角，右邊那層漸層提示也飄在卡片外。
+   min-width: 0 解掉自動最小寬度，整條回到卡片寬度，橫滑才真的生效。
+   （這條以前看不出來，是外層加了 overflow: clip 之後溢出的部分被切掉才現形。）*/
+.reply-form .quick-reply-bar { min-width: 0; }
+
 .detail-thread-compose-input {
   flex: 1;
   border: none;
@@ -477,8 +486,13 @@
 .rant-page .reply-sub-btn:hover { color: #8a7a6a; background: #f0ebe3; }
 .rant-page .report-btn { color: #d4785a; }
 .rant-page .thread-compose-btn,
-.rant-page .reply-toggle-btn,
 .rant-page .thread-collapse-btn { color: #b0a090; font-size: 12px; border-top: 0.5px solid #f0ebe3; }
+/* 留言框上緣那條線跟「留下回應…」是同一條線的兩種狀態（一個收起、一個展開），
+   顏色要一樣，不然打開留言框的瞬間線會變色 */
+.rant-page .reply-form { border-top-color: #f0ebe3; }
+/* 不寫 :hover、也不碰 background：hover 的底色是展開中唯一剩下的游標回饋，
+   蓋掉的話滑鼠移上去就完全沒反應了 */
+.rant-page .post-action-btn.is-active { color: #8a7a6a; }
 .rant-page .thread-line { background: #e8e0d4; }
 .rant-page .avatar-circle { width: 32px; height: 32px; font-size: 13px; background: #e8d5c0; color: #8a6a4a; }
 .rant-page .hashtag-tag { color: #8a7a6a; background: #f0ebe3; border-color: #ddd5c8; }
@@ -535,8 +549,8 @@
 [data-theme="dark"] .rant-page .reply-sub-btn:hover { color: #a8d4cc; background: rgba(255,255,255,0.06); }
 [data-theme="dark"] .rant-page .report-btn { color: rgba(220,140,130,0.6); }
 [data-theme="dark"] .rant-page .thread-compose-btn,
-[data-theme="dark"] .rant-page .reply-toggle-btn,
 [data-theme="dark"] .rant-page .thread-collapse-btn { color: rgba(168,212,204,0.5); border-top-color: rgba(168,212,204,0.1); }
+[data-theme="dark"] .rant-page .post-action-btn.is-active { color: #a8d4cc; }
 [data-theme="dark"] .rant-page .thread-line { background: rgba(168,212,204,0.18); }
 [data-theme="dark"] .rant-page .avatar-circle { background: #2d5e58; color: #a8d4cc; }
 [data-theme="dark"] .rant-page .hashtag-tag { background: rgba(45,110,101,0.3); color: #7ec8bc; border-color: rgba(126,200,188,0.25); }
@@ -588,6 +602,10 @@
 }
 [data-theme="dark"] .reply-input::placeholder { color: rgba(168,212,204,0.45); }
 
+/* 留言框上緣的線。夜間一直沒被覆蓋，吃的是淺色的 #f0ede5，在深色卡片上
+   就是一條亮白橫槓——那是整張卡片最亮的東西，比貼文內容還搶眼。 */
+[data-theme="dark"] .rant-page .reply-form { border-top-color: rgba(168, 212, 204, 0.1); }
+
 /* 樹洞列表卡片內回覆輸入框：近全不透明，打字不受光點干擾 */
 [data-theme="dark"] .rant-page .reply-form input {
   background: rgba(22, 40, 32, 0.97);
@@ -595,6 +613,13 @@
   color: #d4ede8;
 }
 [data-theme="dark"] .rant-page .reply-form input::placeholder { color: rgba(168,212,204,0.45); }
+
+/* 上面那條 border 簡寫會把 .reply-field:focus-visible 的 border-color 蓋掉
+   （選擇器比較具體），所以夜間的聚焦框要在這裡再寫一次 */
+[data-theme="dark"] .rant-page .reply-field:focus-visible {
+  border-color: #4e9188;
+  box-shadow: inset 0 0 0 1.5px #4e9188;
+}
 
 /* ── 低階機型 fallback：不支援 backdrop blur 時改純色，可讀性優先 ── */
 @supports not ((backdrop-filter: blur(8px)) or (-webkit-backdrop-filter: blur(8px))) {
