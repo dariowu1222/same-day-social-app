@@ -39,11 +39,21 @@ public sealed class AdminSessionService(
     /// <summary>同一組碼最多試幾次。超過就作廢，重寄一組。</summary>
     private const int MaxAttempts = 5;
 
-    /// <summary>兩次寄碼之間至少要隔這麼久。</summary>
-    private static readonly TimeSpan ResendInterval = TimeSpan.FromSeconds(60);
-
-    /// <summary>一小時內最多寄幾組。擋的是「無限重寄把猜測次數變無限」與信箱轟炸。</summary>
-    private const int MaxCodesPerHour = 5;
+    /// <summary>
+    /// 一小時內最多寄幾組。擋的是「無限重寄把猜測次數變無限」——
+    /// 每組碼只有 MaxAttempts 次機會，但每封新信都是一組新的碼。
+    ///
+    /// 原本還有一條「兩次寄碼至少隔 60 秒」，拿掉了：那一條是唯一會讓
+    /// 一個人在正常操作中撞到的限制（沒收到信、想重寄一次，就被擋住），
+    /// 而它擋不住什麼——舊碼在重寄時本來就會被作廢（見下面 SendChallengeAsync），
+    /// 所以重寄不會增加同時有效的碼數，只是把同一道門換一把新鎖。
+    ///
+    /// 數字從 5 放寬到 30：這支端點只有白名單上的管理員帳號打得到
+    /// （非白名單一律回 NotAdmin → 404），所以真正要防的是「有人偷到管理員的
+    /// App token，想靠狂寄碼猜進後台」。30 組 × 5 次 = 每小時 150 次猜測，
+    /// 對一組六位數的碼是 0.015%，而一個人正常用一天也不會寄到 30 封。
+    /// </summary>
+    private const int MaxCodesPerHour = 30;
 
     /// <summary>閒置多久自動登出。</summary>
     private static readonly TimeSpan IdleTimeout = TimeSpan.FromMinutes(30);
@@ -106,16 +116,16 @@ public sealed class AdminSessionService(
             return new ChallengeResult(Failure.NoEmail, null);
         }
 
-        // 寄碼要節流。沒有節流的話，一顆 App token 就能無限重寄：既是信箱轟炸，
-        // 也等於把「每組碼五次」變成無限次猜測——因為每封新信都重置計數。
-        // 兩件事都會讓「有人在試著進後台」這個訊號消失在雜訊裡。
+        // 寄碼仍然要有上限。沒有的話，偷到管理員 App token 的人就能無限重寄，
+        // 等於把「每組碼五次」變成無限次猜測——因為每封新信都是一組新的碼。
+        // 但上限放得夠寬，正常操作撞不到（原本的 60 秒重寄間隔已經移除）。
         var nowUtc = DateTimeOffset.UtcNow;
         var recent = await db.AdminLoginCodes.AsNoTracking()
             .Where(x => x.UserId == userId && x.CreatedAt > nowUtc.AddHours(-1))
             .Select(x => x.CreatedAt)
             .ToListAsync(ct);
 
-        if (recent.Count >= MaxCodesPerHour || recent.Any(at => nowUtc - at < ResendInterval))
+        if (recent.Count >= MaxCodesPerHour)
         {
             logger.LogWarning("後台驗證碼寄送被節流擋下 user={UserId} purpose={Purpose}", userId, purpose);
             return new ChallengeResult(Failure.TooManyRequests, null);
