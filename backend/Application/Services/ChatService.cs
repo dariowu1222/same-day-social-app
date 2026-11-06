@@ -165,6 +165,28 @@ public sealed class ChatService
             .ToHashSet();
     }
 
+    /// <summary>
+    /// 這間房的對方還能不能收訊息。停權、封鎖、註銷都算不能。
+    ///
+    /// 為什麼要擋送出這一側：被處置的那個人自己在 Program.cs 的中介軟體就被
+    /// 401 擋住了，但另一邊完全不受影響——他照常打字、照常看到訊息送出去，
+    /// 而對面永遠不會讀到。那比「不能傳」更糟，因為他不知道。
+    /// </summary>
+    public bool IsPeerActive(string userId, string chatRoomId)
+    {
+        if (db == null) return true;
+
+        var peerId = db.ChatRoomUsers.AsNoTracking()
+            .Where(x => x.ChatRoomId == chatRoomId && x.UserId != userId)
+            .Select(x => x.UserId)
+            .FirstOrDefault();
+
+        // 一人房（對方已經退出）不在這條規則裡，交給既有的流程處理
+        if (peerId == null) return true;
+
+        return AccountStateService.IsActive(db, storage, peerId, DateTimeOffset.UtcNow);
+    }
+
     public HashSet<string> GetFrozenRoomIds(string userId, ICollection<string>? scope = null)
     {
         if (db == null)
@@ -621,7 +643,7 @@ public sealed class ChatService
         if (db == null)
         {
             return GetRoomsByUser(userId)
-                .Select(room => new ChatRoomOverview(room, PeerOf(room, userId), null, null, null, false))
+                .Select(room => new ChatRoomOverview(room, PeerOf(room, userId), null, null, null, false, true))
                 .ToList();
         }
 
@@ -657,13 +679,19 @@ public sealed class ChatService
 
         // 列表只用得到暱稱與第一張照片，不要整包 User（那裡面有興趣、個性、
         // 外貌等幾十個欄位，而且照片可能是 base64）
+        // status 與 suspended_until 一起拿：判斷對方還能不能收訊息要用，
+        // 而這一趟本來就要跑，不值得為它多一次往返。
+        var now = DateTimeOffset.UtcNow;
         var peers = db.Users.AsNoTracking()
             .Where(u => peerIds.Contains(u.Id))
-            .Select(u => new { u.Id, u.Nickname, u.PhotoDataUrls })
+            .Select(u => new { u.Id, u.Nickname, u.PhotoDataUrls, u.Status, u.SuspendedUntil })
             .ToList()
             .ToDictionary(
                 u => u.Id,
-                u => (Nickname: u.Nickname, Photo: u.PhotoDataUrls.FirstOrDefault()));
+                u => (
+                    Nickname: u.Nickname,
+                    Photo: u.PhotoDataUrls.FirstOrDefault(),
+                    Active: AccountStateService.IsActive(u.Status, u.SuspendedUntil, now)));
 
         return rooms.Select(room =>
         {
@@ -675,7 +703,9 @@ public sealed class ChatService
                 peer.Nickname,
                 peer.Photo,
                 ToPreview(lastMessages.GetValueOrDefault(room.Id)),
-                frozen.Contains(room.Id));
+                frozen.Contains(room.Id),
+                // 查不到那個人（資料被清掉）也當成不能傳——送出去不會有人收到
+                peerId != null && peers.ContainsKey(peerId) && peer.Active);
         }).ToList();
     }
 
@@ -913,4 +943,12 @@ public sealed record ChatRoomOverview(
     string? PeerPhotoUrl,
     ChatMessage? LastMessage,
     /// <summary>檢舉已經後台認定成立，這間房對檢舉人唯讀。送出但還沒審的不算。</summary>
-    bool Reported);
+    bool Reported,
+
+    /// <summary>
+    /// 對方的帳號還能不能用（停權／封鎖／註銷都算不能）。
+    ///
+    /// 房間本身不會因此消失——既有的對話留著是刻意的（見這個檔案開頭那段），
+    /// 但「還能打字」是另一回事：訊息送出去也沒有人收得到，而送出的人完全不知道。
+    /// </summary>
+    bool PeerActive = true);

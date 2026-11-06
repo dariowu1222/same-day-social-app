@@ -47,6 +47,8 @@ export type ChatRoomOverview = {
   /** 檢舉已成立（後台審核認定）：這間房對你唯讀，只剩「退出聊天室」。
       送出檢舉但還沒審核時為 false。 */
   reported?: boolean
+  /** 對方的帳號還能不能用（停權／封鎖／註銷都算不能）。false 時這間房也是唯讀。 */
+  peerActive?: boolean
 }
 
 /** 列表用的精簡對方資料。完整 profile 只在進房時才抓（peek sheet 需要）。 */

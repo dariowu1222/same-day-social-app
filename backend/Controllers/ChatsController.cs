@@ -100,6 +100,15 @@ public sealed class ChatsController(ChatService chatService, MediaUrlPolicy medi
                 "CHAT_ROOM_EXPIRED", "這個聊天室因為太久沒有往來已經關閉，無法再傳送訊息。"));
         }
 
+        // 對方被停權／封鎖／註銷。他自己在 Program.cs 的中介軟體就被 401 擋住了，
+        // 但這一側完全不受影響——照常打字、照常看到訊息送出去，而對面永遠讀不到。
+        // 那比「不能傳」更糟，因為送出的人不知道。
+        if (!chatService.IsPeerActive(CallerId, chatRoomId))
+        {
+            return BadRequest(ApiResponse<ChatMessage>.Fail(
+                "CHAT_PEER_UNAVAILABLE", "對方的帳號目前無法使用，暫時不能傳送訊息。"));
+        }
+
         var message = chatService.SendMessage(chatRoomId, CallerId, content, request.QuotedMessageId);
         await chatHub.Clients.Group(ChatHub.RoomGroup(chatRoomId)).SendAsync("messageReceived", message);
 
