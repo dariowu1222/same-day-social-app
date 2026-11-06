@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using SameDaySocialApp.Application.Dto;
 using SameDaySocialApp.Application.Services;
@@ -55,7 +56,12 @@ public sealed class ProfileController(JsonStorageService storage, IServiceProvid
             : ApiResponse<User>.Ok(user);
     }
 
+    // 掛速率限制（每人每分鐘 60 次，見 Program.cs 的 "write" policy）。
+    // 這支以前是全開的，而暱稱改一次就會換掉這個人在樹洞所有歷史貼文上顯示的名字
+    // （RantService.WithCurrentNames 讀的是 users.nickname），一支沒有節流的端點
+    // 配上這種放大效果不合適。
     [Authorize]
+    [EnableRateLimiting("write")]
     [HttpPut("{userId}")]
     public async Task<ActionResult<ApiResponse<User>>> Update(string userId, [FromBody] UpdateProfileRequest request, CancellationToken cancellationToken)
     {
@@ -69,6 +75,20 @@ public sealed class ProfileController(JsonStorageService storage, IServiceProvid
             return BadRequest(ApiResponse<User>.Fail("UNDERAGE", "未滿 18 歲暫時不能使用同頻 Today。"));
         }
 
+        // 暱稱的長度規則跟註冊同一套（AuthService.ValidateRegister）。
+        //
+        // 這條以前不在，註冊有、改名沒有，而唯一的上限是前端輸入框的 maxLength=20
+        // ——繞過前端就什麼都擋不住，超過 80 字還會直接撞上 users.nickname 的
+        // varchar(80) 丟 Npgsql 例外。
+        //
+        // 空字串／純空白仍然當成「這次不改暱稱」，維持原本的行為；要擋的是
+        // 「有送、但不合規」。現有 81 個帳號的暱稱都落在 2–17 字，沒有人會被這條鎖在外面。
+        var nickname = request.Nickname?.Trim();
+        if (nickname is { Length: > 0 } && nickname.Length is < 2 or > 20)
+        {
+            return BadRequest(ApiResponse<User>.Fail("INVALID_NICKNAME", "暱稱需為 2 到 20 個字。"));
+        }
+
         if (db != null)
         {
             try
@@ -76,7 +96,7 @@ public sealed class ProfileController(JsonStorageService storage, IServiceProvid
                 var record = await db.Users.FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
                 if (record != null)
                 {
-                    if (!string.IsNullOrWhiteSpace(request.Nickname)) record.Nickname = request.Nickname.Trim();
+                    if (nickname is { Length: > 0 }) record.Nickname = nickname;
                     if (request.Bio != null) record.Bio = request.Bio.Trim();
                     if (request.InterestTags != null) record.InterestTags = [.. request.InterestTags];
                     if (request.ValueTags != null) record.ValueTags = [.. request.ValueTags];
@@ -111,7 +131,7 @@ public sealed class ProfileController(JsonStorageService storage, IServiceProvid
 
         var user = storage.UpdateOne<User>("users", userId, target =>
         {
-            target.Nickname = request.Nickname?.Trim() ?? target.Nickname;
+            target.Nickname = nickname is { Length: > 0 } ? nickname : target.Nickname;
             target.Bio = request.Bio?.Trim() ?? target.Bio;
             target.InterestTags = request.InterestTags ?? target.InterestTags;
             target.ValueTags = request.ValueTags ?? target.ValueTags;
