@@ -15,6 +15,17 @@ using SameDaySocialApp.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// 全站請求大小上限。
+//
+// 沒設的話是 ASP.NET Core 的預設值約 28.6 MB，而且每一支 JSON 端點都吃得下——
+// 一個帳號可以把自己的 profile 撐到幾十 MB，之後每次配對都要把整張 users 表
+// （含那包東西）載進記憶體。Supabase 免費方案的資料庫只有 500 MB，
+// 少數幾個帳號就能把它灌滿，然後所有人的寫入一起失敗。
+//
+// 1 MB 對所有一般端點都綽綽有餘：最長的欄位是 2000 字的訊息內容與今日內容。
+// 真正需要大 body 的只有媒體上傳，那支自己用 [RequestSizeLimit] 放寬到 12 MB。
+builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 1024 * 1024);
+
 // 觀測性：Serilog 結構化日誌 + OpenTelemetry 追蹤/指標（OTLP 匯出，後端可換）
 builder.AddAppObservability();
 
