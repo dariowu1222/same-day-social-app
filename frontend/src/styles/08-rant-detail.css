@@ -254,13 +254,20 @@
   margin-bottom: 2px;
 }
 
-/* 子回覆收合態：堆疊小頭像 + 查看N則 */
+/* 回覆收合態：堆疊小頭像 + 查看N則。
+   兩個地方用：子回覆（ReplyItem，div）與貼文卡（RantPostCard，button）。
+   下面那幾行 reset 是給 button 用的，對 div 沒有影響。 */
 .thread-sub-indicator {
   display: flex;
   align-items: center;
   gap: 8px;
   cursor: pointer;
   margin-top: 6px;
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  text-align: left;
 }
 
 .thread-sub-indicator:hover .thread-sub-count { color: #244845; }
@@ -535,6 +542,12 @@
 [data-theme="dark"] .detail-page .post-time { color: rgba(168,212,204,0.55); }
 [data-theme="dark"] .flat-reply-content { color: #d4ede8; }
 [data-theme="dark"] .thread-sub-count { color: #8fd4c8; }
+
+/* 疊在一起的小頭像靠一圈「與卡片同色」的邊分開，淺色模式是 #fffdf8。
+   夜間一直沒有覆蓋過，所以那圈奶油白在深色卡片上變成一條亮邊。
+   卡片實際混出來是 rgb(15, 25, 22)（rgba(22,40,32,.6) 疊在頁面底色上）。
+   以前只有展開子回覆時才看得到，現在每張有回應的卡片都會出現，顯眼得多。 */
+[data-theme="dark"] .thread-sub-avatar-xs { border-color: #0f1916; }
 [data-theme="dark"] .quote-author { color: #8fd4c8; }
 [data-theme="dark"] .quote-text { color: rgba(212,237,232,0.72); }
 /* 詳情頁 mode 標籤：套用與列表頁相同的暗色系 */

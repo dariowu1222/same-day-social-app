@@ -4,7 +4,7 @@ import { Heart, MessageCircle, Flag, HeartHandshake, X, ArrowUp } from 'lucide-r
 import ReportSheet from '../report/ReportSheet'
 import { likeReply } from './api'
 import type { RantPost } from './types'
-import { postImages } from './types'
+import { flattenReplies, postImages } from './types'
 import MediaInput, { type MediaState } from '../../shared/ui/MediaInput'
 import PostImageGallery from './PostImageGallery'
 import ReplyItem from './ReplyItem'
@@ -50,6 +50,10 @@ export default function RantPostCard({
 
   const hintText = COMPOSE_HINTS[post.mode]
   const quickReplies = QUICK_REPLIES[post.mode] ?? []
+
+  // 收合態要秀誰的頭像。整串都算（含子回覆），因為旁邊那個數字也是整串的
+  // post.replyCount；同一個人回很多則只出現一次，不然會變成三顆一樣的圈。
+  const replyPeople = [...new Set(flattenReplies(post.replies).map((r) => r.nickname))]
 
   // 手機版沒有「取消」按鈕，改成點卡片外面就收起來。
   //
@@ -213,6 +217,33 @@ export default function RantPostCard({
               <Flag size={14} /> 檢舉
             </button>
           </div>
+
+          {/* 有人回應了，但還沒展開。
+              原本這件事只靠 💬 旁邊一個數字表示，於是整面牆上「有人回應的貼文」
+              和「沒人理的貼文」長得幾乎一樣——而「有人懂你」正是這個功能的全部重點。
+              數字是抽象的，幾張臉不是。
+
+              樣式直接用子回覆那一層的 thread-sub-indicator：同一件事在這個 App 裡
+              本來就長這樣（ReplyItem 的「查看 N 則回應」），往上搬一層只是讓它一致。
+
+              刻意不預覽內容：樹洞的內容是重的，一面牆連續攤開十幾段別人的心事
+              會讓人很快過載，而且一篇熱門貼文會把下面的人整個埋掉。
+              「可以掃過去、想進去才進去」這個梯度要留著。 */}
+          {!showReplies && post.replies.length > 0 && (
+            <button
+              type="button"
+              className="thread-sub-indicator"
+              aria-label={`查看 ${post.replyCount} 則回應`}
+              onClick={(e) => { e.stopPropagation(); setShowReplies(true) }}
+            >
+              <span className="thread-sub-avatars">
+                {replyPeople.slice(0, 3).map((nickname) => (
+                  <span key={nickname} className="thread-sub-avatar-xs">{avatarLetter(nickname)}</span>
+                ))}
+              </span>
+              <span className="thread-sub-count">查看 {post.replyCount} 則回應</span>
+            </button>
+          )}
         </div>
       </div>
 
