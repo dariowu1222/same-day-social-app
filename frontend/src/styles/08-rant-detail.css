@@ -196,22 +196,9 @@
   padding: 4px 0;
 }
 
-/* 留下回應虛擬輸入框樣式 */
-.thread-compose-btn {
-  width: 100%;
-  text-align: left;
-  background: none;
-  border: none;
-  padding: 6px 0 4px;
-  font-size: 14px;
-  color: #b0bfbd;
-  cursor: pointer;
-  font-family: inherit;
-}
-
 /* 回覆列表。
-   不畫 border-top：上面的留言框（.reply-form / .thread-compose-btn）本身
-   已經有一條，兩條距離很近地疊在一起，就是「兩條線不知道我要看哪個部分」。
+   不畫 border-top：上面展開的留言框（.reply-form）本身已經有一條，
+   兩條距離很近地疊在一起，就是「兩條線不知道我要看哪個部分」。
    留一點上緣空白代替分隔。 */
 .thread-reply-section {
   display: flex;
@@ -492,10 +479,7 @@
 .rant-page .reply-like-btn:hover,
 .rant-page .reply-sub-btn:hover { color: #8a7a6a; background: #f0ebe3; }
 .rant-page .report-btn { color: #d4785a; }
-.rant-page .thread-compose-btn,
 .rant-page .thread-collapse-btn { color: #b0a090; font-size: 12px; border-top: 0.5px solid #f0ebe3; }
-/* 留言框上緣那條線跟「留下回應…」是同一條線的兩種狀態（一個收起、一個展開），
-   顏色要一樣，不然打開留言框的瞬間線會變色 */
 .rant-page .reply-form { border-top-color: #f0ebe3; }
 /* 不寫 :hover、也不碰 background：hover 的底色是展開中唯一剩下的游標回饋，
    蓋掉的話滑鼠移上去就完全沒反應了 */
@@ -561,7 +545,6 @@
 [data-theme="dark"] .rant-page .reply-like-btn:hover,
 [data-theme="dark"] .rant-page .reply-sub-btn:hover { color: #a8d4cc; background: rgba(255,255,255,0.06); }
 [data-theme="dark"] .rant-page .report-btn { color: rgba(220,140,130,0.6); }
-[data-theme="dark"] .rant-page .thread-compose-btn,
 [data-theme="dark"] .rant-page .thread-collapse-btn { color: rgba(168,212,204,0.5); border-top-color: rgba(168,212,204,0.1); }
 [data-theme="dark"] .rant-page .post-action-btn.is-active { color: #a8d4cc; }
 [data-theme="dark"] .rant-page .thread-line { background: rgba(168,212,204,0.18); }

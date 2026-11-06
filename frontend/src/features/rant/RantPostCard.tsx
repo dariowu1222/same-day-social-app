@@ -139,15 +139,6 @@ export default function RantPostCard({
     setShowReplies(true)
   }
 
-  // 💬 現在只管回覆列表的開合，留言請按底下的「留下回應…」。
-  // 這兩件事本來都綁在 💬 上，所以收合只能靠列表尾巴那顆「收起回應」，
-  // 手機上那顆字又小又遠。沒有回覆可展開時（新貼文）退回成打開留言框，
-  // 不然按下去毫無反應。
-  function toggleReplies() {
-    if (post.replies.length === 0) { openReplyToPost(); return }
-    setShowReplies((v) => !v)
-  }
-
   return (
     <article ref={cardRef} className="card" style={{ gap: 0, padding: '14px 14px 8px' }}>
       {/* Thread row: 頭像(左) + 內容(右) */}
@@ -205,13 +196,16 @@ export default function RantPostCard({
             <button className="post-action-btn" onClick={onUnderstand}>
               <Heart size={16} /> {post.likeCount > 0 ? post.likeCount : ''}
             </button>
+            {/* 💬 現在一律是「留言」。
+                底下那顆假輸入框「留下回應…」拿掉了——它和下面的「查看 N 則回應」
+                是兩列長得很像的次要列疊在一起，中間還夾一條分隔線。
+                留言的入口收回這顆 icon，展開／收合交給那一列，一件事一個控制項。 */}
             <button
-              className={`post-action-btn${showReplies ? ' is-active' : ''}`}
-              aria-expanded={post.replies.length > 0 ? showReplies : undefined}
-              aria-label={post.replies.length === 0 ? '留下回應' : showReplies ? '收起回應' : `查看 ${post.replyCount} 則回應`}
-              onClick={(e) => { e.stopPropagation(); toggleReplies() }}
+              className={`post-action-btn${showReplyForm ? ' is-active' : ''}`}
+              aria-label="留下回應"
+              onClick={(e) => { e.stopPropagation(); openReplyToPost() }}
             >
-              <MessageCircle size={16} fill={showReplies ? 'currentColor' : 'none'} /> {post.replyCount > 0 ? post.replyCount : ''}
+              <MessageCircle size={16} fill={showReplyForm ? 'currentColor' : 'none'} /> {post.replyCount > 0 ? post.replyCount : ''}
             </button>
             <button className="post-action-btn report-btn" onClick={() => setReportOpen(true)}>
               <Flag size={14} /> 檢舉
@@ -229,26 +223,32 @@ export default function RantPostCard({
               刻意不預覽內容：樹洞的內容是重的，一面牆連續攤開十幾段別人的心事
               會讓人很快過載，而且一篇熱門貼文會把下面的人整個埋掉。
               「可以掃過去、想進去才進去」這個梯度要留著。 */}
-          {!showReplies && post.replies.length > 0 && (
+          {post.replies.length > 0 && (
             <button
               type="button"
               className="thread-sub-indicator"
-              aria-label={`查看 ${post.replyCount} 則回應`}
-              onClick={(e) => { e.stopPropagation(); setShowReplies(true) }}
+              aria-expanded={showReplies}
+              onClick={(e) => { e.stopPropagation(); setShowReplies((v) => !v) }}
             >
-              <span className="thread-sub-avatars">
-                {replyPeople.slice(0, 3).map((nickname) => (
-                  <span key={nickname} className="thread-sub-avatar-xs">{avatarLetter(nickname)}</span>
-                ))}
+              {!showReplies && (
+                <span className="thread-sub-avatars">
+                  {replyPeople.slice(0, 3).map((nickname) => (
+                    <span key={nickname} className="thread-sub-avatar-xs">{avatarLetter(nickname)}</span>
+                  ))}
+                </span>
+              )}
+              {/* 展開後頭像就多餘了——底下每一則自己都帶著臉 */}
+              <span className="thread-sub-count">
+                {showReplies ? '收起回應' : `查看 ${post.replyCount} 則回應`}
               </span>
-              <span className="thread-sub-count">查看 {post.replyCount} 則回應</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* 回覆輸入區 */}
-      {showReplyForm ? (
+      {/* 回覆輸入區。入口是動作列的 💬（沒有回覆的貼文也一樣），
+          所以收合態不再畫任何東西——以前那顆假輸入框「留下回應…」拿掉了。 */}
+      {showReplyForm && (
         <div className="reply-reveal">
           <div className="reply-form" style={{ marginTop: 6 }}>
             {replyTarget && (
@@ -308,10 +308,6 @@ export default function RantPostCard({
             </div>
           </div>
         </div>
-      ) : (
-        <button className="thread-compose-btn" onClick={openReplyToPost}>
-          {replyTarget ? `回覆 @${replyTarget.nickname}…` : '留下回應…'}
-        </button>
       )}
 
       {/* 回覆列表。開合全交給上面的 💬，所以這裡既沒有「查看 N 則回應」
