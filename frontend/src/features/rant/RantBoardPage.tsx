@@ -77,7 +77,7 @@ export default function RantBoardPage() {
             replyMedia={replyMedia[post.id] ?? EMPTY_MEDIA}
             onReplyMediaChange={(media) => setReplyMedia({ ...replyMedia, [post.id]: media })}
             onReply={(parentReplyId) =>
-              updatePost(() => replyRant(post.id, { nickname: user.nickname, content: replies[post.id] ?? '', ...(replyMedia[post.id] ?? EMPTY_MEDIA), parentReplyId }))
+              updatePost(() => replyRant(post.id, { content: replies[post.id] ?? '', ...(replyMedia[post.id] ?? EMPTY_MEDIA), parentReplyId }))
             }
             onDelete={() => removePost(post.id, () => deleteRant(post.id))}
             onLikedReply={loadPosts}

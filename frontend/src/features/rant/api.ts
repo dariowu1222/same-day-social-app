@@ -15,7 +15,10 @@ export async function getRant(rantId: string) {
   return request<RantPost>(`/api/rants/${rantId}`)
 }
 
-export async function createRant(payload: { nickname: string; content: string; mode: string; hashtags?: string[]; imageUrls?: string[]; thumbUrls?: string[]; audioUrl?: string | null }) {
+// payload 裡原本有 nickname，由這邊從 AuthContext 帶上去。拿掉了：後端現在自己
+// 去 users 查，因為那份 AuthContext 的使用者是登入當下寫進 localStorage 的副本——
+// 在沒按過「儲存」的另一台裝置上，它會停在改名前的舊名字，連新發的文都會被蓋上舊名。
+export async function createRant(payload: { content: string; mode: string; hashtags?: string[]; imageUrls?: string[]; thumbUrls?: string[]; audioUrl?: string | null }) {
   return request<RantPost>('/api/rants', { method: 'POST', body: JSON.stringify(payload) })
 }
 
@@ -23,7 +26,7 @@ export async function understandRant(rantId: string) {
   return request<RantPost>(`/api/rants/${rantId}/understand`, { method: 'POST' })
 }
 
-export async function replyRant(rantId: string, payload: { nickname: string; content: string; imageUrl?: string | null; thumbUrl?: string | null; audioUrl?: string | null; parentReplyId?: string | null }) {
+export async function replyRant(rantId: string, payload: { content: string; imageUrl?: string | null; thumbUrl?: string | null; audioUrl?: string | null; parentReplyId?: string | null }) {
   return request<RantPost>(`/api/rants/${rantId}/replies`, { method: 'POST', body: JSON.stringify(payload) })
 }
 

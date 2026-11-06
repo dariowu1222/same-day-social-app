@@ -10,10 +10,12 @@ namespace SameDaySocialApp.Tests;
 /// <summary>
 /// 牢騷牆的帳號狀態過濾。
 ///
-/// 為什麼這面牆特別要測：它是全 App 唯一不用登入就讀得到的內容，而且貼文把
-/// 作者暱稱複寫了一份在 rant_posts.nickname 上。自助註銷只洗 users 那邊的暱稱、
-/// 自我介紹與照片，牆上那份副本原封不動——漏擋的話，一個已經按下「刪除帳號」
-/// 的人，本名和整串心事都還掛在公開頁面上。
+/// 為什麼這面牆特別要測：它是全 App 唯一不用登入就讀得到的內容。漏擋的話，
+/// 一個已經按下「刪除帳號」的人，整串心事都還掛在公開頁面上。
+///
+/// 名字不在這組測試的範圍內——顯示用的暱稱已經改成即時從 users 取
+/// （RantService.WithCurrentNames），註銷會把它洗成「已離開的使用者」。
+/// 這裡擋的是內容本身。名字那條線在 RantServiceNicknameTests。
 /// </summary>
 public sealed class RantServiceAccountStatusTests
 {
@@ -138,7 +140,7 @@ public sealed class RantServiceAccountStatusTests
             TestWorld.User(Replier));
 
         Assert.Null(service.Understand(PostId, Replier));
-        Assert.Null(service.Reply(PostId, Replier, "回覆的人", "還看得到嗎"));
+        Assert.Null(service.Reply(PostId, Replier, "還看得到嗎"));
         Assert.Null(service.Report(PostId, Replier));
         Assert.Null(service.LikeReply(PostId, ReplyIdOf(Replier)));
     }
@@ -152,7 +154,7 @@ public sealed class RantServiceAccountStatusTests
             TestWorld.User(Replier));
 
         Assert.NotNull(service.Understand(PostId, Replier));
-        Assert.NotNull(service.Reply(PostId, Replier, "回覆的人", "還看得到嗎"));
+        Assert.NotNull(service.Reply(PostId, Replier, "還看得到嗎"));
         Assert.NotNull(service.Report(PostId, Replier));
         Assert.NotNull(service.LikeReply(PostId, ReplyIdOf(Replier)));
     }

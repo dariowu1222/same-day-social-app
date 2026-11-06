@@ -35,7 +35,7 @@ public sealed class RantsController(RantService rantService) : ControllerBase
     {
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
                      ?? User.FindFirst("sub")?.Value!;
-        var result = rantService.Create(userId, request.Nickname, request.Content, request.Mode, request.HashTags, request.ImageUrls ?? (request.ImageUrl is null ? null : [request.ImageUrl]), request.AudioUrl, request.ThumbUrls);
+        var result = rantService.Create(userId, request.Content, request.Mode, request.HashTags, request.ImageUrls ?? (request.ImageUrl is null ? null : [request.ImageUrl]), request.AudioUrl, request.ThumbUrls);
         if (result.Moderation.IsBlocked)
             return BadRequest(ApiResponse<RantPost>.Fail(result.Moderation.Code!, result.Moderation.Message!));
         return ApiResponse<RantPost>.Ok(result.Post!, result.Moderation.Warning);
@@ -59,7 +59,7 @@ public sealed class RantsController(RantService rantService) : ControllerBase
     {
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
                      ?? User.FindFirst("sub")?.Value!;
-        var post = rantService.Reply(rantId, userId, request.Nickname, request.Content, request.ImageUrl, request.AudioUrl, request.ParentReplyId, request.ThumbUrl);
+        var post = rantService.Reply(rantId, userId, request.Content, request.ImageUrl, request.AudioUrl, request.ParentReplyId, request.ThumbUrl);
         return post == null
             ? NotFound(ApiResponse<RantPost>.Fail("RANT_NOT_FOUND", "找不到這篇樹洞文章。"))
             : ApiResponse<RantPost>.Ok(post);
@@ -101,5 +101,11 @@ public sealed class RantsController(RantService rantService) : ControllerBase
     }
 }
 
-public sealed record CreateRantRequest(string Nickname, string Content, RantMode Mode, List<string>? HashTags = null, List<string>? ImageUrls = null, string? ImageUrl = null, string? AudioUrl = null, List<string>? ThumbUrls = null);
-public sealed record CreateReplyRequest(string Nickname, string Content, string? ImageUrl = null, string? AudioUrl = null, string? ParentReplyId = null, string? ThumbUrl = null);
+// 這兩個 record 以前的第一個欄位是 Nickname，由客戶端自己填。userId 取自 JWT、
+// 暱稱取自 request body，兩者從來沒有被對帳過，等於任何人都能用任意顯示名發文。
+// 現在暱稱由 RantService.CurrentNickname 去 users 查，這裡不再收。
+//
+// 已經上架的 App 仍然會送 nickname，不過 System.Text.Json 預設忽略對不上的欄位，
+// 舊版本照常能發文，只是名字改由伺服器決定——對它們來說反而是修好的。
+public sealed record CreateRantRequest(string Content, RantMode Mode, List<string>? HashTags = null, List<string>? ImageUrls = null, string? ImageUrl = null, string? AudioUrl = null, List<string>? ThumbUrls = null);
+public sealed record CreateReplyRequest(string Content, string? ImageUrl = null, string? AudioUrl = null, string? ParentReplyId = null, string? ThumbUrl = null);

@@ -67,6 +67,20 @@ public sealed class AccountStateService(IServiceScopeFactory scopes, IMemoryCach
     /// </summary>
     public static HashSet<string> ActiveAmong(
         AppDbContext? db, JsonStorageService storage, IReadOnlyCollection<string> userIds, DateTimeOffset now)
+        => ActiveNamesAmong(db, storage, userIds, now).Keys.ToHashSet();
+
+    /// <summary>
+    /// 同一批人，連同他們「現在」的暱稱。
+    ///
+    /// 為什麼名字要跟狀態一起查：牢騷牆要顯示的名字和要過濾的狀態，問的是同一批
+    /// 使用者——那一頁所有貼文的作者加上所有回覆者。既然為了過濾本來就得跑這支
+    /// 查詢，名字多帶一個欄位就好，不必另外再往返一趟。
+    ///
+    /// 上面的 ActiveAmong 只是丟掉名字的版本。兩支共用同一份載入邏輯，才不會
+    /// 哪天其中一邊補了規則、另一邊沒補。
+    /// </summary>
+    public static Dictionary<string, string> ActiveNamesAmong(
+        AppDbContext? db, JsonStorageService storage, IReadOnlyCollection<string> userIds, DateTimeOffset now)
     {
         if (userIds.Count == 0)
         {
@@ -77,21 +91,23 @@ public sealed class AccountStateService(IServiceScopeFactory scopes, IMemoryCach
         {
             return db.Users.AsNoTracking()
                 .Where(u => userIds.Contains(u.Id))
-                .Select(u => new { u.Id, u.Status, u.SuspendedUntil })
+                .Select(u => new { u.Id, u.Nickname, u.Status, u.SuspendedUntil })
                 .ToList()
                 .Where(u => IsActive(u.Status, u.SuspendedUntil, now))
-                .Select(u => u.Id)
-                .ToHashSet();
+                .ToDictionary(u => u.Id, u => u.Nickname);
         }
 
         // JSON 檔案儲存模式走同一套規則，包含「查無此人即不可用」。
         // 沒有資料庫時 AuthService 六個入口全部回 DATABASE_NOT_CONFIGURED，發不出
         // token，需要登入的路徑一條都進不來，所以這條分支實際上走不到——正因為
         // 如此更沒有理由替它另立一套寬鬆的判斷，讓兩套相反的規則並存在同一份程式裡。
+        //
+        // DistinctBy 是這條分支才需要的：資料庫那邊 id 是主鍵，這裡讀的是一份
+        // 檔案，重複的話 ToDictionary 會直接丟例外。
         return storage.ReadCollection<User>("users")
             .Where(u => userIds.Contains(u.Id) && IsActive(u.Status, u.SuspendedUntil, now))
-            .Select(u => u.Id)
-            .ToHashSet();
+            .DistinctBy(u => u.Id)
+            .ToDictionary(u => u.Id, u => u.Nickname);
     }
 
     /// <summary>單筆版。查無此人同樣算不可用。</summary>

@@ -86,7 +86,6 @@ export default function RantDetailPage() {
     setSubmitting(true)
     try {
       await replyRant(rantId, {
-        nickname: user.nickname,
         content: replyText,
         ...replyMedia,
         parentReplyId: replyTarget?.id ?? null,
