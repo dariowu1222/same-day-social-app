@@ -1,10 +1,30 @@
 // 檢舉面板：樹洞貼文／回應、聊天訊息、使用者共用。
 // 選到「擔心對方想傷害自己」時，整個面板會換成關懷的語氣並列出求助資源——
 // 那不是舉發違規，是替人求救，用同一套「檢舉」措辭會讓想幫忙的人猶豫。
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { submitReport } from './api'
 import { REPORT_OPTIONS, SUPPORT_LINES, type ReportCategory, type ReportTargetType } from './types'
+
+/**
+ * 一定要掛到 body 底下，不能留在呼叫它的那張卡片裡。
+ *
+ * 這個面板本來就是 position: fixed 的遮罩，淺色模式也一直是正常的浮層。
+ * 壞的是夜間：[data-theme="dark"] .rant-page .card 有 backdrop-filter: blur(8px)
+ * （深色玻璃卡片），而那一行同時做了兩件事——
+ *
+ *   1. 替 fixed 的子孫建立 containing block。遮罩於是以「卡片」為準而不是視窗，
+ *      實測 375×812：mask 變成 y124/h416、sheet 跑到 y-143。畫面上看起來就像
+ *      面板在原頁面裡直接展開，而不是蓋上來。
+ *   2. 建立 stacking context。z-index: 90 只在卡片內部有效，所以卡片外面的
+ *      搜尋列（z 12）和底部導覽（z 20）反而畫在面板上面。
+ *
+ * 兩個症狀同一個根因，而且只要上游任何人在祖先加了 filter / transform /
+ * backdrop-filter 就會再發生一次。搬到 body 底下就與上游無關了。
+ * 做法與 ImageLightbox 一致（這個 App 既有的浮層寫法）。
+ */
+const portal = (node: ReactNode) => createPortal(node, document.body)
 
 type Props = {
   targetType: ReportTargetType
@@ -26,6 +46,18 @@ export default function ReportSheet({ targetType, targetId, title = '檢舉', on
   const sendingRef = useRef(false)
 
   const isSelfHarm = category === 'SELF_HARM'
+
+  // Esc 關閉 + 鎖背景捲動，跟 ImageLightbox 同一套（那是這個 App 既有的浮層做法）
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = prevOverflow
+    }
+  }, [onClose])
 
   async function send() {
     if (!category) return
@@ -49,7 +81,7 @@ export default function ReportSheet({ targetType, targetId, title = '檢舉', on
   }
 
   if (doneMessage) {
-    return (
+    return portal(
       <div className="report-mask" onClick={onClose}>
         <div className="report-sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="已送出">
           <div className="report-body report-done">
@@ -73,7 +105,7 @@ export default function ReportSheet({ targetType, targetId, title = '檢舉', on
     )
   }
 
-  return (
+  return portal(
     <div className="report-mask" onClick={onClose}>
       <div className="report-sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-label={title}>
         <div className="report-head">

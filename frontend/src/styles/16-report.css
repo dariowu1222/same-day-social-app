@@ -128,3 +128,57 @@
 /* 送出後的完成畫面 */
 .report-done { padding: 22px 20px 6px; }
 .report-done-text { margin: 0; color: #3f3a33; font-size: 14.5px; line-height: 1.75; }
+
+/* ── 夜間 ──────────────────────────────────────────────────
+   這份原本一條夜間規則都沒有，所以深色模式下整個面板是白的。
+
+   吃的是 01-tokens-base.css 的全域 --theme-* token，不是樹洞頁那套青綠色：
+   這個面板是樹洞貼文、樹洞回應、聊天訊息、使用者共用的，綁單一功能的配色
+   會讓它在聊天室裡看起來像別人的元件。
+
+   遮罩比淺色更暗（0.42 → 0.62）：深色頁面上 42% 的灰幾乎看不出有蓋東西，
+   而「這是一層浮上來的面板」正是它要說的第一件事。 */
+[data-theme="dark"] .report-mask { background: rgba(0, 0, 0, 0.62); }
+
+[data-theme="dark"] .report-sheet {
+  background: var(--theme-bg);
+  border-top: 1px solid var(--theme-card-border);
+}
+
+[data-theme="dark"] .report-head { border-bottom-color: var(--theme-divider); }
+[data-theme="dark"] .report-title { color: var(--theme-title); }
+[data-theme="dark"] .report-close { color: var(--theme-muted); }
+[data-theme="dark"] .report-lead { color: var(--theme-muted); }
+
+[data-theme="dark"] .report-option {
+  background: var(--theme-card-bg);
+  border-color: var(--theme-card-border);
+}
+[data-theme="dark"] .report-option.selected {
+  border-color: #c8825a;
+  background: rgba(200, 130, 90, 0.16);
+}
+[data-theme="dark"] .report-option-label { color: var(--theme-text); }
+[data-theme="dark"] .report-option-hint { color: var(--theme-muted); }
+
+/* 求助資源在夜間仍然要像「安定的一塊」，不是警示色 */
+[data-theme="dark"] .report-support { background: var(--theme-tag-bg); }
+[data-theme="dark"] .report-support-title { color: var(--theme-muted); }
+[data-theme="dark"] .report-support-line { color: var(--theme-title); }
+
+[data-theme="dark"] .report-detail {
+  background: var(--theme-card-bg);
+  border-color: var(--theme-card-border);
+  color: var(--theme-text);
+}
+[data-theme="dark"] .report-detail::placeholder { color: var(--theme-muted); }
+
+[data-theme="dark"] .report-error { color: #e8907a; }
+
+[data-theme="dark"] .report-actions { border-top-color: var(--theme-divider); }
+[data-theme="dark"] .report-cancel {
+  background: transparent;
+  border-color: var(--theme-card-border);
+  color: var(--theme-text);
+}
+[data-theme="dark"] .report-done-text { color: var(--theme-text); }
