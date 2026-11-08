@@ -6,7 +6,7 @@ import {
   User, Flag, Pencil, Pin, BellOff, BellRing, LogOut, Ban,
   Reply, Copy, RotateCcw, ShieldCheck, AlertTriangle,
 } from 'lucide-react'
-import type { ChatMessage, ChatRoom as ChatRoomType, ChatMemberSetting, PeerState } from './types'
+import type { ChatMessage, ChatRoom as ChatRoomType, ChatMemberSetting, PeerState, ChatPeer } from './types'
 import type { QuoteInfo } from './api'
 import type { UserProfile } from '../profile/types'
 import { getAge, getZodiac, ZODIAC_ICON, testAvatarPhoto } from '../../shared/lib/userDisplay'
@@ -21,6 +21,8 @@ import type { ReportTargetType } from '../report/types'
 type Props = {
   room: ChatRoomType
   otherProfile: UserProfile | null
+  /** 列表那一側的精簡資料（overview 帶回來的）。完整 profile 拿不到時的退路。 */
+  peer?: ChatPeer | null
   otherUserId: string
   currentUserId: string
   messages: ChatMessage[]
@@ -69,7 +71,7 @@ type RenderRow =
     }
 
 export default function ChatRoom({
-  room, otherProfile, otherUserId, currentUserId,
+  room, otherProfile, peer = null, otherUserId, currentUserId,
   messages, draft, onDraftChange, onSendContent, onRecall,
   setting, reported = false, expired = false, peerState = null,
   onUpdateSetting, onLeave, onBlock, onReport, onBack,
@@ -141,9 +143,16 @@ export default function ChatRoom({
   // 拖曳過程的暫存：起點、起始位移(px)、是否真的移動過、最後位移比例。
   const dragRef = useRef<{ startY: number; baseY: number; height: number; moved: boolean; ratio: number } | null>(null)
 
-  const displayName = setting?.noteName?.trim() || otherProfile?.nickname?.trim() || `同頻對話 ${otherUserId.slice(-4)}`
+  // peer 是列表那一側的退路。完整 profile 不一定拿得到——/api/profile 對
+  // 非 ACTIVE 的帳號回 404（既有的隱私設計），所以對方一被停權，這裡原本就會
+  // 掉到「同頻對話 xxxx」：列表上還寫著名字，點進去卻變成一串房號。
+  // overview 本來就帶著暱稱與頭像，用它不會多洩漏任何東西。
+  const displayName = setting?.noteName?.trim()
+    || otherProfile?.nickname?.trim()
+    || peer?.nickname?.trim()
+    || `同頻對話 ${otherUserId.slice(-4)}`
   // 正式環境會改用帳號實際 photoDataUrls[0]；目前測試先給寫死照片，照片失效時 Avatar 會退回動物頭像。
-  const avatarPhoto = otherProfile?.photoDataUrls?.[0] ?? testAvatarPhoto(otherUserId)
+  const avatarPhoto = otherProfile?.photoDataUrls?.[0] ?? peer?.photoUrl ?? testAvatarPhoto(otherUserId)
   const birthday = otherProfile?.birthday
   const subtitle = birthday
     ? `${getAge(birthday)} · ${getZodiac(birthday)}`

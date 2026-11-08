@@ -451,6 +451,10 @@ export default function ChatPage() {
       <ChatRoom
         room={activeRoom}
         otherProfile={profiles[otherUserId] ?? null}
+        // 列表那一側的暱稱與頭像。完整 profile 拿不到時（例如對方被停權，
+        // /api/profile 對非 ACTIVE 的帳號回 404）就靠這個，不要掉到
+        // 「同頻對話 xxxx」——列表上明明還寫著名字，進去卻變成一串房號。
+        peer={peers[otherUserId] ?? null}
         otherUserId={otherUserId}
         currentUserId={user.userId}
         messages={messages}
