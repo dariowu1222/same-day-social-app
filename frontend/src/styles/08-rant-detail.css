@@ -483,7 +483,6 @@
 .rant-page .post-action-btn:hover,
 .rant-page .reply-like-btn:hover,
 .rant-page .reply-sub-btn:hover { color: #8a7a6a; background: #f0ebe3; }
-.rant-page .report-btn { color: #d4785a; }
 .rant-page .thread-collapse-btn { color: #b0a090; font-size: 12px; border-top: 0.5px solid #f0ebe3; }
 .rant-page .reply-form { border-top-color: #f0ebe3; }
 /* 不寫 :hover、也不碰 background：hover 的底色是展開中唯一剩下的游標回饋，
@@ -549,7 +548,6 @@
 [data-theme="dark"] .rant-page .post-action-btn:hover,
 [data-theme="dark"] .rant-page .reply-like-btn:hover,
 [data-theme="dark"] .rant-page .reply-sub-btn:hover { color: #a8d4cc; background: rgba(255,255,255,0.06); }
-[data-theme="dark"] .rant-page .report-btn { color: rgba(220,140,130,0.6); }
 [data-theme="dark"] .rant-page .thread-collapse-btn { color: rgba(168,212,204,0.5); border-top-color: rgba(168,212,204,0.1); }
 [data-theme="dark"] .rant-page .post-action-btn.is-active { color: #a8d4cc; }
 [data-theme="dark"] .rant-page .thread-line { background: rgba(168,212,204,0.18); }

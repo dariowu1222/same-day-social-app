@@ -240,9 +240,12 @@ blockquote {
   gap: 8px;
 }
 
-/* ── Report button ── */
+/* ── Report button ──
+   貼文層與回應層共用這一條，所以檢舉在哪一頁、哪個主題都是同一個紅。
+   !important 要留著：.rant-page .post-action-btn（0,2,0）會蓋過這裡的 0,1,0，
+   而「檢舉是紅的」不該由頁面樣式去談判。日夜差異交給變數，!important 擋不住它。 */
 .report-btn {
-  color: #d93025 !important;
+  color: var(--theme-report) !important;
 }
 
 /* ── Post card new layout ── */
@@ -1039,13 +1042,15 @@ blockquote {
 
 
 /* 回應的檢舉鈕：低調不搶戲，需要時才找得到 */
+/* 顏色交給 .report-btn（兩個層級共用同一個紅），這裡只負責排版。
+   padding 歸零才跟旁邊的愛心、回應對齊在同一條基線上。 */
 .reply-report-btn {
   border: none;
   background: none;
-  color: #b3ab9f;
   cursor: pointer;
-  padding: 2px 4px;
+  padding: 0;
+  font-size: 12px;
   display: inline-flex;
   align-items: center;
+  gap: 3px;
 }
-.reply-report-btn:hover { color: #c0574b; }

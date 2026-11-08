@@ -17,6 +17,9 @@
   --theme-divider: #e8e0d4;
   --theme-text: #4a3f35;
   --theme-muted: #b0a090;
+  /* 檢舉的紅。貼文層與回應層共用，日夜各一個值——
+     先前寫死在 .report-btn 上並加了 !important，夜間那條柔紅因此從來沒生效過。 */
+  --theme-report: #d4785a;
   --bottom-nav-height: 64px;
 
   /* .app-shell 的上下內距，抽成變數讓需要「剛好一屏」的頁面扣同一個值。
@@ -41,6 +44,7 @@
   --theme-divider: rgba(80, 160, 60, 0.15);
   --theme-text: rgba(200, 245, 180, 0.85);
   --theme-muted: rgba(150, 210, 130, 0.55);
+  --theme-report: #e09a8c;
 }
 
 :root {

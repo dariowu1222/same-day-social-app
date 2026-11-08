@@ -9,8 +9,10 @@ function ReplyReportButton({ replyId }: { replyId: string }) {
   const [open, setOpen] = useState(false)
   return (
     <>
-      <button className="reply-report-btn" type="button" onClick={() => setOpen(true)} aria-label="檢舉這則回應">
-        <Flag size={12} />
+      {/* 跟貼文那一顆一樣是紅字加「檢舉」。同一件事在兩個層級長得不一樣，
+          使用者得先認出那個灰旗子是什麼才敢按——而會想按的人通常正在不舒服。 */}
+      <button className="reply-report-btn report-btn" type="button" onClick={() => setOpen(true)}>
+        <Flag size={12} /> 檢舉
       </button>
       {open && (
         <ReportSheet
