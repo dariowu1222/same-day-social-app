@@ -358,7 +358,7 @@ export default function ChatPage() {
         title: '離開聊天室',
         // 這個動作實際上是把你移出房間，對話與對方都不會再出現，
         // 不是「只是從列表隱藏」。文案要講清楚，不然使用者會以為還救得回來。
-        desc: `離開後就看不到與「${summary.title}」的對話了，而且無法復原。`,
+        desc: `離開後就看不到與「${summary.title}」的對話了，而且無法復原`,
         onYes: () => {
           setConfirm(null)
           void leaveRoom(summary.room.id).catch(() => setToast('離開失敗，請再試一次'))
@@ -369,7 +369,7 @@ export default function ChatPage() {
 
     setConfirm({
       title: '檢舉對方',
-      desc: '接著會請你選擇原因。我們會盡快查看，處理完成會通知你；在那之前你們仍然可以繼續對話。',
+      desc: '接著會請你選擇原因。我們會盡快查看，處理完成會通知你；在那之前你們仍然可以繼續對話',
       onYes: () => {
         setConfirm(null)
         listReportedRef.current = false
@@ -595,10 +595,10 @@ export default function ChatPage() {
     <div className="page chat-empty-page">
       <header className="page-header">
         <p className="eyebrow">聊天</p>
-        <h1>慢慢說就好。</h1>
+        <h1>慢慢說就好</h1>
       </header>
       {loaded ? (
-        <section className="panel empty-state">還沒有聊天室。雙方都按「想聊聊」後，這裡會出現對話。</section>
+        <section className="panel empty-state">還沒有聊天室。雙方都按「想聊聊」後，這裡會出現對話</section>
       ) : (
         <div className="chat-card-list">
           {[0, 1, 2, 3].map((i) => (

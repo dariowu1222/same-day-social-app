@@ -47,7 +47,7 @@ export default function FeedbackPage() {
           送出
         </button>
         <p className="account-danger-note" style={{ marginTop: 10 }}>
-          會開啟你的郵件 App 寄給 {FEEDBACK_EMAIL}。
+          會開啟你的郵件 App 寄給 {FEEDBACK_EMAIL}
         </p>
       </section>
     </div>

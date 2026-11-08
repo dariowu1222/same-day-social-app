@@ -42,7 +42,7 @@ public sealed class AdminSessionFilter(AdminSessionService sessions, AdminAccess
             || !admin.IsAdmin(userId))
         {
             context.Result = new NotFoundObjectResult(
-                ApiResponse<object>.Fail("NOT_FOUND", "找不到此資源。"));
+                ApiResponse<object>.Fail("NOT_FOUND", "找不到此資源"));
             return;
         }
 
@@ -50,7 +50,7 @@ public sealed class AdminSessionFilter(AdminSessionService sessions, AdminAccess
         if (!state.Valid)
         {
             context.Result = new ObjectResult(
-                ApiResponse<object>.Fail("ADMIN_SESSION_EXPIRED", "後台登入已過期，請重新驗證。"))
+                ApiResponse<object>.Fail("ADMIN_SESSION_EXPIRED", "後台登入已過期，請重新驗證"))
             {
                 StatusCode = StatusCodes.Status401Unauthorized,
             };

@@ -27,7 +27,7 @@ public sealed class ReportsController(ReportService reports) : ControllerBase
         // 例外變成 500，使用者看到的是「伺服器錯誤」而不是「說明太長了」。
         if (!InputLimits.WithinLength(request.Detail, 1000))
         {
-            return BadRequest(ApiResponse<SubmitReportResponse>.Fail("FIELD_TOO_LONG", "檢舉說明最多 1000 字。"));
+            return BadRequest(ApiResponse<SubmitReportResponse>.Fail("FIELD_TOO_LONG", "檢舉說明最多 1000 字"));
         }
 
         var result = reports.Submit(
@@ -37,10 +37,10 @@ public sealed class ReportsController(ReportService reports) : ControllerBase
         {
             var message = result.Error switch
             {
-                "REPORT_TARGET_NOT_FOUND" => "找不到要檢舉的內容，可能已被刪除。",
-                "REPORT_SELF" => "無法檢舉自己的內容。",
-                "REPORT_UNAVAILABLE" => "檢舉服務暫時無法使用，請稍後再試。",
-                _ => "檢舉資料不正確。",
+                "REPORT_TARGET_NOT_FOUND" => "找不到要檢舉的內容，可能已被刪除",
+                "REPORT_SELF" => "無法檢舉自己的內容",
+                "REPORT_UNAVAILABLE" => "檢舉服務暫時無法使用，請稍後再試",
+                _ => "檢舉資料不正確",
             };
             return BadRequest(ApiResponse<SubmitReportResponse>.Fail(result.Error, message));
         }
@@ -50,10 +50,10 @@ public sealed class ReportsController(ReportService reports) : ControllerBase
         // 給一個接不住的保證，比不給更糟。只講真的做得到的那一件事。
         var isSelfHarm = request.Category == ReportCategory.SELF_HARM;
         var note = isSelfHarm
-            ? "已收到你的通報，不會讓對方知道是誰說的。"
+            ? "已收到你的通報，不會讓對方知道是誰說的"
             : result.AlreadyReported
-                ? "你已經檢舉過這則內容，我們正在處理。"
-                : "已收到你的檢舉，我們會盡快審核。";
+                ? "你已經檢舉過這則內容，我們正在處理"
+                : "已收到你的檢舉，我們會盡快審核";
 
         return ApiResponse<SubmitReportResponse>.Ok(
             new SubmitReportResponse(result.Report?.Id ?? "", result.AlreadyReported, isSelfHarm, note));

@@ -181,7 +181,7 @@ public sealed class ReportService
             userId,
             "SELF_HARM_SUPPORT",
             "想讓你知道，你並不孤單 🤍",
-            "如果最近很不好受，願意的話可以找人聊聊。安心專線 1925、生命線 1995，24 小時都有人在。",
+            "如果最近很不好受，願意的話可以找人聊聊。安心專線 1925、生命線 1995，24 小時都有人在",
             "support",
             null);
     }
@@ -362,7 +362,7 @@ public sealed class ReportService
                 record.ReporterId,
                 "REPORT",
                 "你的檢舉已處理",
-                "我們確認了你的檢舉並對該帳號做出處置。與對方的對話已經關閉，你可以隨時退出。",
+                "我們確認了你的檢舉並對該帳號做出處置。與對方的對話已經關閉，你可以隨時退出",
                 "chat");
         }
 

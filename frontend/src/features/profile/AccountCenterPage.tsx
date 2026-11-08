@@ -20,7 +20,7 @@ export default function AccountCenterPage() {
       await deleteAccount()
       logout() // 清 token + user → 導回登入頁
     } catch (e) {
-      setError(e instanceof Error ? e.message : '刪除失敗，請稍後再試。')
+      setError(e instanceof Error ? e.message : '刪除失敗，請稍後再試')
       setBusy(false)
     }
   }
@@ -43,7 +43,7 @@ export default function AccountCenterPage() {
       <section className="panel">
         <p className="setting-section-title">危險操作</p>
         <p className="account-danger-note">
-          刪除帳號後會停用登入，並清除你的個人資料與照片。此動作目前無法自行復原。
+          刪除帳號後會停用登入，並清除你的個人資料與照片。此動作目前無法自行復原
         </p>
         <button className="account-delete-btn" type="button" onClick={() => setConfirming(true)}>
           刪除帳號

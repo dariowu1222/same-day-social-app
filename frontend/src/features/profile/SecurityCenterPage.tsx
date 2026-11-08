@@ -48,7 +48,7 @@ export default function SecurityCenterPage() {
         {loading ? (
           <p className="account-danger-note">載入中⋯</p>
         ) : blocked.length === 0 ? (
-          <p className="account-danger-note">你還沒有封鎖任何人。</p>
+          <p className="account-danger-note">你還沒有封鎖任何人</p>
         ) : (
           <ul className="block-list">
             {blocked.map((b) => (

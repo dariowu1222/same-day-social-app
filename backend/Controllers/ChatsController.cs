@@ -72,7 +72,7 @@ public sealed class ChatsController(ChatService chatService, MediaUrlPolicy medi
         if (content.Length > InputLimits.MaxMessageLength)
         {
             return BadRequest(ApiResponse<ChatMessage>.Fail(
-                "FIELD_TOO_LONG", $"訊息最多 {InputLimits.MaxMessageLength} 字。"));
+                "FIELD_TOO_LONG", $"訊息最多 {InputLimits.MaxMessageLength} 字"));
         }
 
         // 圖片與語音訊息的「內容」就是一串網址，而前端看到像媒體的字串會直接
@@ -82,7 +82,7 @@ public sealed class ChatsController(ChatService chatService, MediaUrlPolicy medi
         if (!mediaUrls.IsAllowedAsMessage(content))
         {
             return BadRequest(ApiResponse<ChatMessage>.Fail(
-                "INVALID_MEDIA_URL", "圖片或語音必須是從這個 App 上傳的。"));
+                "INVALID_MEDIA_URL", "圖片或語音必須是從這個 App 上傳的"));
         }
 
         // 檢舉經後台審核成立之後這間房就唯讀了。前端已經把輸入列換成說明，
@@ -90,7 +90,7 @@ public sealed class ChatsController(ChatService chatService, MediaUrlPolicy medi
         if (chatService.GetFrozenRoomIds(CallerId, [chatRoomId]).Count > 0)
         {
             return BadRequest(ApiResponse<ChatMessage>.Fail(
-                "CHAT_ROOM_REPORTED", "你檢舉的對象已經被處置，這段對話無法再傳送訊息。"));
+                "CHAT_ROOM_REPORTED", "你檢舉的對象已經被處置，這段對話無法再傳送訊息"));
         }
 
         // 閒置到期也會讓房間唯讀。跟上面分開回報：兩者的原因完全不同，
@@ -98,7 +98,7 @@ public sealed class ChatsController(ChatService chatService, MediaUrlPolicy medi
         if (chatService.GetExpiredRoomIds([chatRoomId]).Count > 0)
         {
             return BadRequest(ApiResponse<ChatMessage>.Fail(
-                "CHAT_ROOM_EXPIRED", "這個聊天室因為太久沒有往來已經關閉，無法再傳送訊息。"));
+                "CHAT_ROOM_EXPIRED", "這個聊天室因為太久沒有往來已經關閉，無法再傳送訊息"));
         }
 
         // 對方被停權／封鎖／註銷。他自己在 Program.cs 的中介軟體就被 401 擋住了，
@@ -112,8 +112,8 @@ public sealed class ChatsController(ChatService chatService, MediaUrlPolicy medi
             return BadRequest(ApiResponse<ChatMessage>.Fail(
                 "CHAT_PEER_" + peerState,
                 peerState == AccountStatus.SUSPENDED.ToString()
-                    ? "這個帳號目前停權中，審核完成前暫時不能傳送訊息。"
-                    : "這個帳號已經無法使用，不能再傳送訊息。"));
+                    ? "這個帳號目前停權中，審核完成前暫時不能傳送訊息"
+                    : "這個帳號已經無法使用，不能再傳送訊息"));
         }
 
         var message = chatService.SendMessage(chatRoomId, CallerId, content, request.QuotedMessageId);
@@ -141,7 +141,7 @@ public sealed class ChatsController(ChatService chatService, MediaUrlPolicy medi
     {
         if (!IsMember(chatRoomId)) return Forbid();
         var recalled = chatService.RecallMessage(messageId, CallerId);
-        if (recalled == null) return BadRequest(ApiResponse<ChatMessage>.Fail("MESSAGE_RECALL_DENIED", "訊息無法收回（僅限本人發出後 2 分鐘內）。"));
+        if (recalled == null) return BadRequest(ApiResponse<ChatMessage>.Fail("MESSAGE_RECALL_DENIED", "訊息無法收回（僅限本人發出後 2 分鐘內）"));
         await chatHub.Clients.Group(ChatHub.RoomGroup(chatRoomId)).SendAsync("messageRecalled", recalled);
         return ApiResponse<ChatMessage>.Ok(recalled);
     }
@@ -180,7 +180,7 @@ public sealed class ChatsController(ChatService chatService, MediaUrlPolicy medi
         // chat_member_settings.note_name 是 varchar(100)
         if (!InputLimits.WithinLength(request.NoteName, 100))
         {
-            return BadRequest(ApiResponse<ChatMemberSetting>.Fail("FIELD_TOO_LONG", "備註名最多 100 字。"));
+            return BadRequest(ApiResponse<ChatMemberSetting>.Fail("FIELD_TOO_LONG", "備註名最多 100 字"));
         }
         return ApiResponse<ChatMemberSetting>.Ok(
             chatService.UpdateMemberSetting(CallerId, chatRoomId, request.NoteName, request.Pinned, request.Muted));
@@ -220,7 +220,7 @@ public sealed class ChatsController(ChatService chatService, MediaUrlPolicy medi
         // chat_reports.reason 是 varchar(500)
         if (!InputLimits.WithinLength(request?.Reason, 500))
         {
-            return BadRequest(ApiResponse<bool>.Fail("FIELD_TOO_LONG", "檢舉說明最多 500 字。"));
+            return BadRequest(ApiResponse<bool>.Fail("FIELD_TOO_LONG", "檢舉說明最多 500 字"));
         }
         chatService.ReportUser(CallerId, other, chatRoomId, request?.Reason);
         return ApiResponse<bool>.Ok(true);

@@ -31,7 +31,7 @@ public sealed class PushController(
         // 丟 Npgsql 例外變成 500；FCM 的 token 大約 160 字，512 綽綽有餘。
         if (string.IsNullOrWhiteSpace(request.Token) || request.Token.Trim().Length > 512)
         {
-            return BadRequest(ApiResponse<bool>.Fail("INVALID_TOKEN", "缺少或不正確的裝置識別碼。"));
+            return BadRequest(ApiResponse<bool>.Fail("INVALID_TOKEN", "缺少或不正確的裝置識別碼"));
         }
 
         pushService.RegisterToken(CallerId, request.Token.Trim(), request.Platform?.Trim() ?? "android");
@@ -67,13 +67,13 @@ public sealed class PushController(
         if (string.IsNullOrWhiteSpace(expected))
         {
             // 沒設密鑰等於這個功能沒開，不要讓端點變成誰都能打
-            return NotFound(ApiResponse<PushDigestResult>.Fail("PUSH_DISABLED", "推播未啟用。"));
+            return NotFound(ApiResponse<PushDigestResult>.Fail("PUSH_DISABLED", "推播未啟用"));
         }
 
         if (!FixedTimeEquals(secret, expected))
         {
             logger.LogWarning("彙總推播端點收到錯誤的密鑰");
-            return Unauthorized(ApiResponse<PushDigestResult>.Fail("UNAUTHORIZED", "密鑰不符。"));
+            return Unauthorized(ApiResponse<PushDigestResult>.Fail("UNAUTHORIZED", "密鑰不符"));
         }
 
         return ApiResponse<PushDigestResult>.Ok(await pushService.RunDigestAsync(ct));

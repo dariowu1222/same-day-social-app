@@ -197,15 +197,15 @@ export default function ChatRoom({
   }
   function confirmLeave() {
     setMenuOpen(false)
-    setConfirm({ title: '離開聊天室', desc: '離開後此對話會從你的列表移除。', danger: true, onYes: () => { setConfirm(null); onLeave ? onLeave() : onBack() } })
+    setConfirm({ title: '離開聊天室', desc: '離開後此對話會從你的列表移除', danger: true, onYes: () => { setConfirm(null); onLeave ? onLeave() : onBack() } })
   }
   function confirmBlock() {
     setMenuOpen(false)
-    setConfirm({ title: '離開並封鎖對方', desc: '封鎖後對方無法再與你聊天，此對話也會移除。', danger: true, onYes: () => { setConfirm(null); onBlock ? onBlock() : onBack() } })
+    setConfirm({ title: '離開並封鎖對方', desc: '封鎖後對方無法再與你聊天，此對話也會移除', danger: true, onYes: () => { setConfirm(null); onBlock ? onBlock() : onBack() } })
   }
   function confirmReport() {
     setMenuOpen(false)
-    setConfirm({ title: '檢舉對方', desc: '接著會請你選擇原因。我們會盡快查看，處理完成會通知你；在那之前你們仍然可以繼續對話。', danger: true, onYes: () => { setConfirm(null); reportedRef.current = false; setReportTarget({ type: 'USER', id: otherUserId }) } })
+    setConfirm({ title: '檢舉對方', desc: '接著會請你選擇原因。我們會盡快查看，處理完成會通知你；在那之前你們仍然可以繼續對話', danger: true, onYes: () => { setConfirm(null); reportedRef.current = false; setReportTarget({ type: 'USER', id: otherUserId }) } })
   }
 
   // ── 長按 / 右鍵訊息 → 操作列 ──
@@ -413,7 +413,7 @@ export default function ChatRoom({
       {safetyBannerOpen && (
         <div className="cr-safety-banner">
           <ShieldCheck size={16} strokeWidth={2} className="cr-safety-banner-ic" />
-          <span className="cr-safety-banner-text">注意安全：不要匯款或透露金融資訊，個資與聯絡方式等信任後再分享。</span>
+          <span className="cr-safety-banner-text">注意安全：不要匯款或透露金融資訊，個資與聯絡方式等信任後再分享</span>
           <button className="cr-safety-banner-close" type="button" onClick={dismissSafetyBanner}>我知道了，不再顯示</button>
         </div>
       )}
@@ -438,7 +438,7 @@ export default function ChatRoom({
       {/* 訊息區 */}
       <div className="cr-body" ref={bodyRef}>
         {rows.length === 0 && (
-          <p className="cr-empty">還沒有訊息，慢慢說，不急。</p>
+          <p className="cr-empty">還沒有訊息，慢慢說，不急</p>
         )}
         {rows.map((row) =>
           row.kind === 'date' ? (
@@ -551,15 +551,14 @@ export default function ChatRoom({
         <div className="cr-frozen">
           {reported ? (
             <>
-              <p className="cr-frozen-title">你檢舉的對象已經被處置。</p>
-              <p className="cr-frozen-desc">這段對話已經關閉，先前的訊息還看得到，但不能再傳送。</p>
+              <p className="cr-frozen-title">你檢舉的對象已經被處置</p>
+              <p className="cr-frozen-desc">這段對話已經關閉，先前的訊息還看得到，但不能再傳送</p>
             </>
           ) : peerState === 'SUSPENDED' ? (
             <>
-              <p className="cr-frozen-title">這個帳號目前停權中。</p>
+              <p className="cr-frozen-title">這個帳號目前停權中</p>
               <p className="cr-frozen-desc">
-                我們的審查人員正在進行審核，在那之前暫時不能傳送訊息，請見諒。
-                先前的訊息都還在，可以回頭看。
+                我們的審查人員正在進行審核，在那之前暫時不能傳送訊息，請見諒。先前的訊息都還在，可以回頭看
               </p>
             </>
           ) : peerState != null ? (
@@ -567,13 +566,13 @@ export default function ChatRoom({
             // 兩者合用一句：註銷是當事人自己的決定，不該對外說明；
             // 封鎖則沒有必要把處置結果公告給他的聊天對象。
             <>
-              <p className="cr-frozen-title">這個帳號已經無法使用。</p>
-              <p className="cr-frozen-desc">先前的訊息都還在，可以回頭看，只是不能再傳送了。</p>
+              <p className="cr-frozen-title">這個帳號已經無法使用</p>
+              <p className="cr-frozen-desc">先前的訊息都還在，可以回頭看，只是不能再傳送了</p>
             </>
           ) : (
             <>
-              <p className="cr-frozen-title">太久沒有往來，這段對話已經關閉。</p>
-              <p className="cr-frozen-desc">先前的訊息都還在，可以慢慢回頭看，只是不能再傳送了。</p>
+              <p className="cr-frozen-title">太久沒有往來，這段對話已經關閉</p>
+              <p className="cr-frozen-desc">先前的訊息都還在，可以慢慢回頭看，只是不能再傳送了</p>
             </>
           )}
           <button className="cr-frozen-leave" type="button" onClick={confirmLeave}>
@@ -606,7 +605,7 @@ export default function ChatRoom({
           value={draft}
           onChange={(event) => onDraftChange(event.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="慢慢說，不急。"
+          placeholder="慢慢說，不急"
         />
         <button className="cr-send" type="button" onClick={attemptSend} disabled={!draft.trim()} aria-label="送出">
           <ArrowUp size={18} strokeWidth={2.4} />
@@ -734,7 +733,7 @@ export default function ChatRoom({
               <AlertTriangle size={20} strokeWidth={2} /><span>傳送前確認</span>
             </div>
             <p className="cr-safety-desc">
-              這則訊息可能包含<strong>{riskDialog.categories.join('、')}</strong>。為了你的安全，請先確認對方值得信任——你仍然可以選擇傳送。
+              這則訊息可能包含<strong>{riskDialog.categories.join('、')}</strong>。為了你的安全，請先確認對方值得信任——你仍然可以選擇傳送
             </p>
             <label className="cr-safety-check">
               <input type="checkbox" onChange={(e) => setRiskMuted(e.target.checked)} />
@@ -756,7 +755,7 @@ export default function ChatRoom({
               <AlertTriangle size={20} strokeWidth={2} /><span>換個說法？</span>
             </div>
             <p className="cr-safety-desc">
-              這則訊息可能帶有攻擊或辱罵字眼。好好說話更容易被理解——你仍然可以照原樣傳送。
+              這則訊息可能帶有攻擊或辱罵字眼。好好說話更容易被理解——你仍然可以照原樣傳送
             </p>
             <label className="cr-safety-check">
               <input type="checkbox" onChange={(e) => setWordingMuted(e.target.checked)} />
@@ -864,7 +863,7 @@ export default function ChatRoom({
           <div className="cr-bio-text">
             {otherProfile?.bio?.trim()
               ? otherProfile.bio
-              : <span className="cr-bio-muted">這個人還沒寫自我介紹。</span>}
+              : <span className="cr-bio-muted">這個人還沒寫自我介紹</span>}
           </div>
         </div>
       </div>

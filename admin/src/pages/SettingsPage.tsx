@@ -16,8 +16,8 @@ const asCount = (raw: string): number | null =>
 // 自己抄一份的話，後端哪天放寬了，這個畫面會繼續擋著不給改。
 function rangeError(raw: string, min: number, max: number, label: string): string {
   const value = asCount(raw)
-  if (value === null) return `${label}要填正整數。`
-  if (value < min || value > max) return `${label}必須介於 ${min} 到 ${max} 之間。`
+  if (value === null) return `${label}要填正整數`
+  if (value < min || value > max) return `${label}必須介於 ${min} 到 ${max} 之間`
   return ''
 }
 
@@ -69,7 +69,7 @@ export default function SettingsPage() {
     const changedPartners = partners !== settings.chatMaxPartners
     if (!changedDays && !changedPartners) {
       setError('')
-      setNotice('沒有任何變更。')
+      setNotice('沒有任何變更')
       return
     }
 
@@ -81,7 +81,7 @@ export default function SettingsPage() {
         chatIdleDays: changedDays ? days : undefined,
         chatMaxPartners: changedPartners ? partners : undefined,
       }))
-      setNotice('已儲存。新規則立刻生效，不必重新部署。')
+      setNotice('已儲存。新規則立刻生效，不必重新部署')
     } catch (e) {
       // 後端 INVALID_VALUE 的訊息本來就是中文、而且會寫出合法範圍，原樣顯示比自己改寫清楚
       setError(e instanceof Error ? e.message : '儲存失敗')
@@ -98,7 +98,7 @@ export default function SettingsPage() {
       `現在就依「閒置 ${settings.chatIdleDays} 天」跑一次到期處理？\n\n`
       + '做的事跟每天早上九點那次排程完全一樣：達到門檻的聊天室會立刻收到「明天關閉」'
       + '的站內通知，已經通知滿一天又還是沒人回話的會當場鎖定。\n'
-      + '通知寄出去收不回來，鎖定也沒有復原鍵。')
+      + '通知寄出去收不回來，鎖定也沒有復原鍵')
     if (!ok) return
 
     setBusy(true)
@@ -135,7 +135,7 @@ export default function SettingsPage() {
       <div className="page-head">
         <div>
           <h1 className="page-title">規則設定</h1>
-          <span className="page-sub">聊天室的閒置期限與配對上限。存檔即生效，變更會記進審核軌跡。</span>
+          <span className="page-sub">聊天室的閒置期限與配對上限。存檔即生效，變更會記進審核軌跡</span>
         </div>
       </div>
 
@@ -148,9 +148,9 @@ export default function SettingsPage() {
             <h2 className="section-title">聊天室閒置鎖定</h2>
             <div className="page-sub" style={{ marginBottom: 12 }}>
               聊天室連續這麼多天沒有任何訊息就會被鎖定。鎖定不是刪除：房間還留在列表上、
-              歷史看得到，但雙方只剩「退出聊天室」可以按。
+              歷史看得到，但雙方只剩「退出聊天室」可以按
               <br />
-              鎖定前一天雙方會先收到一則站內通知，所以最後還有一天可以把話接回去。
+              鎖定前一天雙方會先收到一則站內通知，所以最後還有一天可以把話接回去
             </div>
 
             <label>
@@ -171,13 +171,13 @@ export default function SettingsPage() {
               <div className="msg msg-warn" style={{ margin: '12px 0 0' }}>
                 調短：{settings.chatIdleDays} → {draftDays} 天。
                 最後一則訊息停在 {draftDays} 天前的聊天室，會在下一次排程收到
-                「明天關閉」的通知，再隔一天才真的鎖定。存檔後就算數，通知寄出去收不回來。
+                「明天關閉」的通知，再隔一天才真的鎖定。存檔後就算數，通知寄出去收不回來
               </div>
             )}
             {draftDays !== null && draftDays > settings.chatIdleDays && (
               <div className="msg msg-warn" style={{ margin: '12px 0 0' }}>
                 調長：{settings.chatIdleDays} → {draftDays} 天。
-                之後的聊天室會晚一點才到期，但已經被鎖定的房間不會因此解鎖。
+                之後的聊天室會晚一點才到期，但已經被鎖定的房間不會因此解鎖
               </div>
             )}
           </div>
@@ -185,9 +185,9 @@ export default function SettingsPage() {
           <div className="card">
             <h2 className="section-title">同時聊天對象上限</h2>
             <div className="page-sub" style={{ marginBottom: 12 }}>
-              每個人同時進行中的聊天對象上限。額滿的人配不到新的對象，別人也配不到他。
+              每個人同時進行中的聊天對象上限。額滿的人配不到新的對象，別人也配不到他
               <br />
-              已經鎖定的房間不算在內，所以對話自然沉寂、房間到期之後，名額會自己回來。
+              已經鎖定的房間不算在內，所以對話自然沉寂、房間到期之後，名額會自己回來
             </div>
 
             <label>
@@ -208,7 +208,7 @@ export default function SettingsPage() {
               <div className="msg msg-warn" style={{ margin: '12px 0 0' }}>
                 調低：{settings.chatMaxPartners} → {draftPartners} 人。
                 目前手上已經有 {draftPartners} 個（含）以上對象的人，
-                在舊房間到期之前完全配不到新的人——他們在滑卡頁會一直配不出結果。
+                在舊房間到期之前完全配不到新的人——他們在滑卡頁會一直配不出結果
               </div>
             )}
           </div>
@@ -240,7 +240,7 @@ export default function SettingsPage() {
                 {settings.chatExpirySince ? formatDate(settings.chatExpirySince) : '未設定'}
                 <div className="page-sub">
                   功能上線前就存在的聊天室，到期時間取「最後一則訊息」與這個時間的較晚者，
-                  不會一上線就被回溯鎖定。此值只能從資料庫調整。
+                  不會一上線就被回溯鎖定。此值只能從資料庫調整
                 </div>
               </span>
             </div>
@@ -250,9 +250,9 @@ export default function SettingsPage() {
             <h2 className="section-title">立即執行一次到期處理</h2>
             <div className="page-sub" style={{ marginBottom: 12 }}>
               排程每天台灣時間早上九點跑一次。剛調完天數想馬上知道影響多少間時可以手動跑一次，
-              不必等到隔天早上。
+              不必等到隔天早上
               <br />
-              用的是<strong>已儲存</strong>的值——左邊改了還沒存的數字不算數。
+              用的是<strong>已儲存</strong>的值——左邊改了還沒存的數字不算數
             </div>
             <button className="btn btn-danger" onClick={() => void runNow()} disabled={busy}>
               {busy ? '執行中…' : '執行一次（會寄通知、會鎖房間）'}
@@ -264,7 +264,7 @@ export default function SettingsPage() {
               <div className="msg msg-error" style={{ margin: '12px 0 0' }}>
                 聊天到期用的欄位還不存在，這次什麼都沒做。
                 請先在 Supabase SQL Editor 執行
-                backend/Infrastructure/Persistence/MigrationsSql/20261104_chat_expiry_and_app_settings.sql。
+                backend/Infrastructure/Persistence/MigrationsSql/20261104_chat_expiry_and_app_settings.sql
               </div>
             )}
 
@@ -283,7 +283,7 @@ export default function SettingsPage() {
                   <span className="field-value">{outcome.expired} 間</span>
                 </div>
                 <div className="page-sub" style={{ marginTop: 8 }}>
-                  通知與鎖定是分兩天的：這次剛通知的房間，要等下一次執行才會被鎖。
+                  通知與鎖定是分兩天的：這次剛通知的房間，要等下一次執行才會被鎖
                 </div>
               </div>
             )}

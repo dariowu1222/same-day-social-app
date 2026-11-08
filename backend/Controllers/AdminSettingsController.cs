@@ -66,7 +66,7 @@ public sealed class AdminSettingsController(
             {
                 return BadRequest(ApiResponse<Settings>.Fail(
                     "INVALID_VALUE",
-                    $"閒置天數必須介於 {AppSettingsService.MinIdleDays} 到 {AppSettingsService.MaxIdleDays} 之間。"));
+                    $"閒置天數必須介於 {AppSettingsService.MinIdleDays} 到 {AppSettingsService.MaxIdleDays} 之間"));
             }
             changes.Add($"閒置天數={days}");
         }
@@ -77,7 +77,7 @@ public sealed class AdminSettingsController(
             {
                 return BadRequest(ApiResponse<Settings>.Fail(
                     "INVALID_VALUE",
-                    $"聊天對象上限必須介於 {AppSettingsService.MinMaxPartners} 到 {AppSettingsService.MaxMaxPartners} 之間。"));
+                    $"聊天對象上限必須介於 {AppSettingsService.MinMaxPartners} 到 {AppSettingsService.MaxMaxPartners} 之間"));
             }
             changes.Add($"聊天對象上限={partners}");
         }

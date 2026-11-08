@@ -137,7 +137,7 @@ public sealed class ChatExpiryService(
                 member.UserId,
                 "CHAT_EXPIRING",
                 "聊天室明天就會關閉",
-                $"你們已經 {idleDays - 1} 天沒有往來。再沒有訊息的話，明天這個聊天室就會關閉，只能退出。",
+                $"你們已經 {idleDays - 1} 天沒有往來。再沒有訊息的話，明天這個聊天室就會關閉，只能退出",
                 linkType: "chat",
                 linkId: member.ChatRoomId);
         }

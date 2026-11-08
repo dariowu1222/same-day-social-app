@@ -184,7 +184,7 @@ builder.Services.AddRateLimiter(options =>
     {
         context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
         await context.HttpContext.Response.WriteAsJsonAsync(
-            ApiResponse<object>.Fail("RATE_LIMITED", "操作太頻繁，請稍後再試。"), ct);
+            ApiResponse<object>.Fail("RATE_LIMITED", "操作太頻繁，請稍後再試"), ct);
     };
 });
 
@@ -285,7 +285,7 @@ app.Use(async (context, next) =>
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
             await context.Response.WriteAsJsonAsync(
                 SameDaySocialApp.Application.Dto.ApiResponse<object>.Fail(
-                    "ACCOUNT_DISABLED", "這個帳號目前無法使用。"));
+                    "ACCOUNT_DISABLED", "這個帳號目前無法使用"));
             return;
         }
     }
@@ -307,7 +307,7 @@ app.Use(async (context, next) =>
         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
         await context.Response.WriteAsJsonAsync(
             SameDaySocialApp.Application.Dto.ApiResponse<object>.Fail(
-                "ADMIN_TOKEN_SCOPE", "後台憑證不能用於一般功能。"));
+                "ADMIN_TOKEN_SCOPE", "後台憑證不能用於一般功能"));
         return;
     }
 
@@ -395,7 +395,7 @@ if (app.Environment.IsDevelopment())
     <body>
       <main>
         <h1>同頻 Today 正在啟動</h1>
-        <p>後端已啟動，正在等待前端開發伺服器。如果畫面沒有自動跳轉，請確認 Visual Studio 輸出視窗是否有 npm / Vite 錯誤。</p>
+        <p>後端已啟動，正在等待前端開發伺服器。如果畫面沒有自動跳轉，請確認 Visual Studio 輸出視窗是否有 npm / Vite 錯誤</p>
         <a href="http://localhost:5173">前往前端</a>
       </main>
     </body>

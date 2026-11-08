@@ -42,7 +42,7 @@ public sealed class AdminAuthController(
     {
         if (!admin.IsAdmin(CallerId))
         {
-            return NotFound(ApiResponse<AdminMeResponse>.Fail("NOT_FOUND", "找不到此資源。"));
+            return NotFound(ApiResponse<AdminMeResponse>.Fail("NOT_FOUND", "找不到此資源"));
         }
         return ApiResponse<AdminMeResponse>.Ok(new AdminMeResponse(true));
     }
@@ -54,7 +54,7 @@ public sealed class AdminAuthController(
         var userId = CallerId;
         if (string.IsNullOrWhiteSpace(userId))
         {
-            return NotFound(ApiResponse<AdminChallengeResponse>.Fail("NOT_FOUND", "找不到此資源。"));
+            return NotFound(ApiResponse<AdminChallengeResponse>.Fail("NOT_FOUND", "找不到此資源"));
         }
 
         var result = await sessions.SendChallengeAsync(userId, AdminSessionService.CodePurpose.Login, ct);
@@ -63,19 +63,19 @@ public sealed class AdminAuthController(
             AdminSessionService.Failure.None =>
                 ApiResponse<AdminChallengeResponse>.Ok(new AdminChallengeResponse(result.MaskedEmail!)),
             AdminSessionService.Failure.NotAdmin =>
-                NotFound(ApiResponse<AdminChallengeResponse>.Fail("NOT_FOUND", "找不到此資源。")),
+                NotFound(ApiResponse<AdminChallengeResponse>.Fail("NOT_FOUND", "找不到此資源")),
             AdminSessionService.Failure.NoEmail =>
                 BadRequest(ApiResponse<AdminChallengeResponse>.Fail(
-                    "ADMIN_NO_EMAIL", "這個帳號沒有可用的登入信箱，無法進入後台。")),
+                    "ADMIN_NO_EMAIL", "這個帳號沒有可用的登入信箱，無法進入後台")),
             AdminSessionService.Failure.SmtpNotConfigured =>
                 BadRequest(ApiResponse<AdminChallengeResponse>.Fail(
-                    "SMTP_NOT_CONFIGURED", "尚未設定寄信服務，無法寄出後台驗證碼。")),
+                    "SMTP_NOT_CONFIGURED", "尚未設定寄信服務，無法寄出後台驗證碼")),
             AdminSessionService.Failure.TooManyRequests =>
                 StatusCode(StatusCodes.Status429TooManyRequests, ApiResponse<AdminChallengeResponse>.Fail(
-                    "ADMIN_CODE_THROTTLED", "驗證碼寄送太頻繁，請稍候再試。")),
+                    "ADMIN_CODE_THROTTLED", "驗證碼寄送太頻繁，請稍候再試")),
             _ =>
                 BadRequest(ApiResponse<AdminChallengeResponse>.Fail(
-                    "ADMIN_CHALLENGE_FAILED", "驗證碼寄送失敗，請稍後再試。")),
+                    "ADMIN_CHALLENGE_FAILED", "驗證碼寄送失敗，請稍後再試")),
         };
     }
 
@@ -87,7 +87,7 @@ public sealed class AdminAuthController(
         var userId = CallerId;
         if (string.IsNullOrWhiteSpace(userId))
         {
-            return NotFound(ApiResponse<AdminTokenResponse>.Fail("NOT_FOUND", "找不到此資源。"));
+            return NotFound(ApiResponse<AdminTokenResponse>.Fail("NOT_FOUND", "找不到此資源"));
         }
 
         var result = await sessions.VerifyAsync(
@@ -101,13 +101,13 @@ public sealed class AdminAuthController(
             AdminSessionService.Failure.None =>
                 ApiResponse<AdminTokenResponse>.Ok(new AdminTokenResponse(result.Token!, result.ExpiresAt!.Value)),
             AdminSessionService.Failure.NotAdmin =>
-                NotFound(ApiResponse<AdminTokenResponse>.Fail("NOT_FOUND", "找不到此資源。")),
+                NotFound(ApiResponse<AdminTokenResponse>.Fail("NOT_FOUND", "找不到此資源")),
             AdminSessionService.Failure.CodeExpired =>
-                BadRequest(ApiResponse<AdminTokenResponse>.Fail("CODE_EXPIRED", "驗證碼已過期，請重新取得。")),
+                BadRequest(ApiResponse<AdminTokenResponse>.Fail("CODE_EXPIRED", "驗證碼已過期，請重新取得")),
             AdminSessionService.Failure.TooManyAttempts =>
-                BadRequest(ApiResponse<AdminTokenResponse>.Fail("CODE_TOO_MANY_ATTEMPTS", "錯誤次數過多，請重新取得驗證碼。")),
+                BadRequest(ApiResponse<AdminTokenResponse>.Fail("CODE_TOO_MANY_ATTEMPTS", "錯誤次數過多，請重新取得驗證碼")),
             _ =>
-                BadRequest(ApiResponse<AdminTokenResponse>.Fail("CODE_INVALID", "驗證碼不正確。")),
+                BadRequest(ApiResponse<AdminTokenResponse>.Fail("CODE_INVALID", "驗證碼不正確")),
         };
     }
 
@@ -128,10 +128,10 @@ public sealed class AdminAuthController(
                 ApiResponse<AdminChallengeResponse>.Ok(new AdminChallengeResponse(result.MaskedEmail!)),
             AdminSessionService.Failure.TooManyRequests =>
                 StatusCode(StatusCodes.Status429TooManyRequests, ApiResponse<AdminChallengeResponse>.Fail(
-                    "ADMIN_CODE_THROTTLED", "驗證碼寄送太頻繁，請稍候再試。")),
+                    "ADMIN_CODE_THROTTLED", "驗證碼寄送太頻繁，請稍候再試")),
             _ =>
                 BadRequest(ApiResponse<AdminChallengeResponse>.Fail(
-                    "ADMIN_CHALLENGE_FAILED", "驗證碼寄送失敗，請稍後再試。")),
+                    "ADMIN_CHALLENGE_FAILED", "驗證碼寄送失敗，請稍後再試")),
         };
     }
 
@@ -152,10 +152,10 @@ public sealed class AdminAuthController(
         {
             AdminSessionService.Failure.None => ApiResponse<bool>.Ok(true),
             AdminSessionService.Failure.CodeExpired =>
-                BadRequest(ApiResponse<bool>.Fail("CODE_EXPIRED", "驗證碼已過期，請重新取得。")),
+                BadRequest(ApiResponse<bool>.Fail("CODE_EXPIRED", "驗證碼已過期，請重新取得")),
             AdminSessionService.Failure.TooManyAttempts =>
-                BadRequest(ApiResponse<bool>.Fail("CODE_TOO_MANY_ATTEMPTS", "錯誤次數過多，請重新取得驗證碼。")),
-            _ => BadRequest(ApiResponse<bool>.Fail("CODE_INVALID", "驗證碼不正確。")),
+                BadRequest(ApiResponse<bool>.Fail("CODE_TOO_MANY_ATTEMPTS", "錯誤次數過多，請重新取得驗證碼")),
+            _ => BadRequest(ApiResponse<bool>.Fail("CODE_INVALID", "驗證碼不正確")),
         };
     }
 
@@ -194,7 +194,7 @@ public sealed class AdminAuthController(
     {
         if (!admin.IsAdmin(request.UserId))
         {
-            return BadRequest(ApiResponse<bool>.Fail("NOT_ADMIN", "對象不是管理者。"));
+            return BadRequest(ApiResponse<bool>.Fail("NOT_ADMIN", "對象不是管理者"));
         }
         await sessions.RevokeAllAsync(request.UserId, ct);
         return ApiResponse<bool>.Ok(true);

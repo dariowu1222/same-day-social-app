@@ -63,13 +63,13 @@ public sealed class MaintenanceController(
         {
             // 沒設密鑰等於這支沒開，不要讓端點變成誰都能打
             return NotFound(ApiResponse<RestoreExpiredSuspensionsResult>.Fail(
-                "MAINTENANCE_DISABLED", "維護端點未啟用。"));
+                "MAINTENANCE_DISABLED", "維護端點未啟用"));
         }
 
         if (!FixedTimeEquals(secret, expected))
         {
             logger.LogWarning("停權恢復端點收到錯誤的密鑰");
-            return Unauthorized(ApiResponse<RestoreExpiredSuspensionsResult>.Fail("UNAUTHORIZED", "密鑰不符。"));
+            return Unauthorized(ApiResponse<RestoreExpiredSuspensionsResult>.Fail("UNAUTHORIZED", "密鑰不符"));
         }
 
         var restored = users.RestoreExpiredSuspensions();
@@ -101,13 +101,13 @@ public sealed class MaintenanceController(
         var expected = options.Value.TriggerSecret;
         if (string.IsNullOrWhiteSpace(expected))
         {
-            return NotFound(ApiResponse<ChatExpiryResult>.Fail("MAINTENANCE_DISABLED", "維護端點未啟用。"));
+            return NotFound(ApiResponse<ChatExpiryResult>.Fail("MAINTENANCE_DISABLED", "維護端點未啟用"));
         }
 
         if (!FixedTimeEquals(secret, expected))
         {
             logger.LogWarning("聊天室到期端點收到錯誤的密鑰");
-            return Unauthorized(ApiResponse<ChatExpiryResult>.Fail("UNAUTHORIZED", "密鑰不符。"));
+            return Unauthorized(ApiResponse<ChatExpiryResult>.Fail("UNAUTHORIZED", "密鑰不符"));
         }
 
         var outcome = chatExpiry.Run();
@@ -133,13 +133,13 @@ public sealed class MaintenanceController(
         var expected = options.Value.TriggerSecret;
         if (string.IsNullOrWhiteSpace(expected))
         {
-            return NotFound(ApiResponse<PurgeReportContentResult>.Fail("MAINTENANCE_DISABLED", "維護端點未啟用。"));
+            return NotFound(ApiResponse<PurgeReportContentResult>.Fail("MAINTENANCE_DISABLED", "維護端點未啟用"));
         }
 
         if (!FixedTimeEquals(secret, expected))
         {
             logger.LogWarning("檢舉內容清理端點收到錯誤的密鑰");
-            return Unauthorized(ApiResponse<PurgeReportContentResult>.Fail("UNAUTHORIZED", "密鑰不符。"));
+            return Unauthorized(ApiResponse<PurgeReportContentResult>.Fail("UNAUTHORIZED", "密鑰不符"));
         }
 
         var outcome = reports.PurgeOldOutcomes();

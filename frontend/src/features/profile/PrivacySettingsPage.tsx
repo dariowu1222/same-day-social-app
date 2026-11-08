@@ -56,7 +56,7 @@ export default function PrivacySettingsPage() {
       <section className="panel">
         <p className="setting-section-title">資料使用</p>
         <p className="account-danger-note">
-          你的資料僅用於配對與服務運作，不會販售給第三方。刪除帳號可在「帳號」頁操作。
+          你的資料僅用於配對與服務運作，不會販售給第三方。刪除帳號可在「帳號」頁操作
         </p>
       </section>
     </div>

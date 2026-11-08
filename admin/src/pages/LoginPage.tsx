@@ -35,7 +35,7 @@ export default function LoginPage({ onLogin }: Props) {
       setPassword('')
     } catch (err) {
       clearToken()
-      setError(err instanceof Error ? err.message : '登入失敗，請稍後再試。')
+      setError(err instanceof Error ? err.message : '登入失敗，請稍後再試')
     }
     setBusy(false)
   }
@@ -53,7 +53,7 @@ export default function LoginPage({ onLogin }: Props) {
       onLogin(pendingUser!)
     } catch (err) {
       clearToken()
-      setError(err instanceof Error ? err.message : '驗證失敗，請稍後再試。')
+      setError(err instanceof Error ? err.message : '驗證失敗，請稍後再試')
       setBusy(false)
     }
   }
@@ -66,9 +66,9 @@ export default function LoginPage({ onLogin }: Props) {
     try {
       const masked = await resendCode()
       setMaskedEmail(masked)
-      setNotice('已重新寄出驗證碼。')
+      setNotice('已重新寄出驗證碼')
     } catch (err) {
-      setError(err instanceof Error ? err.message : '重寄失敗，請稍後再試。')
+      setError(err instanceof Error ? err.message : '重寄失敗，請稍後再試')
     }
     setBusy(false)
   }
@@ -86,7 +86,7 @@ export default function LoginPage({ onLogin }: Props) {
       <div className="login-wrap">
         <form className="login-card" onSubmit={submitCode}>
           <h1 className="login-title">輸入驗證碼</h1>
-          <p className="login-sub">已寄出六位數驗證碼到 {maskedEmail}，5 分鐘內有效。</p>
+          <p className="login-sub">已寄出六位數驗證碼到 {maskedEmail}，5 分鐘內有效</p>
 
           {error && <div className="msg msg-error">{error}</div>}
           {notice && <div className="msg">{notice}</div>}

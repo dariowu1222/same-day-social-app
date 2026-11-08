@@ -83,7 +83,7 @@ export default function NotificationCenterPage() {
         <div className="notif-empty">
           <Bell size={32} strokeWidth={1.4} />
           <p>還沒有通知</p>
-          <span>有人對你有共鳴、或回應你的樹洞時，會出現在這裡。</span>
+          <span>有人對你有共鳴、或回應你的樹洞時，會出現在這裡</span>
         </div>
       )}
 

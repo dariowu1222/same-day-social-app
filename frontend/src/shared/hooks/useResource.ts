@@ -29,7 +29,7 @@ export function useResource<T>(loader: Loader<T>, deps: unknown[] = []): Resourc
       const response = await loader()
       setData(response.data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '載入失敗，請稍後再試。')
+      setError(err instanceof Error ? err.message : '載入失敗，請稍後再試')
     } finally {
       setLoading(false)
     }

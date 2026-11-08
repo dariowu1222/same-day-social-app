@@ -290,11 +290,11 @@ export default function ProfilePage() {
 
   async function save() {
     if (!gender) {
-      showToast('請選擇性別（必填）。')
+      showToast('請選擇性別（必填）')
       return
     }
     if (birthday && !isAdultBirthday(birthday)) {
-      showToast('未滿 18 歲暫時不能使用同頻 Today。')
+      showToast('未滿 18 歲暫時不能使用同頻 Today')
       return
     }
 

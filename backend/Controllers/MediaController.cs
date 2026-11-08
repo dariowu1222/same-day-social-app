@@ -24,7 +24,7 @@ public sealed class MediaController(IMediaStorage media, IWebHostEnvironment env
     {
         if (string.IsNullOrWhiteSpace(request.DataUrl))
         {
-            return BadRequest(ApiResponse<MediaUploadResponse>.Fail("MEDIA_EMPTY", "沒有收到媒體內容。"));
+            return BadRequest(ApiResponse<MediaUploadResponse>.Fail("MEDIA_EMPTY", "沒有收到媒體內容"));
         }
 
         // 物件儲存沒設定時原樣退回 data URL，讓本機開發不必先接 Supabase。
@@ -37,36 +37,36 @@ public sealed class MediaController(IMediaStorage media, IWebHostEnvironment env
             return environment.IsDevelopment()
                 ? ApiResponse<MediaUploadResponse>.Ok(new MediaUploadResponse(request.DataUrl))
                 : StatusCode(503, ApiResponse<MediaUploadResponse>.Fail(
-                    "MEDIA_NOT_CONFIGURED", "媒體儲存尚未設定，目前無法上傳。"));
+                    "MEDIA_NOT_CONFIGURED", "媒體儲存尚未設定，目前無法上傳"));
         }
 
         var folder = MediaFolders.Parse(request.Folder);
         if (folder == null)
         {
-            return BadRequest(ApiResponse<MediaUploadResponse>.Fail("MEDIA_FOLDER_INVALID", "上傳位置不正確。"));
+            return BadRequest(ApiResponse<MediaUploadResponse>.Fail("MEDIA_FOLDER_INVALID", "上傳位置不正確"));
         }
 
         var parsed = ParseDataUrl(request.DataUrl);
         if (parsed == null)
         {
-            return BadRequest(ApiResponse<MediaUploadResponse>.Fail("MEDIA_INVALID", "媒體格式不正確。"));
+            return BadRequest(ApiResponse<MediaUploadResponse>.Fail("MEDIA_INVALID", "媒體格式不正確"));
         }
 
         var (bytes, contentType) = parsed.Value;
 
         if (MediaContentTypes.ExtensionFor(contentType) == null)
         {
-            return BadRequest(ApiResponse<MediaUploadResponse>.Fail("MEDIA_TYPE_NOT_ALLOWED", "不支援這種檔案類型。"));
+            return BadRequest(ApiResponse<MediaUploadResponse>.Fail("MEDIA_TYPE_NOT_ALLOWED", "不支援這種檔案類型"));
         }
 
         if (bytes.Length > MediaContentTypes.MaxBytesFor(contentType))
         {
-            return BadRequest(ApiResponse<MediaUploadResponse>.Fail("MEDIA_TOO_LARGE", "檔案太大了，請換一個小一點的。"));
+            return BadRequest(ApiResponse<MediaUploadResponse>.Fail("MEDIA_TOO_LARGE", "檔案太大了，請換一個小一點的"));
         }
 
         if (!MediaContentTypes.MatchesMagicBytes(contentType, bytes))
         {
-            return BadRequest(ApiResponse<MediaUploadResponse>.Fail("MEDIA_TYPE_MISMATCH", "檔案內容與類型不符。"));
+            return BadRequest(ApiResponse<MediaUploadResponse>.Fail("MEDIA_TYPE_MISMATCH", "檔案內容與類型不符"));
         }
 
         try
@@ -76,7 +76,7 @@ public sealed class MediaController(IMediaStorage media, IWebHostEnvironment env
         }
         catch (Exception)
         {
-            return StatusCode(502, ApiResponse<MediaUploadResponse>.Fail("MEDIA_UPLOAD_FAILED", "媒體上傳失敗，請稍後再試。"));
+            return StatusCode(502, ApiResponse<MediaUploadResponse>.Fail("MEDIA_UPLOAD_FAILED", "媒體上傳失敗，請稍後再試"));
         }
     }
 

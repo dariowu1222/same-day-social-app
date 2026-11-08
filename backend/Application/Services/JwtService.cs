@@ -24,7 +24,7 @@ public sealed class JwtService
             if (!environment.IsDevelopment())
             {
                 throw new InvalidOperationException(
-                    "缺少 Jwt:Secret。正式環境請以環境變數 Jwt__Secret 提供至少 32 位元組的強密鑰。");
+                    "缺少 Jwt:Secret。正式環境請以環境變數 Jwt__Secret 提供至少 32 位元組的強密鑰");
             }
             // 開發環境：自動產生（重啟後失效，僅供本機開發）
             secret = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
@@ -32,7 +32,7 @@ public sealed class JwtService
         else if (!environment.IsDevelopment() && Encoding.UTF8.GetByteCount(secret) < MinSecretBytes)
         {
             throw new InvalidOperationException(
-                $"Jwt:Secret 太短。正式環境請使用至少 {MinSecretBytes} 位元組的強密鑰。");
+                $"Jwt:Secret 太短。正式環境請使用至少 {MinSecretBytes} 位元組的強密鑰");
         }
         _secret = secret;
     }

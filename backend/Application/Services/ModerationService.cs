@@ -26,7 +26,7 @@ public sealed class ModerationService
 
         if (ContainsAny(text, SafetyLexicon.WarnEmotion))
         {
-            return new ModerationResult(false, "這篇看起來情緒比較強，建議避免出現可辨識人物或公司資訊。", null, null);
+            return new ModerationResult(false, "這篇看起來情緒比較強，建議避免出現可辨識人物或公司資訊", null, null);
         }
 
         return new ModerationResult(false, null, null, null);
@@ -38,7 +38,7 @@ public sealed class ModerationService
             true,
             null,
             "CONTENT_BLOCKED",
-            "這篇內容可能包含個資、攻擊或高風險內容，請調整後再發布。");
+            "這篇內容可能包含個資、攻擊或高風險內容，請調整後再發布");
     }
 
     private static bool ContainsAny(string text, params string[] keywords)

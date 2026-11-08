@@ -357,7 +357,7 @@ public sealed class MatchService
                 otherUserId,
                 "MATCH",
                 "你們互相同頻了 ✨",
-                "有人和你一樣按下了同頻，開始聊聊吧。",
+                "有人和你一樣按下了同頻，開始聊聊吧",
                 "chat",
                 roomId);
         }
@@ -850,11 +850,11 @@ public sealed class MatchService
         {
             // SAME_EVENT 只有在雙方都發過今日時才算得出來，所以這裡 current 必定不為 null；
             // 加上判斷是讓編譯器看得懂，不是防真的會發生的情況。
-            MatchType.SAME_EVENT when current != null => $"你們今天都遇到{LabelOf(current.EventType)}相關的事情，也都適合從理解開始。",
-            MatchType.SAME_INTEREST => "你們今天提到相近的興趣，可以從一件小事慢慢聊起。",
-            MatchType.COMPLEMENTARY => "你們期待的回應方式相容，適合低壓地互相聽聽看。",
-            MatchType.SAME_EMOTION => "事件不一定相同，但你們今天的情緒很接近。",
-            _ => "你們適合同步完成一個小任務，用低壓方式慢慢認識。"
+            MatchType.SAME_EVENT when current != null => $"你們今天都遇到{LabelOf(current.EventType)}相關的事情，也都適合從理解開始",
+            MatchType.SAME_INTEREST => "你們今天提到相近的興趣，可以從一件小事慢慢聊起",
+            MatchType.COMPLEMENTARY => "你們期待的回應方式相容，適合低壓地互相聽聽看",
+            MatchType.SAME_EMOTION => "事件不一定相同，但你們今天的情緒很接近",
+            _ => "你們適合同步完成一個小任務，用低壓方式慢慢認識"
         };
     }
 

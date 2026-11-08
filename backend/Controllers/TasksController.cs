@@ -27,7 +27,7 @@ public sealed class TasksController(TaskService taskService) : ControllerBase
         _ = request;
         var task = taskService.Join(taskId, CallerId);
         return task == null
-            ? NotFound(ApiResponse<SocialTask>.Fail("TASK_NOT_FOUND", "找不到這個任務。"))
+            ? NotFound(ApiResponse<SocialTask>.Fail("TASK_NOT_FOUND", "找不到這個任務"))
             : ApiResponse<SocialTask>.Ok(task);
     }
 }

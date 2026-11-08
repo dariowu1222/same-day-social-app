@@ -140,12 +140,12 @@ public sealed class TaskService
     {
         return
         [
-            NewTask("散步 20 分鐘", "不用急著聊天，先一起完成一段舒服的散步。", TaskCategory.WALK, "20 分鐘"),
-            NewTask("今晚早睡", "各自把手機放下，明天再互相說一聲早。", TaskCategory.EARLY_SLEEP, "1 晚"),
-            NewTask("讀一小段書", "讀一段文字，分享今天最有感的一句。", TaskCategory.READ, "30 分鐘"),
-            NewTask("低壓運動", "做一點簡單伸展或走路，讓心情慢慢回來。", TaskCategory.EXERCISE, "15 分鐘"),
-            NewTask("看一集影片", "各自看同一集電影或動畫，再交換一個感想。", TaskCategory.MOVIE, "1 集"),
-            NewTask("工程師共學 25 分鐘", "用一個番茄鐘完成小進度，不用互相比較。", TaskCategory.CODING, "25 分鐘")
+            NewTask("散步 20 分鐘", "不用急著聊天，先一起完成一段舒服的散步", TaskCategory.WALK, "20 分鐘"),
+            NewTask("今晚早睡", "各自把手機放下，明天再互相說一聲早", TaskCategory.EARLY_SLEEP, "1 晚"),
+            NewTask("讀一小段書", "讀一段文字，分享今天最有感的一句", TaskCategory.READ, "30 分鐘"),
+            NewTask("低壓運動", "做一點簡單伸展或走路，讓心情慢慢回來", TaskCategory.EXERCISE, "15 分鐘"),
+            NewTask("看一集影片", "各自看同一集電影或動畫，再交換一個感想", TaskCategory.MOVIE, "1 集"),
+            NewTask("工程師共學 25 分鐘", "用一個番茄鐘完成小進度，不用互相比較", TaskCategory.CODING, "25 分鐘")
         ];
     }
 

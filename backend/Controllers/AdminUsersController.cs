@@ -62,7 +62,7 @@ public sealed class AdminUsersController(
         var detail = users.GetDetail(userId);
         if (detail == null)
         {
-            return NotFound(ApiResponse<AdminUserService.UserDetail>.Fail("USER_NOT_FOUND", "找不到這個會員。"));
+            return NotFound(ApiResponse<AdminUserService.UserDetail>.Fail("USER_NOT_FOUND", "找不到這個會員"));
         }
         reports.LogAudit(CallerId, "VIEW_USER_DETAIL", null, userId);
         return ApiResponse<AdminUserService.UserDetail>.Ok(detail);
@@ -76,7 +76,7 @@ public sealed class AdminUsersController(
             userId, CallerId, request.Nickname, request.Bio, request.MembershipTier, request.MembershipExpiresAt);
         return ok
             ? ApiResponse<bool>.Ok(true)
-            : NotFound(ApiResponse<bool>.Fail("USER_NOT_FOUND", "找不到這個會員。"));
+            : NotFound(ApiResponse<bool>.Fail("USER_NOT_FOUND", "找不到這個會員"));
     }
 
     /// <summary>
@@ -91,7 +91,7 @@ public sealed class AdminUsersController(
         // 管理者不該把自己鎖在門外
         if (userId == CallerId)
         {
-            return BadRequest(ApiResponse<bool>.Fail("SANCTION_SELF", "無法對自己的帳號執行處置。"));
+            return BadRequest(ApiResponse<bool>.Fail("SANCTION_SELF", "無法對自己的帳號執行處置"));
         }
 
         // 用「實際效果」而不是「動作名稱」判斷要不要再驗證。
@@ -104,7 +104,7 @@ public sealed class AdminUsersController(
         if (destructive && !RecentlyVerified())
         {
             return StatusCode(StatusCodes.Status403Forbidden, ApiResponse<bool>.Fail(
-                "ADMIN_REVERIFY_REQUIRED", "這個動作無法復原，請重新輸入信箱驗證碼。"));
+                "ADMIN_REVERIFY_REQUIRED", "這個動作無法復原，請重新輸入信箱驗證碼"));
         }
 
         var ok = request.Action switch
@@ -119,7 +119,7 @@ public sealed class AdminUsersController(
 
         if (!ok)
         {
-            return BadRequest(ApiResponse<bool>.Fail("SANCTION_FAILED", "處置未完成，請確認會員是否存在或動作是否支援。"));
+            return BadRequest(ApiResponse<bool>.Fail("SANCTION_FAILED", "處置未完成，請確認會員是否存在或動作是否支援"));
         }
         return ApiResponse<bool>.Ok(true);
     }

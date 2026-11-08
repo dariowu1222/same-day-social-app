@@ -67,11 +67,11 @@ function isUserCancelled(error: unknown): boolean {
  */
 function toAuthErrorMessage(error: unknown): string {
   if (!(error instanceof Error) || !error.message) {
-    return '操作失敗，請稍後再試。'
+    return '操作失敗，請稍後再試'
   }
   const raw = error.message
   if (/no credentials? available|nocredential/i.test(raw)) {
-    return '這台裝置還沒有可用的 Google 帳號，請先在系統設定加入帳號，或改用 Email 登入。'
+    return '這台裝置還沒有可用的 Google 帳號，請先在系統設定加入帳號，或改用 Email 登入'
   }
   if (/sign-?in failed/i.test(raw)) {
     const provider = /facebook/i.test(raw) ? 'Facebook' : 'Google'
@@ -331,7 +331,7 @@ export default function LoginPage({ onAuthenticated }: Props) {
       // 格式明顯不對就不用跑一趟後端，錯誤也標在 Email 欄而不是表單底部
       if (!isValidEmail(email)) {
         setLoginEmailError('請輸入有效的 Email 格式')
-        throw new Error('請輸入有效的 Email 格式。')
+        throw new Error('請輸入有效的 Email 格式')
       }
       const user = await loginAccount({ email, password }, rememberMe)
       onAuthenticated(user, rememberMe)
@@ -343,7 +343,7 @@ export default function LoginPage({ onAuthenticated }: Props) {
     if (provider === 'facebook') {
       if (!FACEBOOK_APP_ID) {
         setAuthMessage('')
-        setAuthError('Facebook 登入尚未設定（缺少 App ID），請先用 Google 或 Email 登入。')
+        setAuthError('Facebook 登入尚未設定（缺少 App ID），請先用 Google 或 Email 登入')
         return
       }
       void runAuthAction(async () => {
@@ -351,7 +351,7 @@ export default function LoginPage({ onAuthenticated }: Props) {
         const res = await SocialLogin.login({ provider: 'facebook', options: { permissions: ['email', 'public_profile'] } })
         const accessToken = (res?.result as { accessToken?: { token?: string } } | undefined)?.accessToken?.token
         if (!accessToken) {
-          throw new Error('沒有取得 Facebook 登入憑證，請再試一次。')
+          throw new Error('沒有取得 Facebook 登入憑證，請再試一次')
         }
         const user = await facebookLogin(accessToken, rememberMe)
         onAuthenticated(user, rememberMe)
@@ -361,7 +361,7 @@ export default function LoginPage({ onAuthenticated }: Props) {
 
     if (!GOOGLE_WEB_CLIENT_ID) {
       setAuthMessage('')
-      setAuthError('Google 登入尚未設定（缺少 Web Client ID），請先用 Email 登入。')
+      setAuthError('Google 登入尚未設定（缺少 Web Client ID），請先用 Email 登入')
       return
     }
 
@@ -371,7 +371,7 @@ export default function LoginPage({ onAuthenticated }: Props) {
       const res = await SocialLogin.login({ provider: 'google', options: {} })
       const idToken = (res?.result as { idToken?: string } | undefined)?.idToken
       if (!idToken) {
-        throw new Error('沒有取得 Google 登入憑證，請再試一次。')
+        throw new Error('沒有取得 Google 登入憑證，請再試一次')
       }
       const user = await googleLogin(idToken, rememberMe)
       onAuthenticated(user, rememberMe)
@@ -388,7 +388,7 @@ export default function LoginPage({ onAuthenticated }: Props) {
   async function submitRegister() {
     await runAuthAction(async () => {
       if (!agreed) {
-        throw new Error('請先閱讀並同意服務條款與隱私權政策。')
+        throw new Error('請先閱讀並同意服務條款與隱私權政策')
       }
 
       // 每一項都先在前端擋下來，並把錯誤標在對應欄位上。
@@ -397,24 +397,24 @@ export default function LoginPage({ onAuthenticated }: Props) {
       const nameError = nicknameRuleError(registerName)
       if (nameError) {
         setRegisterNameError(nameError)
-        throw new Error(`${nameError}。`)
+        throw new Error(nameError)
       }
       if (!isValidEmail(registerEmail)) {
         setRegisterEmailError('請輸入有效的 Email 格式')
-        throw new Error('請輸入有效的 Email 格式。')
+        throw new Error('請輸入有效的 Email 格式')
       }
       if (!isAdultBirthYear(birthYear)) {
-        throw new Error('未滿 18 歲暫時不能使用同頻 Today。')
+        throw new Error('未滿 18 歲暫時不能使用同頻 Today')
       }
 
       const ruleError = passwordRuleError(password)
       if (ruleError) {
         setPasswordError(ruleError)
-        throw new Error(`${ruleError}。`)
+        throw new Error(ruleError)
       }
       if (password !== confirmPassword) {
         setConfirmPasswordError('密碼不一致，請重新確認')
-        throw new Error('兩次輸入的密碼不一致。')
+        throw new Error('兩次輸入的密碼不一致')
       }
 
       const result = await registerAccount({
@@ -426,7 +426,7 @@ export default function LoginPage({ onAuthenticated }: Props) {
         gender,
         termsAccepted: agreed,
       })
-      setAuthMessage(`驗證碼已寄到 ${result.data.email}，${result.data.expiresInMinutes} 分鐘內有效。`)
+      setAuthMessage(`驗證碼已寄到 ${result.data.email}，${result.data.expiresInMinutes} 分鐘內有效`)
       setRegisterStep('verify')
     })
   }
@@ -442,10 +442,10 @@ export default function LoginPage({ onAuthenticated }: Props) {
     await runAuthAction(async () => {
       if (!isValidEmail(email)) {
         setLoginEmailError('請輸入有效的 Email 格式')
-        throw new Error('請輸入有效的 Email 格式。')
+        throw new Error('請輸入有效的 Email 格式')
       }
       const result = await requestPasswordReset(email)
-      setAuthMessage(`驗證碼已寄到 ${result.data.email}，${result.data.expiresInMinutes} 分鐘內有效。`)
+      setAuthMessage(`驗證碼已寄到 ${result.data.email}，${result.data.expiresInMinutes} 分鐘內有效`)
       setForgotStep('verify')
     })
   }
@@ -453,7 +453,7 @@ export default function LoginPage({ onAuthenticated }: Props) {
   async function submitVerifyCode() {
     await runAuthAction(async () => {
       await verifyPasswordReset({ email, code: resetCode })
-      setAuthMessage('驗證成功，請設定新密碼。')
+      setAuthMessage('驗證成功，請設定新密碼')
       setForgotStep('reset')
     })
   }
@@ -465,11 +465,11 @@ export default function LoginPage({ onAuthenticated }: Props) {
       const ruleError = passwordRuleError(newPassword)
       if (ruleError) {
         setNewPasswordError(ruleError)
-        throw new Error(`${ruleError}。`)
+        throw new Error(ruleError)
       }
       if (newPassword !== confirmPassword) {
         setConfirmPasswordError('密碼不一致，請重新確認')
-        throw new Error('兩次輸入的密碼不一致。')
+        throw new Error('兩次輸入的密碼不一致')
       }
       const user = await confirmPasswordReset({
         email,
@@ -764,7 +764,7 @@ export default function LoginPage({ onAuthenticated }: Props) {
               submitRegistrationCode()
             }}
           >
-            <p className="register-verify-copy">驗證碼已寄到 {registerEmail}。請輸入 6 位數驗證碼完成建立帳號。</p>
+            <p className="register-verify-copy">驗證碼已寄到 {registerEmail}。請輸入 6 位數驗證碼完成建立帳號</p>
             <FloatingField label="驗證碼">
               <AuthField icon="code" value={registerCode} onChange={setRegisterCode} placeholder="6 位數驗證碼" inputMode="numeric" autoComplete="one-time-code" />
             </FloatingField>

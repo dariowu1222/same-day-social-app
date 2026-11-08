@@ -432,7 +432,7 @@ function PartnerQuotaNotice({ used, limit, onGoChatList, onClose }: {
         <p className="match-celebrate-title">聊天對象已經額滿</p>
         <p className="match-celebrate-sub">
           你同時進行中的聊天對象有 {used} 人，已經到上限 {limit} 人。
-          在結束幾段對話之前，接下來滑到的卡就算右滑配對成功，也開不了聊天室。
+          在結束幾段對話之前，接下來滑到的卡就算右滑配對成功，也開不了聊天室
         </p>
         <button className="match-celebrate-chat" type="button" onClick={onGoChatList}>
           去整理聊天室
@@ -663,7 +663,7 @@ export default function MatchResultPage({ onBack, onGoToRant, moodLabel, pending
           而且下面這批卡其實是依他「上一則」今日算出來的。 */}
       {entryFailed && (
         <div className="match-entry-failed" role="alert">
-          <p>今天寫的內容沒有存成功，下面的配對是依你先前的狀態算的。</p>
+          <p>今天寫的內容沒有存成功，下面的配對是依你先前的狀態算的</p>
           <button type="button" onClick={onBack}>回去重寫</button>
         </div>
       )}
@@ -731,9 +731,9 @@ export default function MatchResultPage({ onBack, onGoToRant, moodLabel, pending
                   <circle cx="44" cy="30" r="2.5" fill="#b8d4ce" />
                 </svg>
               </div>
-              <p className="match-empty-title">今天先看到這裡。</p>
+              <p className="match-empty-title">今天先看到這裡</p>
               <p className="match-empty-desc">
-                {moodLabel ? `今天${moodLabel}的你，已經把能看的人都看過了。` : '能看的人都看過了。'}
+                {moodLabel ? `今天${moodLabel}的你，已經把能看的人都看過了` : '能看的人都看過了'}
               </p>
               <p className="match-empty-desc">
                 略過的人過陣子會回到這裡，新朋友發了「今天」也會出現。
@@ -827,7 +827,7 @@ function MatchCelebration({ name, photo, limitReached, partnerLimit, onClose, on
               {partnerLimit != null
                 ? `只是聊天室還沒開成——你同時進行中的聊天對象已經滿 ${partnerLimit} 人。`
                 : '只是聊天室還沒開成——你同時進行中的聊天對象已經額滿。'}
-              先去結束幾段對話，再回來找他。
+              先去結束幾段對話，再回來找他
             </p>
             <button className="match-celebrate-chat" type="button" onClick={onGoChatList}>
               去整理聊天室

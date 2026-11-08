@@ -97,7 +97,7 @@ export default function AiUsagePage() {
             <div className="msg msg-error">
               ai_usage_logs 資料表還不存在，用量沒有地方可以記。
               請先在 Supabase SQL Editor 執行
-              backend/Infrastructure/Persistence/MigrationsSql/20261104_ai_usage_logs.sql。
+              backend/Infrastructure/Persistence/MigrationsSql/20261104_ai_usage_logs.sql
             </div>
           )}
 
@@ -106,7 +106,7 @@ export default function AiUsagePage() {
             // 會以為是「沒人用」，而不是「根本沒開」。
             <div className="msg msg-error">
               後端沒有設定 Ai:ApiKey，AI 分析目前整條停用中。下面的數字只是過去的紀錄，
-              現在送出的今日一律走關鍵字分析器。
+              現在送出的今日一律走關鍵字分析器
             </div>
           )}
 

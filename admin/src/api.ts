@@ -70,7 +70,7 @@ async function request<T>(path: string, init?: RequestInit, useAppToken = false)
     // 讓 App 把畫面退回登入頁。閒置逾時與被撤銷都會走到這裡，
     // 使用者看到的應該是「請重新登入」，不是滿畫面的錯誤。
     window.dispatchEvent(new CustomEvent('admin-session-expired'))
-    throw new ApiError('後台登入已過期，請重新登入。', 401)
+    throw new ApiError('後台登入已過期，請重新登入', 401)
   }
   // 後端對「沒有後台權限」與「拿的不是後台 token」都回 404——它刻意不區分，
   // 不對外洩漏端點存在。從後台的角度，這兩種情況的處置都一樣：
@@ -78,7 +78,7 @@ async function request<T>(path: string, init?: RequestInit, useAppToken = false)
   if (res.status === 404 && (path.startsWith('/api/admin') || path.startsWith('/api/moderation'))) {
     clearToken()
     window.dispatchEvent(new CustomEvent('admin-session-expired'))
-    throw new ApiError('後台登入已失效或這個帳號沒有權限，請重新登入。', 404)
+    throw new ApiError('後台登入已失效或這個帳號沒有權限，請重新登入', 404)
   }
 
   let body: ApiResponse<T> | null = null
@@ -109,7 +109,7 @@ export async function loginStart(email: string, password: string): Promise<{ use
   })
   pendingAppToken = user.token ?? null
   if (!pendingAppToken) {
-    throw new ApiError('登入回應缺少憑證。', 500)
+    throw new ApiError('登入回應缺少憑證', 500)
   }
 
   const challenge = await request<{ maskedEmail: string }>(

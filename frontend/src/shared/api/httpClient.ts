@@ -112,23 +112,23 @@ export async function request<T>(path: string, options?: RequestInit): Promise<A
     }
   } catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') {
-      throw new Error('連線逾時，請確認後端服務是否已啟動。')
+      throw new Error('連線逾時，請確認後端服務是否已啟動')
     }
-    throw new Error('目前無法連線到伺服器，請確認後端是否已啟動。')
+    throw new Error('目前無法連線到伺服器，請確認後端是否已啟動')
   }
 
   if (response.status === 401) {
     clearAuthToken()
     rememberClear(STORAGE_KEYS.user)
     window.location.reload()
-    throw new Error('登入已過期，請重新登入。')
+    throw new Error('登入已過期，請重新登入')
   }
 
   let body: ApiResponse<T>
   try {
     body = (await response.json()) as ApiResponse<T>
   } catch {
-    throw new Error(response.ok ? '伺服器回應格式異常，請稍後再試。' : '伺服器暫時無法處理，請稍後再試。')
+    throw new Error(response.ok ? '伺服器回應格式異常，請稍後再試' : '伺服器暫時無法處理，請稍後再試')
   }
 
   if (!response.ok || !body.success) {

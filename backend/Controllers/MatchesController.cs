@@ -35,9 +35,9 @@ public sealed class MatchesController(MatchService matchService) : ControllerBas
             // 前端靠 MATCH_UNAVAILABLE 區分「暫時送不出去、等下補送」與「送幾次都一樣」。
             LikeStatus.CandidateUnavailable => StatusCode(
                 StatusCodes.Status410Gone,
-                ApiResponse<LikeResult>.Fail("MATCH_UNAVAILABLE", "這個人已經不在了。")),
+                ApiResponse<LikeResult>.Fail("MATCH_UNAVAILABLE", "這個人已經不在了")),
 
-            _ => NotFound(ApiResponse<LikeResult>.Fail("MATCH_NOT_FOUND", "找不到這筆配對。")),
+            _ => NotFound(ApiResponse<LikeResult>.Fail("MATCH_NOT_FOUND", "找不到這筆配對")),
         };
     }
 
@@ -51,6 +51,6 @@ public sealed class MatchesController(MatchService matchService) : ControllerBas
     {
         return matchService.Pass(matchId, CallerId)
             ? ApiResponse<bool>.Ok(true)
-            : NotFound(ApiResponse<bool>.Fail("MATCH_NOT_FOUND", "找不到這筆配對。"));
+            : NotFound(ApiResponse<bool>.Fail("MATCH_NOT_FOUND", "找不到這筆配對"));
     }
 }

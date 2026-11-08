@@ -48,13 +48,13 @@ public sealed class AuthController(AuthService authService, JwtService jwtServic
     {
         if (!googleAuth.IsConfigured)
         {
-            return BadRequest(ApiResponse<AuthUserResponse>.Fail("GOOGLE_NOT_CONFIGURED", "尚未設定 Google 登入。"));
+            return BadRequest(ApiResponse<AuthUserResponse>.Fail("GOOGLE_NOT_CONFIGURED", "尚未設定 Google 登入"));
         }
 
         var info = await googleAuth.VerifyIdTokenAsync(request.IdToken);
         if (info == null)
         {
-            return Unauthorized(ApiResponse<AuthUserResponse>.Fail("INVALID_GOOGLE_TOKEN", "Google 登入驗證失敗，請重新登入。"));
+            return Unauthorized(ApiResponse<AuthUserResponse>.Fail("INVALID_GOOGLE_TOKEN", "Google 登入驗證失敗，請重新登入"));
         }
 
         var result = await authService.GoogleLoginAsync(new GoogleLoginCommand(info.Email, info.Name), cancellationToken);
@@ -71,13 +71,13 @@ public sealed class AuthController(AuthService authService, JwtService jwtServic
     {
         if (!facebookAuth.IsConfigured)
         {
-            return BadRequest(ApiResponse<AuthUserResponse>.Fail("FACEBOOK_NOT_CONFIGURED", "尚未設定 Facebook 登入。"));
+            return BadRequest(ApiResponse<AuthUserResponse>.Fail("FACEBOOK_NOT_CONFIGURED", "尚未設定 Facebook 登入"));
         }
 
         var info = await facebookAuth.VerifyAccessTokenAsync(request.AccessToken, cancellationToken);
         if (info == null)
         {
-            return Unauthorized(ApiResponse<AuthUserResponse>.Fail("INVALID_FACEBOOK_TOKEN", "Facebook 登入驗證失敗，請重新登入。"));
+            return Unauthorized(ApiResponse<AuthUserResponse>.Fail("INVALID_FACEBOOK_TOKEN", "Facebook 登入驗證失敗，請重新登入"));
         }
 
         var result = await authService.FacebookLoginAsync(new FacebookLoginCommand(info.Email, info.Name), cancellationToken);

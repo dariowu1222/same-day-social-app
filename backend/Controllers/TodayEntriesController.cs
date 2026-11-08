@@ -38,7 +38,7 @@ public sealed class TodayEntriesController(TodayEntryService todayEntryService) 
         // 超長會在 SaveChanges 丟出來變成 500。
         if (request.Content is { Length: > 2000 })
         {
-            return BadRequest(ApiResponse<object>.Fail("INVALID_REQUEST", "content 最多 2000 字。"));
+            return BadRequest(ApiResponse<object>.Fail("INVALID_REQUEST", "content 最多 2000 字"));
         }
 
         // Content 宣告為不可為 null，但 JSON 送 null 一樣會進來，

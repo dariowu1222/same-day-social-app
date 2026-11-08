@@ -127,7 +127,7 @@ export default function RantDetailPage() {
           <span className="detail-topbar-title">貼文</span>
         </div>
         <p style={{ padding: '24px', color: '#8a9e9c' }}>
-          {loaded ? '找不到這篇貼文，可能已被刪除。' : '載入中…'}
+          {loaded ? '找不到這篇貼文，可能已被刪除' : '載入中…'}
         </p>
       </div>
     )

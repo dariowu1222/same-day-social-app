@@ -30,7 +30,7 @@ public sealed class AuthService
     {
         if (db == null)
         {
-            return AuthServiceResult<RegistrationStartResponse>.Fail("DATABASE_NOT_CONFIGURED", "目前尚未設定資料庫連線，無法建立正式帳號。");
+            return AuthServiceResult<RegistrationStartResponse>.Fail("DATABASE_NOT_CONFIGURED", "目前尚未設定資料庫連線，無法建立正式帳號");
         }
 
         var validation = ValidateRegister(command);
@@ -41,14 +41,14 @@ public sealed class AuthService
 
         if (!command.TermsAccepted)
         {
-            return AuthServiceResult<RegistrationStartResponse>.Fail("TERMS_NOT_ACCEPTED", "請先閱讀並同意服務條款與隱私權政策。");
+            return AuthServiceResult<RegistrationStartResponse>.Fail("TERMS_NOT_ACCEPTED", "請先閱讀並同意服務條款與隱私權政策");
         }
 
         var email = NormalizeEmail(command.Email);
         var exists = await db.AuthAccounts.AnyAsync(x => x.Username == email, cancellationToken);
         if (exists)
         {
-            return AuthServiceResult<RegistrationStartResponse>.Fail("ACCOUNT_EXISTS", "這個 Email 已經註冊過，請直接登入或使用忘記密碼。");
+            return AuthServiceResult<RegistrationStartResponse>.Fail("ACCOUNT_EXISTS", "這個 Email 已經註冊過，請直接登入或使用忘記密碼");
         }
 
         // 同一個信箱的寄信冷卻。每 IP 每分鐘 10 次擋不住換 IP 繼續寄——
@@ -58,7 +58,7 @@ public sealed class AuthService
         if (emailThrottle != null && !emailThrottle.TryStartSend(email, now))
         {
             return AuthServiceResult<RegistrationStartResponse>.Fail(
-                "EMAIL_COOLDOWN", "驗證碼剛寄出，請稍候再試一次。");
+                "EMAIL_COOLDOWN", "驗證碼剛寄出，請稍候再試一次");
         }
 
         var code = AuthSecurity.CreateVerificationCode();
@@ -95,7 +95,7 @@ public sealed class AuthService
             token.UsedAt = DateTimeOffset.UtcNow;
             await db.SaveChangesAsync(cancellationToken);
             emailThrottle?.ReleaseSend(email);
-            return AuthServiceResult<RegistrationStartResponse>.Fail("SMTP_NOT_CONFIGURED", "尚未設定寄信服務，無法寄出建立帳號驗證碼。");
+            return AuthServiceResult<RegistrationStartResponse>.Fail("SMTP_NOT_CONFIGURED", "尚未設定寄信服務，無法寄出建立帳號驗證碼");
         }
         catch (Exception) when (!cancellationToken.IsCancellationRequested)
         {
@@ -103,7 +103,7 @@ public sealed class AuthService
             await db.SaveChangesAsync(cancellationToken);
             // 沒寄出去的信不該佔用冷卻，不然 SMTP 一時不通就得等滿一分鐘才能再試
             emailThrottle?.ReleaseSend(email);
-            return AuthServiceResult<RegistrationStartResponse>.Fail("EMAIL_SEND_FAILED", "驗證碼寄送失敗，請稍後再試或檢查寄信設定。");
+            return AuthServiceResult<RegistrationStartResponse>.Fail("EMAIL_SEND_FAILED", "驗證碼寄送失敗，請稍後再試或檢查寄信設定");
         }
 
         return AuthServiceResult<RegistrationStartResponse>.Ok(new RegistrationStartResponse(email, 10));
@@ -113,19 +113,19 @@ public sealed class AuthService
     {
         if (db == null)
         {
-            return AuthServiceResult<AuthUserResponse>.Fail("DATABASE_NOT_CONFIGURED", "目前尚未設定資料庫連線，無法建立正式帳號。");
+            return AuthServiceResult<AuthUserResponse>.Fail("DATABASE_NOT_CONFIGURED", "目前尚未設定資料庫連線，無法建立正式帳號");
         }
 
         var email = NormalizeEmail(command.Email);
         if (!IsValidEmail(email) || string.IsNullOrWhiteSpace(command.Code))
         {
-            return AuthServiceResult<AuthUserResponse>.Fail("INVALID_CODE", "請輸入正確的 Email 與驗證碼。");
+            return AuthServiceResult<AuthUserResponse>.Fail("INVALID_CODE", "請輸入正確的 Email 與驗證碼");
         }
 
         var exists = await db.AuthAccounts.AnyAsync(x => x.Username == email, cancellationToken);
         if (exists)
         {
-            return AuthServiceResult<AuthUserResponse>.Fail("ACCOUNT_EXISTS", "這個 Email 已經註冊過，請直接登入或使用忘記密碼。");
+            return AuthServiceResult<AuthUserResponse>.Fail("ACCOUNT_EXISTS", "這個 Email 已經註冊過，請直接登入或使用忘記密碼");
         }
 
         var now = DateTimeOffset.UtcNow;
@@ -139,7 +139,7 @@ public sealed class AuthService
         {
             await CountFailedAttemptAsync(tokens, t => t.FailedAttempts, (t, n) => t.FailedAttempts = n,
                 (t, at) => t.UsedAt = at, cancellationToken);
-            return AuthServiceResult<AuthUserResponse>.Fail("INVALID_CODE", "驗證碼錯誤或已過期。");
+            return AuthServiceResult<AuthUserResponse>.Fail("INVALID_CODE", "驗證碼錯誤或已過期");
         }
 
         var user = new UserRecord
@@ -203,13 +203,13 @@ public sealed class AuthService
     {
         if (db == null)
         {
-            return AuthServiceResult<AuthUserResponse>.Fail("DATABASE_NOT_CONFIGURED", "目前尚未設定資料庫連線，無法登入正式帳號。");
+            return AuthServiceResult<AuthUserResponse>.Fail("DATABASE_NOT_CONFIGURED", "目前尚未設定資料庫連線，無法登入正式帳號");
         }
 
         var email = NormalizeEmail(command.Email);
         if (!IsValidEmail(email) || string.IsNullOrWhiteSpace(command.Password))
         {
-            return AuthServiceResult<AuthUserResponse>.Fail("INVALID_LOGIN", "請輸入正確的 Email 與密碼。");
+            return AuthServiceResult<AuthUserResponse>.Fail("INVALID_LOGIN", "請輸入正確的 Email 與密碼");
         }
 
         AuthAccountRecord? account;
@@ -221,23 +221,23 @@ public sealed class AuthService
         }
         catch (Exception) when (!cancellationToken.IsCancellationRequested)
         {
-            return AuthServiceResult<AuthUserResponse>.Fail("DATABASE_UNAVAILABLE", "目前無法連線資料庫，請稍後再試。");
+            return AuthServiceResult<AuthUserResponse>.Fail("DATABASE_UNAVAILABLE", "目前無法連線資料庫，請稍後再試");
         }
 
         // 去帳號枚舉：帳號不存在與密碼錯誤回覆一致，避免探測 Email 是否註冊
         if (account == null)
         {
-            return AuthServiceResult<AuthUserResponse>.Fail("INVALID_CREDENTIALS", "Email 或密碼錯誤，請重新確認。");
+            return AuthServiceResult<AuthUserResponse>.Fail("INVALID_CREDENTIALS", "Email 或密碼錯誤，請重新確認");
         }
 
         if (user == null)
         {
-            return AuthServiceResult<AuthUserResponse>.Fail("ACCOUNT_DISABLED", "此帳號目前無法登入，請聯絡客服或稍後再試。");
+            return AuthServiceResult<AuthUserResponse>.Fail("ACCOUNT_DISABLED", "此帳號目前無法登入，請聯絡客服或稍後再試");
         }
 
         if (!AuthSecurity.VerifyPassword(command.Password, account.PasswordHash))
         {
-            return AuthServiceResult<AuthUserResponse>.Fail("INVALID_CREDENTIALS", "Email 或密碼錯誤，請重新確認。");
+            return AuthServiceResult<AuthUserResponse>.Fail("INVALID_CREDENTIALS", "Email 或密碼錯誤，請重新確認");
         }
 
         try
@@ -248,7 +248,7 @@ public sealed class AuthService
         }
         catch (Exception) when (!cancellationToken.IsCancellationRequested)
         {
-            return AuthServiceResult<AuthUserResponse>.Fail("DATABASE_UNAVAILABLE", "目前無法連線資料庫，請稍後再試。");
+            return AuthServiceResult<AuthUserResponse>.Fail("DATABASE_UNAVAILABLE", "目前無法連線資料庫，請稍後再試");
         }
 
         return AuthServiceResult<AuthUserResponse>.Ok(new AuthUserResponse(user.Id, user.Nickname, account.Username));
@@ -266,13 +266,13 @@ public sealed class AuthService
     {
         if (db == null)
         {
-            return AuthServiceResult<AuthUserResponse>.Fail("DATABASE_NOT_CONFIGURED", "目前尚未設定資料庫連線，無法登入。");
+            return AuthServiceResult<AuthUserResponse>.Fail("DATABASE_NOT_CONFIGURED", "目前尚未設定資料庫連線，無法登入");
         }
 
         var email = NormalizeEmail(emailRaw);
         if (!IsValidEmail(email))
         {
-            return AuthServiceResult<AuthUserResponse>.Fail("INVALID_SOCIAL_ACCOUNT", "無法取得有效的社群帳號 Email。");
+            return AuthServiceResult<AuthUserResponse>.Fail("INVALID_SOCIAL_ACCOUNT", "無法取得有效的社群帳號 Email");
         }
 
         var now = DateTimeOffset.UtcNow;
@@ -284,7 +284,7 @@ public sealed class AuthService
         }
         catch (Exception) when (!cancellationToken.IsCancellationRequested)
         {
-            return AuthServiceResult<AuthUserResponse>.Fail("DATABASE_UNAVAILABLE", "目前無法連線資料庫，請稍後再試。");
+            return AuthServiceResult<AuthUserResponse>.Fail("DATABASE_UNAVAILABLE", "目前無法連線資料庫，請稍後再試");
         }
 
         // 既有帳號（含原本用 Email 密碼註冊的同 email）→ 直接登入
@@ -297,14 +297,14 @@ public sealed class AuthService
             }
             catch (Exception) when (!cancellationToken.IsCancellationRequested)
             {
-                return AuthServiceResult<AuthUserResponse>.Fail("DATABASE_UNAVAILABLE", "目前無法連線資料庫，請稍後再試。");
+                return AuthServiceResult<AuthUserResponse>.Fail("DATABASE_UNAVAILABLE", "目前無法連線資料庫，請稍後再試");
             }
 
             // 社群登入跟 Email 密碼登入擋的是同一件事。少了這一關，被封鎖的人
             // 只要改用 Google 按一下就繞過去了——同一個 email、同一個帳號。
             if (existingUser == null)
             {
-                return AuthServiceResult<AuthUserResponse>.Fail("ACCOUNT_DISABLED", "此帳號目前無法登入，請聯絡客服或稍後再試。");
+                return AuthServiceResult<AuthUserResponse>.Fail("ACCOUNT_DISABLED", "此帳號目前無法登入，請聯絡客服或稍後再試");
             }
 
             try
@@ -316,7 +316,7 @@ public sealed class AuthService
             }
             catch (Exception) when (!cancellationToken.IsCancellationRequested)
             {
-                return AuthServiceResult<AuthUserResponse>.Fail("DATABASE_UNAVAILABLE", "目前無法連線資料庫，請稍後再試。");
+                return AuthServiceResult<AuthUserResponse>.Fail("DATABASE_UNAVAILABLE", "目前無法連線資料庫，請稍後再試");
             }
         }
 
@@ -354,7 +354,7 @@ public sealed class AuthService
         }
         catch (Exception) when (!cancellationToken.IsCancellationRequested)
         {
-            return AuthServiceResult<AuthUserResponse>.Fail("DATABASE_UNAVAILABLE", "目前無法連線資料庫，請稍後再試。");
+            return AuthServiceResult<AuthUserResponse>.Fail("DATABASE_UNAVAILABLE", "目前無法連線資料庫，請稍後再試");
         }
 
         return AuthServiceResult<AuthUserResponse>.Ok(new AuthUserResponse(user.Id, user.Nickname, newAccount.Username));
@@ -505,13 +505,13 @@ public sealed class AuthService
     {
         if (db == null)
         {
-            return AuthServiceResult<PasswordResetRequestResponse>.Fail("DATABASE_NOT_CONFIGURED", "目前尚未設定資料庫連線，無法重設密碼。");
+            return AuthServiceResult<PasswordResetRequestResponse>.Fail("DATABASE_NOT_CONFIGURED", "目前尚未設定資料庫連線，無法重設密碼");
         }
 
         email = NormalizeEmail(email);
         if (!IsValidEmail(email))
         {
-            return AuthServiceResult<PasswordResetRequestResponse>.Fail("INVALID_EMAIL", "請輸入正確的 Email。");
+            return AuthServiceResult<PasswordResetRequestResponse>.Fail("INVALID_EMAIL", "請輸入正確的 Email");
         }
 
         // 冷卻要在查帳號之前。這支刻意對「查無此帳號」回覆成功（去帳號枚舉），
@@ -521,7 +521,7 @@ public sealed class AuthService
         if (emailThrottle != null && !emailThrottle.TryStartSend(email, DateTimeOffset.UtcNow))
         {
             return AuthServiceResult<PasswordResetRequestResponse>.Fail(
-                "EMAIL_COOLDOWN", "驗證碼剛寄出，請稍候再試一次。");
+                "EMAIL_COOLDOWN", "驗證碼剛寄出，請稍候再試一次");
         }
 
         var account = await db.AuthAccounts.FirstOrDefaultAsync(x => x.Username == email, cancellationToken);
@@ -562,13 +562,13 @@ public sealed class AuthService
         {
             token.UsedAt = DateTimeOffset.UtcNow;
             await db.SaveChangesAsync(cancellationToken);
-            return AuthServiceResult<PasswordResetRequestResponse>.Fail("SMTP_NOT_CONFIGURED", "尚未設定 SMTP，無法寄出驗證碼。請先設定寄信帳號。");
+            return AuthServiceResult<PasswordResetRequestResponse>.Fail("SMTP_NOT_CONFIGURED", "尚未設定 SMTP，無法寄出驗證碼。請先設定寄信帳號");
         }
         catch (Exception) when (!cancellationToken.IsCancellationRequested)
         {
             token.UsedAt = DateTimeOffset.UtcNow;
             await db.SaveChangesAsync(cancellationToken);
-            return AuthServiceResult<PasswordResetRequestResponse>.Fail("EMAIL_SEND_FAILED", "驗證碼寄送失敗，請稍後再試或檢查 SMTP 設定。");
+            return AuthServiceResult<PasswordResetRequestResponse>.Fail("EMAIL_SEND_FAILED", "驗證碼寄送失敗，請稍後再試或檢查 SMTP 設定");
         }
 
         return AuthServiceResult<PasswordResetRequestResponse>.Ok(new PasswordResetRequestResponse(email, 10));
@@ -615,13 +615,13 @@ public sealed class AuthService
     {
         if (db == null)
         {
-            return AuthServiceResult<(AuthAccountRecord, UserRecord, PasswordResetTokenRecord)>.Fail("DATABASE_NOT_CONFIGURED", "目前尚未設定資料庫連線，無法重設密碼。");
+            return AuthServiceResult<(AuthAccountRecord, UserRecord, PasswordResetTokenRecord)>.Fail("DATABASE_NOT_CONFIGURED", "目前尚未設定資料庫連線，無法重設密碼");
         }
 
         email = NormalizeEmail(email);
         if (!IsValidEmail(email) || string.IsNullOrWhiteSpace(code))
         {
-            return AuthServiceResult<(AuthAccountRecord, UserRecord, PasswordResetTokenRecord)>.Fail("INVALID_CODE", "請輸入正確的 Email 與驗證碼。");
+            return AuthServiceResult<(AuthAccountRecord, UserRecord, PasswordResetTokenRecord)>.Fail("INVALID_CODE", "請輸入正確的 Email 與驗證碼");
         }
 
         var account = await db.AuthAccounts.FirstOrDefaultAsync(x => x.Username == email, cancellationToken);
@@ -629,7 +629,7 @@ public sealed class AuthService
         if (account == null || user == null)
         {
             // 去帳號枚舉：與「驗證碼錯誤」回覆一致
-            return AuthServiceResult<(AuthAccountRecord, UserRecord, PasswordResetTokenRecord)>.Fail("INVALID_CODE", "驗證碼錯誤或已過期。");
+            return AuthServiceResult<(AuthAccountRecord, UserRecord, PasswordResetTokenRecord)>.Fail("INVALID_CODE", "驗證碼錯誤或已過期");
         }
 
         var now = DateTimeOffset.UtcNow;
@@ -643,7 +643,7 @@ public sealed class AuthService
         {
             await CountFailedAttemptAsync(tokens, t => t.FailedAttempts, (t, n) => t.FailedAttempts = n,
                 (t, at) => t.UsedAt = at, cancellationToken);
-            return AuthServiceResult<(AuthAccountRecord, UserRecord, PasswordResetTokenRecord)>.Fail("INVALID_CODE", "驗證碼錯誤或已過期。");
+            return AuthServiceResult<(AuthAccountRecord, UserRecord, PasswordResetTokenRecord)>.Fail("INVALID_CODE", "驗證碼錯誤或已過期");
         }
 
         return AuthServiceResult<(AuthAccountRecord, UserRecord, PasswordResetTokenRecord)>.Ok((account, user, token));
@@ -688,17 +688,17 @@ public sealed class AuthService
     {
         if (string.IsNullOrWhiteSpace(command.Nickname) || command.Nickname.Trim().Length is < 2 or > 20)
         {
-            return ("INVALID_NICKNAME", "暱稱需為 2 到 20 個字。");
+            return ("INVALID_NICKNAME", "暱稱需為 2 到 20 個字");
         }
 
         if (!IsValidEmail(NormalizeEmail(command.Email)))
         {
-            return ("INVALID_EMAIL", "請輸入可以收信的 Email。");
+            return ("INVALID_EMAIL", "請輸入可以收信的 Email");
         }
 
         if (!IsAdultBirthYear(command.BirthYear))
         {
-            return ("UNDERAGE", "未滿 18 歲暫時不能使用同頻 Today。");
+            return ("UNDERAGE", "未滿 18 歲暫時不能使用同頻 Today");
         }
 
         return ValidatePassword(command.Password, command.ConfirmPassword);
@@ -708,17 +708,17 @@ public sealed class AuthService
     {
         if (string.IsNullOrWhiteSpace(password) || password.Length is < 8 or > 64)
         {
-            return ("INVALID_PASSWORD", "密碼需為 8 到 64 碼。");
+            return ("INVALID_PASSWORD", "密碼需為 8 到 64 碼");
         }
 
         if (!password.Any(char.IsLetter) || !password.Any(char.IsDigit))
         {
-            return ("WEAK_PASSWORD", "密碼需同時包含英文與數字。");
+            return ("WEAK_PASSWORD", "密碼需同時包含英文與數字");
         }
 
         if (password != confirmPassword)
         {
-            return ("PASSWORD_NOT_MATCH", "兩次輸入的密碼不一致。");
+            return ("PASSWORD_NOT_MATCH", "兩次輸入的密碼不一致");
         }
 
         return null;

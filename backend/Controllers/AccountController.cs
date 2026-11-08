@@ -21,7 +21,7 @@ public sealed class AccountController(AuthService authService) : ControllerBase
         var ok = authService.DeleteAccount(CallerId);
         return ok
             ? ApiResponse<bool>.Ok(true)
-            : NotFound(ApiResponse<bool>.Fail("ACCOUNT_NOT_FOUND", "找不到帳號。"));
+            : NotFound(ApiResponse<bool>.Fail("ACCOUNT_NOT_FOUND", "找不到帳號"));
     }
 
     // 安全中心：封鎖名單
@@ -35,7 +35,7 @@ public sealed class AccountController(AuthService authService) : ControllerBase
         var ok = authService.Unblock(CallerId, blockedId);
         return ok
             ? ApiResponse<bool>.Ok(true)
-            : NotFound(ApiResponse<bool>.Fail("BLOCK_NOT_FOUND", "找不到封鎖紀錄。"));
+            : NotFound(ApiResponse<bool>.Fail("BLOCK_NOT_FOUND", "找不到封鎖紀錄"));
     }
 
     // 隱私 / 通知設定

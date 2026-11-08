@@ -71,7 +71,7 @@ public sealed class ModerationController(ReportService reports, AdminAccessServi
         var updated = await reports.ReviewAsync(
             reportId, CallerId, request.Status, request.Resolution, request.HideTarget, cancellationToken);
         return updated == null
-            ? NotFound(ApiResponse<bool>.Fail("REPORT_NOT_FOUND", "找不到這筆檢舉。"))
+            ? NotFound(ApiResponse<bool>.Fail("REPORT_NOT_FOUND", "找不到這筆檢舉"))
             : ApiResponse<bool>.Ok(true);
     }
 }

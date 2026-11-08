@@ -57,8 +57,8 @@ export default function UserDetailPage() {
 
     // 停權以外的處置都是重手，且不會自動失效，先確認一次
     const confirmText: Partial<Record<SanctionAction, string>> = {
-      BAN: '確定要永久封鎖這個帳號？對方將立即無法登入。',
-      DELETE: '確定要註銷這個帳號？對方將無法登入，資料會保留供爭議查證。',
+      BAN: '確定要永久封鎖這個帳號？對方將立即無法登入',
+      DELETE: '確定要註銷這個帳號？對方將無法登入，資料會保留供爭議查證',
     }
     const ask = confirmText[action]
     if (ask && !window.confirm(ask)) return
@@ -239,7 +239,7 @@ export default function UserDetailPage() {
                   <button className="btn btn-primary" onClick={() => doSanction('UNBAN')} disabled={busy}>解除封鎖</button>
                 )}
                 {user.status === 'DELETED' && (
-                  <span className="page-sub">此帳號已註銷。如需復原，請解除後另行處理。</span>
+                  <span className="page-sub">此帳號已註銷。如需復原，請解除後另行處理</span>
                 )}
               </div>
             )}

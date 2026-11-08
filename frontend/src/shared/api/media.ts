@@ -28,13 +28,13 @@ export async function uploadMedia(dataUrl: string, folder: string): Promise<stri
     method: 'POST',
     body: JSON.stringify({ dataUrl, folder }),
   })
-  if (!res.data?.url) throw new Error('上傳失敗，請再試一次。')
+  if (!res.data?.url) throw new Error('上傳失敗，請再試一次')
   return res.data.url
 }
 
 /** 上傳失敗時要對使用者說的那一句。 */
 export function uploadErrorMessage(err: unknown): string {
-  return err instanceof Error && err.message ? err.message : '上傳失敗，請再試一次。'
+  return err instanceof Error && err.message ? err.message : '上傳失敗，請再試一次'
 }
 
 /**

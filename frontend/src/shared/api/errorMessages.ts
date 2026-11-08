@@ -3,67 +3,67 @@
 export function toUserMessage(code?: string, message?: string) {
   switch (code) {
     case 'ACCOUNT_NOT_FOUND':
-      return '查無此帳號，請確認 Email 是否輸入正確，或先建立帳號。'
+      return '查無此帳號，請確認 Email 是否輸入正確，或先建立帳號'
     // 密碼規則由後端 ValidatePassword 判定，訊息會隨規則調整，因此優先採用後端文案。
     // 先前這裡寫死「密碼錯誤，請重新輸入。」——那是登入的語氣，但這個碼只出現在
     // 註冊／重設密碼，使用者看到只會以為自己打錯字，不知道是長度不足。
     case 'INVALID_PASSWORD':
-      return message ?? '密碼需為 8 到 64 碼。'
+      return message ?? '密碼需為 8 到 64 碼'
     case 'WEAK_PASSWORD':
-      return message ?? '密碼需同時包含英文與數字。'
+      return message ?? '密碼需同時包含英文與數字'
     case 'PASSWORD_NOT_MATCH':
-      return message ?? '兩次輸入的密碼不一致。'
+      return message ?? '兩次輸入的密碼不一致'
     case 'INVALID_LOGIN':
-      return '請輸入正確的 Email 與密碼。'
+      return '請輸入正確的 Email 與密碼'
     case 'DATABASE_NOT_CONFIGURED':
-      return '目前尚未連接資料庫，無法使用正式登入。'
+      return '目前尚未連接資料庫，無法使用正式登入'
     case 'DATABASE_UNAVAILABLE':
-      return '目前無法連線資料庫，請稍後再試。'
+      return '目前無法連線資料庫，請稍後再試'
     case 'SMTP_NOT_CONFIGURED':
-      return '目前尚未設定寄信服務，無法寄出驗證碼。'
+      return '目前尚未設定寄信服務，無法寄出驗證碼'
     case 'TERMS_NOT_ACCEPTED':
-      return '請先閱讀並同意服務條款與隱私權政策。'
+      return '請先閱讀並同意服務條款與隱私權政策'
     case 'UNDERAGE':
-      return '未滿 18 歲暫時不能使用同頻 Today。'
+      return '未滿 18 歲暫時不能使用同頻 Today'
     case 'INVALID_CODE':
-      return '驗證碼錯誤或已過期，請確認後再輸入。'
+      return '驗證碼錯誤或已過期，請確認後再輸入'
     case 'EMAIL_SEND_FAILED':
-      return '驗證碼寄送失敗，請稍後再試。'
+      return '驗證碼寄送失敗，請稍後再試'
     // 同一個信箱的寄信冷卻。換 IP 就能對同一個信箱一直寄，對收件人是信箱被灌爆，
     // 對我們是 Gmail SMTP 的每日額度被耗光、所有人的驗證信都寄不出去。
     // 對方被停權／封鎖／註銷。畫面上本來就會換成說明，這幾句是防萬一
     // （例如停權剛好發生在這個人按下送出的那一刻），講法要和那塊說明一致。
     case 'CHAT_PEER_SUSPENDED':
-      return '這個帳號目前停權中，審核完成前暫時不能傳送訊息，請見諒。'
+      return '這個帳號目前停權中，審核完成前暫時不能傳送訊息，請見諒'
     case 'CHAT_PEER_BANNED':
     case 'CHAT_PEER_DELETED':
-      return '這個帳號已經無法使用，不能再傳送訊息。'
+      return '這個帳號已經無法使用，不能再傳送訊息'
     case 'EMAIL_COOLDOWN':
-      return '驗證碼剛寄出，請等一分鐘再試一次，並記得看看垃圾郵件匣。'
+      return '驗證碼剛寄出，請等一分鐘再試一次，並記得看看垃圾郵件匣'
     case 'ACCOUNT_EXISTS':
-      return '這個 Email 已經註冊過，請直接登入或使用忘記密碼。'
+      return '這個 Email 已經註冊過，請直接登入或使用忘記密碼'
     // 牌是先發後滑的，卡片到手之後對方才被封鎖／註銷／停權。不說「失敗請再試」——
     // 再試幾次結果都一樣，而使用者沒有做錯任何事。
     case 'MATCH_UNAVAILABLE':
-      return '這個人已經不在了，這張卡就跳過吧。'
+      return '這個人已經不在了，這張卡就跳過吧'
     // 媒體上傳。這些碼以前到不了使用者眼前——uploadMedia 把錯誤吞掉、
     // 退回原本的 data URL，於是整串 base64 被寫進資料庫，而畫面上一切正常。
     case 'MEDIA_TOO_LARGE':
-      return '檔案太大了，請換一張小一點的。'
+      return '檔案太大了，請換一張小一點的'
     case 'MEDIA_TYPE_NOT_ALLOWED':
     case 'MEDIA_TYPE_MISMATCH':
     case 'MEDIA_INVALID':
-      return '這個檔案格式不支援，請換一個。'
+      return '這個檔案格式不支援，請換一個'
     case 'MEDIA_NOT_CONFIGURED':
-      return '目前無法上傳檔案，請稍後再試。'
+      return '目前無法上傳檔案，請稍後再試'
     case 'MEDIA_UPLOAD_FAILED':
-      return '上傳失敗，請稍後再試一次。'
+      return '上傳失敗，請稍後再試一次'
     case 'INVALID_MEDIA_URL':
     case 'INVALID_PHOTO_URL':
-      return '圖片或語音必須是從這個 App 上傳的，請重新選一次。'
+      return '圖片或語音必須是從這個 App 上傳的，請重新選一次'
     case 'FIELD_TOO_LONG':
-      return message ?? '內容太長了，請精簡一點。'
+      return message ?? '內容太長了，請精簡一點'
     default:
-      return message ?? '操作失敗，請稍後再試。'
+      return message ?? '操作失敗，請稍後再試'
   }
 }

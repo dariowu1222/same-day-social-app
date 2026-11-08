@@ -19,54 +19,54 @@ const soulNotesByEntry: Record<string, SoulNoteGroup[]> = {
     {
       tone: 'mint',
       author: '心理學家 Carl Rogers｜人本心理學代表人物',
-      quote: '當我如實接納自己，我才有可能開始改變。',
+      quote: '當我如實接納自己，我才有可能開始改變',
       original: 'The curious paradox is that when I accept myself just as I am, then I can change.',
       source: 'On Becoming a Person',
-      note: '有些疲憊不是因為你不夠努力，而是你已經努力很久了。能夠承認自己累了，本身就是一種誠實，也是一個人重新靠近自己的開始。',
+      note: '有些疲憊不是因為你不夠努力，而是你已經努力很久了。能夠承認自己累了，本身就是一種誠實，也是一個人重新靠近自己的開始',
     },
     {
       tone: 'sage',
       author: '精神科醫師 Viktor Frankl｜意義治療創始人',
-      quote: '當我們無法再改變處境，就需要回頭改變自己。',
+      quote: '當我們無法再改變處境，就需要回頭改變自己',
       original: 'When we are no longer able to change a situation, we are challenged to change ourselves.',
       source: "Man's Search for Meaning",
-      note: '有些日子不一定能立刻變輕，但人仍然可以在很小的地方保留一點選擇。先讓今天停在這裡，也是一種溫柔的整理。',
+      note: '有些日子不一定能立刻變輕，但人仍然可以在很小的地方保留一點選擇。先讓今天停在這裡，也是一種溫柔的整理',
     },
   ],
   wronged: [
     {
       tone: 'soft',
       author: '心理學家 Carl Rogers｜個人中心治療創始人',
-      quote: '人就像日落一樣美好，只要讓他如其所是。',
+      quote: '人就像日落一樣美好，只要讓他如其所是',
       original: 'People are just as wonderful as sunsets if you let them be.',
       source: 'A Way of Being',
-      note: '委屈常常來自一種沒有被看見的真實。當一個人的感受暫時無法被理解，並不代表那些感受不存在，也不代表你需要急著否定自己。',
+      note: '委屈常常來自一種沒有被看見的真實。當一個人的感受暫時無法被理解，並不代表那些感受不存在，也不代表你需要急著否定自己',
     },
     {
       tone: 'peach',
       author: '心理學家 Daniel Kahneman｜2002 諾貝爾經濟學獎',
-      quote: '當你正在想一件事時，它往往會顯得比實際上更重要。',
+      quote: '當你正在想一件事時，它往往會顯得比實際上更重要',
       original: 'Nothing in life is as important as you think it is while you are thinking about it.',
       source: 'Thinking, Fast and Slow',
-      note: '被誤會的當下，心裡的重量會被放得很大。那份難受是真的，但它不一定等於你的全部；它只是今天某個片刻，正在用力地被你感覺到。',
+      note: '被誤會的當下，心裡的重量會被放得很大。那份難受是真的，但它不一定等於你的全部；它只是今天某個片刻，正在用力地被你感覺到',
     },
   ],
   talk: [
     {
       tone: 'sky',
       author: '心理學家 Albert Bandura｜美國國家科學獎章',
-      quote: '除非人相信自己的行動能帶來影響，否則很少有動機開始行動。',
+      quote: '除非人相信自己的行動能帶來影響，否則很少有動機開始行動',
       original: 'Unless people believe they can produce desired effects by their actions, they have little incentive to act.',
       source: 'Self-Efficacy: The Exercise of Control',
-      note: '想說出口的念頭，通常代表心裡有一部分還在尋找連結。即使只是很短的一段話，也可能讓原本堵住的感覺，慢慢有一個可以呼吸的位置。',
+      note: '想說出口的念頭，通常代表心裡有一部分還在尋找連結。即使只是很短的一段話，也可能讓原本堵住的感覺，慢慢有一個可以呼吸的位置',
     },
     {
       tone: 'sage',
       author: '精神科醫師 Viktor Frankl｜意義治療創始人',
-      quote: '當我們無法再改變處境，就需要回頭改變自己。',
+      quote: '當我們無法再改變處境，就需要回頭改變自己',
       original: 'When we are no longer able to change a situation, we are challenged to change ourselves.',
       source: "Man's Search for Meaning",
-      note: '有時候，人不是需要立刻得到答案，而是需要有一個地方能容納還沒有答案的自己。能把話放下來一點，心也會比較不孤單。',
+      note: '有時候，人不是需要立刻得到答案，而是需要有一個地方能容納還沒有答案的自己。能把話放下來一點，心也會比較不孤單',
     },
   ],
 }
@@ -80,7 +80,7 @@ export default function TodayPage({ onGoToMatches }: Props) {
   const [typedCount, setTypedCount] = useState(0)
   const [showCursor, setShowCursor] = useState(true)
   const [content, setContent] = useState('')
-  const [currentPrompt, setCurrentPrompt] = useState('不用想得太正式，像跟朋友說話一樣就好。')
+  const [currentPrompt, setCurrentPrompt] = useState('不用想得太正式，像跟朋友說話一樣就好')
   const [message, setMessage] = useState('')
   // 送出只允許一次。按鈕按下去就導頁，但手機上兩次點擊可能落在同一個
   // commit 之前，不擋的話會建立兩筆今日。

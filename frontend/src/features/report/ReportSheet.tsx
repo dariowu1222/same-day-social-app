@@ -80,7 +80,7 @@ export default function ReportSheet({ targetType, targetId, title = '檢舉', on
       setSending(false)
       onDone?.(res.data.message)
     } catch {
-      setError('送出失敗，請稍後再試。')
+      setError('送出失敗，請稍後再試')
       setSending(false)
       sendingRef.current = false
     }
@@ -122,7 +122,7 @@ export default function ReportSheet({ targetType, targetId, title = '檢舉', on
         </div>
 
         <div className="report-body">
-          <p className="report-lead">請選擇最接近的原因，這會幫助我們更快處理。</p>
+          <p className="report-lead">請選擇最接近的原因，這會幫助我們更快處理</p>
 
           <div className="report-options">
             {REPORT_OPTIONS.map((opt) => (

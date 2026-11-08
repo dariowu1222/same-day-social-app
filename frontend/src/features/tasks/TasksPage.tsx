@@ -18,7 +18,7 @@ export default function TasksPage() {
     <div className="page">
       <header className="page-header">
         <p className="eyebrow">任務</p>
-        <h1>不一定要聊天，也可以先一起完成一件小事。</h1>
+        <h1>不一定要聊天，也可以先一起完成一件小事</h1>
       </header>
       <section className="list">
         {(tasks ?? []).map((task) => (

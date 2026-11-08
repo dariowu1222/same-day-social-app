@@ -31,7 +31,7 @@ public sealed class RantsController(RantService rantService, MediaUrlPolicy medi
     {
         var post = rantService.GetPost(rantId);
         return post == null
-            ? NotFound(ApiResponse<RantPost>.Fail("RANT_NOT_FOUND", "找不到這篇樹洞文章。"))
+            ? NotFound(ApiResponse<RantPost>.Fail("RANT_NOT_FOUND", "找不到這篇樹洞文章"))
             : ApiResponse<RantPost>.Ok(Mine(post));
     }
 
@@ -48,18 +48,18 @@ public sealed class RantsController(RantService rantService, MediaUrlPolicy medi
         var content = request.Content ?? "";
         if (content.Length > MaxPostLength)
         {
-            return BadRequest(ApiResponse<RantPost>.Fail("FIELD_TOO_LONG", $"內容最多 {MaxPostLength} 字。"));
+            return BadRequest(ApiResponse<RantPost>.Fail("FIELD_TOO_LONG", $"內容最多 {MaxPostLength} 字"));
         }
         if (!InputLimits.WithinList(request.HashTags, InputLimits.MaxTagCount, InputLimits.MaxTagLength))
         {
             return BadRequest(ApiResponse<RantPost>.Fail(
-                "FIELD_TOO_LONG", $"標籤最多 {InputLimits.MaxTagCount} 個，每個最多 {InputLimits.MaxTagLength} 字。"));
+                "FIELD_TOO_LONG", $"標籤最多 {InputLimits.MaxTagCount} 個，每個最多 {InputLimits.MaxTagLength} 字"));
         }
 
         var images = request.ImageUrls ?? (request.ImageUrl is null ? null : [request.ImageUrl]);
         if (!MediaIsOurs([.. images ?? [], .. request.ThumbUrls ?? [], request.AudioUrl]))
         {
-            return BadRequest(ApiResponse<RantPost>.Fail("INVALID_MEDIA_URL", "圖片或語音必須是從這個 App 上傳的。"));
+            return BadRequest(ApiResponse<RantPost>.Fail("INVALID_MEDIA_URL", "圖片或語音必須是從這個 App 上傳的"));
         }
 
         var result = rantService.Create(userId, content, request.Mode, request.HashTags, images, request.AudioUrl, request.ThumbUrls);
@@ -77,7 +77,7 @@ public sealed class RantsController(RantService rantService, MediaUrlPolicy medi
                      ?? User.FindFirst("sub")?.Value!;
         var post = rantService.Understand(rantId, userId);
         return post == null
-            ? NotFound(ApiResponse<RantPost>.Fail("RANT_NOT_FOUND", "找不到這篇樹洞文章。"))
+            ? NotFound(ApiResponse<RantPost>.Fail("RANT_NOT_FOUND", "找不到這篇樹洞文章"))
             : ApiResponse<RantPost>.Ok(Mine(post));
     }
 
@@ -92,16 +92,16 @@ public sealed class RantsController(RantService rantService, MediaUrlPolicy medi
         var content = request.Content ?? "";
         if (content.Length > MaxReplyLength)
         {
-            return BadRequest(ApiResponse<RantPost>.Fail("FIELD_TOO_LONG", $"回覆最多 {MaxReplyLength} 字。"));
+            return BadRequest(ApiResponse<RantPost>.Fail("FIELD_TOO_LONG", $"回覆最多 {MaxReplyLength} 字"));
         }
         if (!MediaIsOurs([request.ImageUrl, request.ThumbUrl, request.AudioUrl]))
         {
-            return BadRequest(ApiResponse<RantPost>.Fail("INVALID_MEDIA_URL", "圖片或語音必須是從這個 App 上傳的。"));
+            return BadRequest(ApiResponse<RantPost>.Fail("INVALID_MEDIA_URL", "圖片或語音必須是從這個 App 上傳的"));
         }
 
         var post = rantService.Reply(rantId, userId, content, request.ImageUrl, request.AudioUrl, request.ParentReplyId, request.ThumbUrl);
         return post == null
-            ? NotFound(ApiResponse<RantPost>.Fail("RANT_NOT_FOUND", "找不到這篇樹洞文章。"))
+            ? NotFound(ApiResponse<RantPost>.Fail("RANT_NOT_FOUND", "找不到這篇樹洞文章"))
             : ApiResponse<RantPost>.Ok(Mine(post));
     }
 
@@ -115,7 +115,7 @@ public sealed class RantsController(RantService rantService, MediaUrlPolicy medi
         var deleted = rantService.Delete(rantId, userId);
         return deleted
             ? ApiResponse<bool>.Ok(true)
-            : NotFound(ApiResponse<bool>.Fail("RANT_NOT_FOUND", "找不到貼文，或你沒有權限刪除。"));
+            : NotFound(ApiResponse<bool>.Fail("RANT_NOT_FOUND", "找不到貼文，或你沒有權限刪除"));
     }
 
     [Authorize]
@@ -127,7 +127,7 @@ public sealed class RantsController(RantService rantService, MediaUrlPolicy medi
                      ?? User.FindFirst("sub")?.Value!;
         var post = rantService.LikeReply(rantId, replyId, userId);
         return post == null
-            ? NotFound(ApiResponse<RantPost>.Fail("REPLY_NOT_FOUND", "找不到這則回應。"))
+            ? NotFound(ApiResponse<RantPost>.Fail("REPLY_NOT_FOUND", "找不到這則回應"))
             : ApiResponse<RantPost>.Ok(Mine(post));
     }
 
@@ -140,7 +140,7 @@ public sealed class RantsController(RantService rantService, MediaUrlPolicy medi
                      ?? User.FindFirst("sub")?.Value!;
         var post = rantService.Report(rantId, userId);
         return post == null
-            ? NotFound(ApiResponse<RantPost>.Fail("RANT_NOT_FOUND", "找不到這篇樹洞文章。"))
+            ? NotFound(ApiResponse<RantPost>.Fail("RANT_NOT_FOUND", "找不到這篇樹洞文章"))
             : ApiResponse<RantPost>.Ok(Mine(post));
     }
 

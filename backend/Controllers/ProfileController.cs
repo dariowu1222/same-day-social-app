@@ -47,7 +47,7 @@ public sealed class ProfileController(JsonStorageService storage, MediaUrlPolicy
                 {
                     if (!AccountStateService.IsActive(record.Status, record.SuspendedUntil, DateTimeOffset.UtcNow))
                     {
-                        return NotFound(ApiResponse<User>.Fail("USER_NOT_FOUND", "找不到使用者。"));
+                        return NotFound(ApiResponse<User>.Fail("USER_NOT_FOUND", "找不到使用者"));
                     }
                     if (isSelf)
                     {
@@ -55,7 +55,7 @@ public sealed class ProfileController(JsonStorageService storage, MediaUrlPolicy
                     }
                     return await IsVisibleToAsync(callerId, userId, cancellationToken)
                         ? ApiResponse<User>.Ok(PublicViewOf(record.ToDomain()))
-                        : NotFound(ApiResponse<User>.Fail("USER_NOT_FOUND", "找不到使用者。"));
+                        : NotFound(ApiResponse<User>.Fail("USER_NOT_FOUND", "找不到使用者"));
                 }
             }
             catch { /* DB 欄位尚未 migrate，fallback 到 JSON */ }
@@ -68,7 +68,7 @@ public sealed class ProfileController(JsonStorageService storage, MediaUrlPolicy
         }
         if (user == null)
         {
-            return NotFound(ApiResponse<User>.Fail("USER_NOT_FOUND", "找不到使用者。"));
+            return NotFound(ApiResponse<User>.Fail("USER_NOT_FOUND", "找不到使用者"));
         }
         if (isSelf)
         {
@@ -76,7 +76,7 @@ public sealed class ProfileController(JsonStorageService storage, MediaUrlPolicy
         }
         return await IsVisibleToAsync(callerId, userId, cancellationToken)
             ? ApiResponse<User>.Ok(PublicViewOf(user))
-            : NotFound(ApiResponse<User>.Fail("USER_NOT_FOUND", "找不到使用者。"));
+            : NotFound(ApiResponse<User>.Fail("USER_NOT_FOUND", "找不到使用者"));
     }
 
     /// <summary>
@@ -182,7 +182,7 @@ public sealed class ProfileController(JsonStorageService storage, MediaUrlPolicy
 
         if (request.Birthday.HasValue && !IsAdult(request.Birthday.Value))
         {
-            return BadRequest(ApiResponse<User>.Fail("UNDERAGE", "未滿 18 歲暫時不能使用同頻 Today。"));
+            return BadRequest(ApiResponse<User>.Fail("UNDERAGE", "未滿 18 歲暫時不能使用同頻 Today"));
         }
 
         // 暱稱的長度規則跟註冊同一套（AuthService.ValidateRegister）。
@@ -196,7 +196,7 @@ public sealed class ProfileController(JsonStorageService storage, MediaUrlPolicy
         var nickname = request.Nickname?.Trim();
         if (nickname is { Length: > 0 } && nickname.Length is < 2 or > 20)
         {
-            return BadRequest(ApiResponse<User>.Fail("INVALID_NICKNAME", "暱稱需為 2 到 20 個字。"));
+            return BadRequest(ApiResponse<User>.Fail("INVALID_NICKNAME", "暱稱需為 2 到 20 個字"));
         }
 
         var tooLong = TooLongField(request);
@@ -214,7 +214,7 @@ public sealed class ProfileController(JsonStorageService storage, MediaUrlPolicy
                 {
                     if (!PhotosAreOurs(request.PhotoDataUrls, record.PhotoDataUrls))
                     {
-                        return BadRequest(ApiResponse<User>.Fail("INVALID_PHOTO_URL", "照片必須是從這個 App 上傳的。"));
+                        return BadRequest(ApiResponse<User>.Fail("INVALID_PHOTO_URL", "照片必須是從這個 App 上傳的"));
                     }
                     if (nickname is { Length: > 0 }) record.Nickname = nickname;
                     if (request.Bio != null) record.Bio = request.Bio.Trim();
@@ -251,7 +251,7 @@ public sealed class ProfileController(JsonStorageService storage, MediaUrlPolicy
 
         if (!PhotosAreOurs(request.PhotoDataUrls, storage.FindById<User>("users", userId)?.PhotoDataUrls))
         {
-            return BadRequest(ApiResponse<User>.Fail("INVALID_PHOTO_URL", "照片必須是從這個 App 上傳的。"));
+            return BadRequest(ApiResponse<User>.Fail("INVALID_PHOTO_URL", "照片必須是從這個 App 上傳的"));
         }
 
         var user = storage.UpdateOne<User>("users", userId, target =>
@@ -284,7 +284,7 @@ public sealed class ProfileController(JsonStorageService storage, MediaUrlPolicy
         });
 
         return user == null
-            ? NotFound(ApiResponse<User>.Fail("USER_NOT_FOUND", "找不到使用者。"))
+            ? NotFound(ApiResponse<User>.Fail("USER_NOT_FOUND", "找不到使用者"))
             : ApiResponse<User>.Ok(user);
     }
 
@@ -313,16 +313,16 @@ public sealed class ProfileController(JsonStorageService storage, MediaUrlPolicy
     /// </summary>
     private static string? TooLongField(UpdateProfileRequest request)
     {
-        if (!InputLimits.WithinLength(request.Bio, 500)) return "自我介紹最多 500 字。";
-        if (!InputLimits.WithinLength(request.Occupation, 60)) return "職業最多 60 字。";
-        if (!InputLimits.WithinLength(request.School, 60)) return "學校最多 60 字。";
-        if (!InputLimits.WithinLength(request.Gender, 40)) return "性別欄位太長。";
-        if (!InputLimits.WithinLength(request.Relationship, 40)) return "感情狀態欄位太長。";
-        if (!InputLimits.WithinLength(request.BloodType, 10)) return "血型欄位太長。";
-        if (!InputLimits.WithinLength(request.DatingGoal, 40)) return "交友目標欄位太長。";
-        if (!InputLimits.WithinLength(request.LookingFor, 40)) return "想找的對象欄位太長。";
-        if (!InputLimits.WithinLength(request.PreferredArea, 40)) return "偏好地區欄位太長。";
-        if (!InputLimits.WithinLength(request.ActiveTime, 40)) return "活躍時段欄位太長。";
+        if (!InputLimits.WithinLength(request.Bio, 500)) return "自我介紹最多 500 字";
+        if (!InputLimits.WithinLength(request.Occupation, 60)) return "職業最多 60 字";
+        if (!InputLimits.WithinLength(request.School, 60)) return "學校最多 60 字";
+        if (!InputLimits.WithinLength(request.Gender, 40)) return "性別欄位太長";
+        if (!InputLimits.WithinLength(request.Relationship, 40)) return "感情狀態欄位太長";
+        if (!InputLimits.WithinLength(request.BloodType, 10)) return "血型欄位太長";
+        if (!InputLimits.WithinLength(request.DatingGoal, 40)) return "交友目標欄位太長";
+        if (!InputLimits.WithinLength(request.LookingFor, 40)) return "想找的對象欄位太長";
+        if (!InputLimits.WithinLength(request.PreferredArea, 40)) return "偏好地區欄位太長";
+        if (!InputLimits.WithinLength(request.ActiveTime, 40)) return "活躍時段欄位太長";
 
         foreach (var tags in new[]
                  {
@@ -332,7 +332,7 @@ public sealed class ProfileController(JsonStorageService storage, MediaUrlPolicy
         {
             if (!InputLimits.WithinList(tags, InputLimits.MaxTagCount, InputLimits.MaxTagLength))
             {
-                return $"標籤最多 {InputLimits.MaxTagCount} 個，每個最多 {InputLimits.MaxTagLength} 字。";
+                return $"標籤最多 {InputLimits.MaxTagCount} 個，每個最多 {InputLimits.MaxTagLength} 字";
             }
         }
 
@@ -345,7 +345,7 @@ public sealed class ProfileController(JsonStorageService storage, MediaUrlPolicy
         // 要避免的事。（線上目前沒有這種帳號，但規則不該自相矛盾。）
         return (request.PhotoDataUrls?.Count ?? 0) <= InputLimits.MaxPhotos
             ? null
-            : $"照片最多 {InputLimits.MaxPhotos} 張。";
+            : $"照片最多 {InputLimits.MaxPhotos} 張";
     }
 
     private static bool IsAdult(DateOnly birthday)

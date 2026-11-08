@@ -159,8 +159,8 @@ export default function ReportsPage() {
                 </div>
                 <div className="page-sub" style={{ marginTop: 6 }}>
                   {r.targetHidden === true
-                    ? '退回會讓這篇重新公開，並把累積的檢舉次數歸零（不然再被檢舉一次就又會自動隱藏）。'
-                    : '需要停權或封鎖帳號，請點上方被檢舉人進入其詳細頁處置。'}
+                    ? '退回會讓這篇重新公開，並把累積的檢舉次數歸零（不然再被檢舉一次就又會自動隱藏）'
+                    : '需要停權或封鎖帳號，請點上方被檢舉人進入其詳細頁處置'}
                 </div>
               </div>
             ) : (
