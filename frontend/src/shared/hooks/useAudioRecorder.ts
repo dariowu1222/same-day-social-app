@@ -1,11 +1,18 @@
 import { useRef, useState } from 'react'
 import { blobToDataUrl } from '../lib/mediaTools'
 
-// 語音錄音共用 hook：toggle 開始/停止，停止後回傳錄好的 data URL。
-export function useAudioRecorder(onRecorded: (dataUrl: string) => void) {
+// 語音錄音共用 hook：toggle 開始/停止，停止後回傳錄好的 data URL 與長度。
+//
+// 為什麼要自己量長度：MediaRecorder 是邊錄邊寫，錄完才知道多長，所以產出的
+// WebM 標頭裡沒有 Duration。瀏覽器讀這種檔案時 audio.duration 會是 Infinity，
+// 原生 <audio controls> 的進度條算不出比例，一播放就直接頂到底。
+// 從 HTTP 取回的同一個檔案沒這個問題——可以 range request，瀏覽器掃得到結尾；
+// 所以只有「還沒上傳的草稿」會踩到，而那正是我們自己知道長度的時候。
+export function useAudioRecorder(onRecorded: (dataUrl: string, durationMs: number) => void) {
   const [isRecording, setIsRecording] = useState(false)
   const recorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
+  const startedAtRef = useRef(0)
 
   async function toggle() {
     if (isRecording) {
@@ -24,10 +31,11 @@ export function useAudioRecorder(onRecorded: (dataUrl: string) => void) {
         // 播放端的判斷對不上。Android 本來就是 webm，行為不變。
         const type = recorder.mimeType || 'audio/webm'
         const blob = new Blob(chunksRef.current, { type })
-        onRecorded(await blobToDataUrl(blob))
+        onRecorded(await blobToDataUrl(blob), Date.now() - startedAtRef.current)
         stream.getTracks().forEach((t) => t.stop())
       }
       recorderRef.current = recorder
+      startedAtRef.current = Date.now()
       recorder.start()
       setIsRecording(true)
     } catch {

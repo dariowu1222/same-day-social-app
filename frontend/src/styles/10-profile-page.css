@@ -1032,6 +1032,22 @@
 [data-theme="dark"] .cr-frozen-leave { border-color: rgba(232, 169, 140, 0.42); color: #e8a98c; }
 [data-theme="dark"] .cr-frozen-leave:active { background: rgba(232, 169, 140, 0.12); }
 [data-theme="dark"] .chat-card-tag { background: rgba(232, 169, 140, 0.16); color: #e8a98c; }
+
+/* 語音草稿的試聽器。原本這裡是原生 <audio controls>，夜間長相由瀏覽器決定，
+   所以沒有覆寫可寫；現在是自己畫的，日夜都得自己來。 */
+[data-theme="dark"] .cr-voice-draft {
+  background: rgba(5, 15, 10, 0.96);
+  border-top-color: rgba(168, 212, 204, 0.1);
+}
+[data-theme="dark"] .cr-voice-player { background: rgba(22, 40, 32, 0.7); }
+[data-theme="dark"] .cr-voice-player-btn { background: #4f9468; color: #f1fbf5; }
+[data-theme="dark"] .cr-voice-player-track { background: rgba(168, 212, 204, 0.2); }
+[data-theme="dark"] .cr-voice-player-fill { background: #7ec8ac; }
+[data-theme="dark"] .cr-voice-player-time { color: rgba(168, 212, 204, 0.72); }
+[data-theme="dark"] .cr-voice-draft-btn.discard {
+  background: rgba(168, 212, 204, 0.12);
+  color: rgba(168, 212, 204, 0.8);
+}
 [data-theme="dark"] .cr-input-box {
   background: rgba(22, 40, 32, 0.6);
   border-color: rgba(168, 212, 204, 0.14);

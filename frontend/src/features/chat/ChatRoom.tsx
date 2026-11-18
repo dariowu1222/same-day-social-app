@@ -12,6 +12,7 @@ import type { UserProfile } from '../profile/types'
 import { getAge, getZodiac, ZODIAC_ICON, testAvatarPhoto } from '../../shared/lib/userDisplay'
 import { uploadMedia, uploadErrorMessage } from '../../shared/api/media'
 import { useAudioRecorder } from '../../shared/hooks/useAudioRecorder'
+import VoiceDraftPlayer from './VoiceDraftPlayer'
 import { SAFETY_KEYS, safetyDismissed, dismissSafety } from '../../shared/lib/storageKeys'
 import { detectRisks, detectMeetupIntent, detectAbuse, MEETUP_SAFETY_TIPS, type RiskCategory } from './safety'
 import Avatar from '../../shared/ui/Avatar'
@@ -93,15 +94,18 @@ export default function ChatRoom({
 
   // 語音訊息：按一下開始錄、再按一下停止，停止後先留在本機讓使用者試聽，
   // 按了傳送才真的上傳。錄壞重錄不會浪費一次上傳，也不會在對話裡留下廢檔。
-  const [voiceDraft, setVoiceDraft] = useState<string | null>(null)
+  // 一起記長度：草稿還是 data URL，瀏覽器算不出它多長（見 VoiceDraftPlayer）
+  const [voiceDraft, setVoiceDraft] = useState<{ url: string; durationMs: number } | null>(null)
   const [sendingVoice, setSendingVoice] = useState(false)
-  const { isRecording, toggle: toggleRecording } = useAudioRecorder(setVoiceDraft)
+  const { isRecording, toggle: toggleRecording } = useAudioRecorder(
+    (url, durationMs) => setVoiceDraft({ url, durationMs }),
+  )
 
   async function sendVoice() {
     if (!voiceDraft || !onSendContent) return
     setSendingVoice(true)
     try {
-      const url = await uploadMedia(voiceDraft, 'chats')
+      const url = await uploadMedia(voiceDraft.url, 'chats')
       await onSendContent(url)
       setVoiceDraft(null)
     } catch {
@@ -520,7 +524,7 @@ export default function ChatRoom({
           留著那顆傳送鈕只會讓人按下去拿到一個失敗。 */}
       {voiceDraft && !isRecording && !readOnly && (
         <div className="cr-voice-draft">
-          <audio controls src={voiceDraft} className="cr-voice-draft-audio" />
+          <VoiceDraftPlayer src={voiceDraft.url} durationMs={voiceDraft.durationMs} />
           <button
             className="cr-voice-draft-btn discard"
             type="button"

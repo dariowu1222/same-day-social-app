@@ -605,10 +605,56 @@
   border-top: 1px solid #ece3d8;
 }
 
-.cr-voice-draft-audio {
+/* 試聽器。三個元素（播放器、X、傳送）都訂死 32px，靠 align-items: center
+   對齊——原生 <audio controls> 的高度與內距是瀏覽器決定的，差幾個 pixel
+   怎麼橋都橋不準，X 看起來才會歪。 */
+.cr-voice-player {
   flex: 1;
   min-width: 0;
-  height: 36px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px 0 4px;
+  border-radius: 999px;
+  background: #f0e8df;
+}
+
+.cr-voice-player-btn {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  color: #fff;
+  background: #7aa88a;
+  cursor: pointer;
+}
+
+.cr-voice-player-track {
+  flex: 1;
+  min-width: 0;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(138, 112, 95, 0.22);
+  overflow: hidden;
+}
+
+.cr-voice-player-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: #7aa88a;
+}
+
+/* 等寬數字：0:07 跳到 0:10 的時候進度條不要跟著抖一下 */
+.cr-voice-player-time {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: #8a705f;
 }
 
 .cr-voice-draft-btn {
@@ -622,8 +668,8 @@
 .cr-voice-draft-btn.discard {
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   color: #8a705f;
   background: #f0e8df;
 }
