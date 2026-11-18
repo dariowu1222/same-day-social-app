@@ -25,8 +25,13 @@
   /* .app-shell 的上下內距，抽成變數讓需要「剛好一屏」的頁面扣同一個值。
      先前各處寫死 112px（= 20 + 92），但那只在沒有 safe-area 的裝置上成立：
      App 開了 StatusBar.overlaysWebView，手機的 inset-top 不是 0，
-     寫死就會少扣、整頁多出一段捲動。要改內距請只改這裡。 */
-  --shell-pad-top: max(20px, env(safe-area-inset-top));
+     寫死就會少扣、整頁多出一段捲動。要改內距請只改這裡。
+
+     是「相加」不是 max()。這兩件事是分開的：inset 負責讓內容避開狀態列，
+     26px 是設計上的留白。寫成 max() 的話，手機上狀態列一高就把留白吃掉了
+     ——內容緊貼著狀態列下緣，標題看起來就是太靠上。桌機 inset 是 0，
+     所以這個問題只在真機上看得到。 */
+  --shell-pad-top: calc(env(safe-area-inset-top, 0px) + 26px);
   --shell-pad-bottom: calc(92px + env(safe-area-inset-bottom));
   --shell-vspace: calc(var(--shell-pad-top) + var(--shell-pad-bottom));
 }
@@ -302,7 +307,10 @@ h3 {
 
 .today-page {
   position: relative;
-  min-height: calc(100vh - 112px);
+  /* 這裡原本寫死 112px（= 舊的 20 + 92），就是本檔開頭那段註解在講的那個錯：
+     手機的 safe-area inset 不是 0，扣得比實際內距少，整頁就比可用空間高出
+     一截、多出一段捲動。跟著變數走才會剛好一屏。 */
+  min-height: calc(100vh - var(--shell-vspace));
 }
 
 .today-page::before {

@@ -69,7 +69,11 @@
 
 .today-header {
   display: flex;
-  align-items: flex-start;
+  /* 置中不是美感選擇：開關的 min-height 是 44px（觸控目標下限，不能縮），
+     標題只有 35px。flex-start 會把那 9px 差額整個丟到標題下面，看起來就是
+     標題和卡片中間空了一條沒有來由的帶子。置中讓它上下各分一半。
+     標題折成兩行時標題比開關高，這條規則就不影響任何東西。 */
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
   padding: 0;
