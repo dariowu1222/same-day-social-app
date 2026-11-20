@@ -48,8 +48,29 @@ public sealed class AccountController(AuthService authService) : ControllerBase
         => ApiResponse<UserSetting>.Ok(authService.UpdateSettings(
             CallerId, request.ProfilePublic, request.PauseMatching,
             request.NotifyMatch, request.NotifyMessage, request.NotifyRant));
+
+    // 條款同意與年齡確認的補問。
+    // 以前用 Google／Facebook 建的帳號什麼都沒問過；新版 App 登入後先用 GET 問「這個帳號
+    // 還缺不缺」，缺就顯示確認畫面，使用者確認後用 POST 記下來。
+    // 兩支都只作用在呼叫者自己身上（沒有 userId 參數），沒有「幫別人同意」這件事。
+    [HttpGet("consent")]
+    public async Task<ActionResult<ApiResponse<ConsentStatus>>> Consent(CancellationToken cancellationToken)
+        => ToActionResult(await authService.GetConsentStatusAsync(CallerId, cancellationToken));
+
+    [HttpPost("consent")]
+    public async Task<ActionResult<ApiResponse<ConsentStatus>>> GiveConsent(
+        [FromBody] GiveConsentRequest request, CancellationToken cancellationToken)
+        => ToActionResult(await authService.RecordConsentAsync(
+            CallerId, request.TermsAccepted, request.BirthYear, cancellationToken));
+
+    private ActionResult<ApiResponse<ConsentStatus>> ToActionResult(AuthServiceResult<ConsentStatus> result)
+        => result.Success
+            ? ApiResponse<ConsentStatus>.Ok(result.Data!)
+            : BadRequest(ApiResponse<ConsentStatus>.Fail(result.Code!, result.Message!));
 }
 
 public sealed record UpdateUserSettingRequest(
     bool? ProfilePublic = null, bool? PauseMatching = null,
     bool? NotifyMatch = null, bool? NotifyMessage = null, bool? NotifyRant = null);
+
+public sealed record GiveConsentRequest(bool TermsAccepted = false, string? BirthYear = null);

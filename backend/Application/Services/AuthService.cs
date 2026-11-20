@@ -256,13 +256,28 @@ public sealed class AuthService
 
     // Google 登入：用 Google 已驗證的 email 找帳號，沒有就建一個（無密碼，不能用密碼登入）。
     public Task<AuthServiceResult<AuthUserResponse>> GoogleLoginAsync(GoogleLoginCommand command, CancellationToken cancellationToken)
-        => SocialLoginAsync(command.Email, command.Name, cancellationToken);
+        => SocialLoginAsync(command.Email, command.Name, command.TermsAccepted, command.BirthYear, cancellationToken);
 
     public Task<AuthServiceResult<AuthUserResponse>> FacebookLoginAsync(FacebookLoginCommand command, CancellationToken cancellationToken)
-        => SocialLoginAsync(command.Email, command.Name, cancellationToken);
+        => SocialLoginAsync(command.Email, command.Name, command.TermsAccepted, command.BirthYear, cancellationToken);
 
-    // Google / Facebook 共用：以 email 為主鍵建立或登入帳號（provider 無關）。
-    private async Task<AuthServiceResult<AuthUserResponse>> SocialLoginAsync(string emailRaw, string name, CancellationToken cancellationToken)
+    /// <summary>
+    /// Google / Facebook 共用：以 email 為主鍵建立或登入帳號（provider 無關）。
+    ///
+    /// 同一支端點其實做兩件事，規則不一樣：
+    /// · 這個 email 已經有帳號 → 登入。不看 termsAccepted／birthYear。
+    /// · 沒有帳號 → 註冊。必須帶著「同意條款」與「成年的出生年次」才建，
+    ///   否則回 SOCIAL_CONSENT_REQUIRED，前端收到就顯示確認畫面、帶著同一張憑證再打一次。
+    ///
+    /// 以前第二種情況是直接建帳號：按一下「使用 Google 繼續」就進來了，
+    /// 沒有同意條款、沒有年齡限制，而 Email 註冊兩樣都要。同一個服務兩個入口、
+    /// 兩套標準，未滿 18 歲的人改按 Google 就繞過去了。
+    ///
+    /// 登入不看那兩個欄位是刻意的：已上架的版本不會送它們。如果連登入都要求，
+    /// 等於把所有還沒更新 App 的既有使用者鎖在門外。
+    /// </summary>
+    private async Task<AuthServiceResult<AuthUserResponse>> SocialLoginAsync(
+        string emailRaw, string name, bool termsAccepted, string? birthYear, CancellationToken cancellationToken)
     {
         if (db == null)
         {
@@ -320,6 +335,23 @@ public sealed class AuthService
             }
         }
 
+        // 從這裡開始是「註冊」。跟 Email 註冊同一套門檻：先同意條款，再確認成年。
+        //
+        // 兩樣缺一樣都回同一個碼——前端的反應是一樣的：顯示確認畫面。
+        // 這段訊息新版前端不會顯示（它認的是碼），會看到它的是還沒更新的舊版 App，
+        // 所以寫給舊版的人看：告訴他怎麼辦，而不是告訴他缺了哪個欄位。
+        if (!termsAccepted || string.IsNullOrWhiteSpace(birthYear))
+        {
+            return AuthServiceResult<AuthUserResponse>.Fail(
+                "SOCIAL_CONSENT_REQUIRED",
+                "第一次用這個帳號登入，需要先同意服務條款並確認年齡。請更新 App 後再試一次，或改用 Email 建立帳號");
+        }
+
+        if (!IsAdultBirthYear(birthYear))
+        {
+            return AuthServiceResult<AuthUserResponse>.Fail("UNDERAGE", "未滿 18 歲暫時不能使用同頻 Today");
+        }
+
         // 首次用社群登入 → 建立新帳號（密碼設成不可用的隨機 hash）
         var nickname = string.IsNullOrWhiteSpace(name) ? "同頻使用者" : name.Trim();
         if (nickname.Length > 20)
@@ -331,6 +363,7 @@ public sealed class AuthService
         {
             Id = $"user_{Guid.NewGuid():N}",
             Nickname = nickname,
+            AgeRange = NormalizeBirthYear(birthYear),
             Bio = "今天開始慢慢認識同頻的人",
             CreatedAt = now,
             UpdatedAt = now
@@ -350,6 +383,7 @@ public sealed class AuthService
         {
             db.Users.Add(user);
             db.AuthAccounts.Add(newAccount);
+            db.RegistrationVerificationTokens.Add(ConsentRecord(newAccount, user, now));
             await db.SaveChangesAsync(cancellationToken);
         }
         catch (Exception) when (!cancellationToken.IsCancellationRequested)
@@ -358,6 +392,157 @@ public sealed class AuthService
         }
 
         return AuthServiceResult<AuthUserResponse>.Ok(new AuthUserResponse(user.Id, user.Nickname, newAccount.Username));
+    }
+
+    /// <summary>
+    /// 一筆「這個帳號在什麼時候同意了條款、報了哪一年出生」的紀錄。
+    ///
+    /// Email 註冊的同意時間記在 registration_verification_tokens 那一列上
+    /// （驗證完只是標記 UsedAt，列會留著），那張表實際上就是註冊紀錄。
+    /// 社群註冊與事後補問都沒有驗證碼這一步，但同意的事實一樣要留下來，所以寫一列
+    /// 「一建立就已經用掉」的紀錄進同一張表——查誰在什麼時候同意過，只要看一個地方，
+    /// 也不必為此改 schema。
+    ///
+    /// UsedAt 與 ExpiresAt 都是現在，驗證碼那條路（只找未用、未過期的）永遠撈不到它；
+    /// CodeHash 是一段沒有人知道原文的亂數。
+    /// </summary>
+    private static RegistrationVerificationTokenRecord ConsentRecord(AuthAccountRecord account, UserRecord user, DateTimeOffset now)
+        => new()
+        {
+            Id = $"reg_{Guid.NewGuid():N}",
+            Email = account.Username,
+            Nickname = user.Nickname,
+            PasswordHash = account.PasswordHash,
+            BirthYear = user.AgeRange,
+            CodeHash = AuthSecurity.HashVerificationCode(Guid.NewGuid().ToString("N")),
+            TermsAcceptedAt = now,
+            ExpiresAt = now,
+            UsedAt = now,
+            CreatedAt = now
+        };
+
+    /// <summary>
+    /// 這個帳號還缺不缺「同意條款」與「年齡確認」。
+    ///
+    /// 會缺的是以前用 Google／Facebook 按一下就建好的帳號：那條路當時什麼都沒問。
+    /// 新的社群註冊已經補上門檻（見 SocialLoginAsync），但已經存在的帳號不會再走到那裡。
+    ///
+    /// 這裡只回答「缺不缺」，不擋任何事。擋在登入或每一支 API 上的話，還在用舊版 App 的人
+    /// 會被整個鎖在外面，而舊版根本沒有畫面可以讓他補。所以由新版 App 在登入後自己問、
+    /// 自己顯示確認畫面；這支端點是它判斷要不要顯示的依據。
+    /// </summary>
+    public async Task<AuthServiceResult<ConsentStatus>> GetConsentStatusAsync(string userId, CancellationToken cancellationToken)
+    {
+        if (db == null)
+        {
+            // JSON 模式沒有登入、沒有帳號，沒有人需要被問
+            return AuthServiceResult<ConsentStatus>.Ok(new ConsentStatus(false));
+        }
+
+        try
+        {
+            var (account, user) = await LoadAccountAsync(userId, cancellationToken);
+            if (account == null || user == null)
+            {
+                return AuthServiceResult<ConsentStatus>.Fail("ACCOUNT_NOT_FOUND", "找不到帳號");
+            }
+
+            return AuthServiceResult<ConsentStatus>.Ok(
+                new ConsentStatus(await IsConsentMissingAsync(account, user, cancellationToken)));
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            return AuthServiceResult<ConsentStatus>.Fail("DATABASE_UNAVAILABLE", "目前無法連線資料庫，請稍後再試");
+        }
+    }
+
+    /// <summary>
+    /// 既有帳號補上同意與年齡確認。門檻跟註冊一樣：要勾同意、要是成年的年次。
+    ///
+    /// 報的年次未成年時只是不放行，不對帳號做任何處置——這是自己填的數字，
+    /// 打錯一個鍵也會落在這裡，而他在註冊時本來就能重填。要不要對確定未成年的帳號
+    /// 做什麼，是審核的事，不該由一個輸入框順手決定。
+    /// </summary>
+    public async Task<AuthServiceResult<ConsentStatus>> RecordConsentAsync(
+        string userId, bool termsAccepted, string? birthYear, CancellationToken cancellationToken)
+    {
+        if (db == null)
+        {
+            return AuthServiceResult<ConsentStatus>.Fail("DATABASE_NOT_CONFIGURED", "目前尚未設定資料庫連線");
+        }
+
+        if (!termsAccepted)
+        {
+            return AuthServiceResult<ConsentStatus>.Fail("TERMS_NOT_ACCEPTED", "請先閱讀並同意服務條款與隱私權政策");
+        }
+
+        if (string.IsNullOrWhiteSpace(birthYear) || !IsAdultBirthYear(birthYear))
+        {
+            return AuthServiceResult<ConsentStatus>.Fail("UNDERAGE", "未滿 18 歲暫時不能使用同頻 Today");
+        }
+
+        try
+        {
+            var (account, user) = await LoadAccountAsync(userId, cancellationToken);
+            if (account == null || user == null)
+            {
+                return AuthServiceResult<ConsentStatus>.Fail("ACCOUNT_NOT_FOUND", "找不到帳號");
+            }
+
+            // 已經齊了就什麼都不寫。同一個人連按兩次、或兩台裝置各問一次，
+            // 都不該多出一列紀錄，更不該把第一次同意的時間蓋掉。
+            if (!await IsConsentMissingAsync(account, user, cancellationToken))
+            {
+                return AuthServiceResult<ConsentStatus>.Ok(new ConsentStatus(false));
+            }
+
+            var now = DateTimeOffset.UtcNow;
+            // 原本就有年次的（Email 註冊時填過）維持原值：這支端點是補缺的，不是改生日的後門。
+            if (string.IsNullOrWhiteSpace(user.AgeRange))
+            {
+                user.AgeRange = NormalizeBirthYear(birthYear);
+                user.UpdatedAt = now;
+            }
+
+            db.RegistrationVerificationTokens.Add(ConsentRecord(account, user, now));
+            await db.SaveChangesAsync(cancellationToken);
+            return AuthServiceResult<ConsentStatus>.Ok(new ConsentStatus(false));
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            return AuthServiceResult<ConsentStatus>.Fail("DATABASE_UNAVAILABLE", "目前無法連線資料庫，請稍後再試");
+        }
+    }
+
+    private async Task<(AuthAccountRecord? Account, UserRecord? User)> LoadAccountAsync(string userId, CancellationToken cancellationToken)
+    {
+        var account = await db!.AuthAccounts.FirstOrDefaultAsync(x => x.UserId == userId, cancellationToken);
+        var user = await db.Users.FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
+        return (account, user);
+    }
+
+    /// <summary>
+    /// 兩樣都要有才算齊：users 上的出生年次，以及一列已經結掉（UsedAt 有值）的註冊／同意紀錄。
+    ///
+    /// 年次是主要的判斷。它只會在三個地方被寫進去——Email 註冊驗證完成、社群註冊、
+    /// 以及這裡的補問——而這三處都在同一筆交易裡留下（或結掉）一列同意紀錄。
+    /// 所以年次空著，就代表這個帳號是舊的社群登入建的，什麼都沒問過。
+    ///
+    /// 紀錄那一半單獨看是不夠的，別把它當成同意的證明：UsedAt 有值也可能只是作廢
+    /// （重寄驗證碼會把舊的結掉、猜錯太多次也會），那種列上的 TermsAcceptedAt
+    /// 是「有人拿這個 email 填過註冊表單」，不是帳號主人的同意。沒結掉的列更不算。
+    /// 要單靠這張表分辨「完成」與「作廢」得加欄位，目前靠年次這一半擋住。
+    /// </summary>
+    private async Task<bool> IsConsentMissingAsync(AuthAccountRecord account, UserRecord user, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(user.AgeRange))
+        {
+            return true;
+        }
+
+        var agreed = await db!.RegistrationVerificationTokens
+            .AnyAsync(x => x.Email == account.Username && x.UsedAt != null, cancellationToken);
+        return !agreed;
     }
 
     // 軟刪除帳號：停用登入並清除個資／媒體（保留列；真正硬清除另排）
@@ -788,9 +973,11 @@ public sealed record RegisterCommand(
 
 public sealed record LoginCommand(string Email, string Password);
 
-public sealed record GoogleLoginCommand(string Email, string Name);
+// TermsAccepted／BirthYear 只在「這個 email 還沒有帳號」時才會被看（見 SocialLoginAsync）。
+// 有預設值是因為已上架的版本不會送它們；那些人登入既有帳號不該受影響。
+public sealed record GoogleLoginCommand(string Email, string Name, bool TermsAccepted = false, string? BirthYear = null);
 
-public sealed record FacebookLoginCommand(string Email, string Name);
+public sealed record FacebookLoginCommand(string Email, string Name, bool TermsAccepted = false, string? BirthYear = null);
 
 public sealed record ConfirmRegistrationCommand(string Email, string Code);
 
@@ -801,6 +988,11 @@ public sealed record ConfirmPasswordResetCommand(
     string ConfirmPassword);
 
 public sealed record AuthUserResponse(string UserId, string Nickname, string Email, string? Token = null);
+
+/// <summary>
+/// 這個帳號還缺不缺「同意條款」與「年齡確認」。Required 為 true 時，新版 App 會在登入後顯示確認畫面。
+/// </summary>
+public sealed record ConsentStatus(bool Required);
 
 public sealed record RegistrationStartResponse(string Email, int ExpiresInMinutes);
 

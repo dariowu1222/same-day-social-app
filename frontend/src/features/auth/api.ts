@@ -33,19 +33,50 @@ export async function loginAccount(payload: { email: string; password: string },
   return response.data
 }
 
-export async function googleLogin(idToken: string, remember: boolean) {
+/**
+ * 使用者在確認畫面（ConsentScreen）給的兩樣東西：同意條款、出生年次。
+ *
+ * 兩個地方會送它：
+ * · 第一次用社群帳號登入。社群登入的端點同時是登入也是註冊——帳號已經存在就直接登入，
+ *   不需要這個；帳號不存在而又沒帶，後端回 SOCIAL_CONSENT_REQUIRED，前端顯示確認畫面後，
+ *   拿同一張憑證加上這個再打一次。
+ * · 既有帳號登入後的補問（giveConsent）。
+ */
+export type ConsentAnswer = { termsAccepted: true; birthYear: string }
+
+/** 後端說「這是新帳號，要先同意條款並確認年齡」。 */
+export const SOCIAL_CONSENT_REQUIRED = 'SOCIAL_CONSENT_REQUIRED'
+
+/**
+ * 這個帳號還缺不缺條款同意與年齡確認。
+ * 會缺的是以前用 Google／Facebook 建的帳號——那條路當時什麼都沒問。
+ */
+export async function getConsentStatus() {
+  const response = await request<{ required: boolean }>('/api/account/consent')
+  return response.data
+}
+
+export async function giveConsent(answer: ConsentAnswer) {
+  const response = await request<{ required: boolean }>('/api/account/consent', {
+    method: 'POST',
+    body: JSON.stringify(answer),
+  })
+  return response.data
+}
+
+export async function googleLogin(idToken: string, remember: boolean, consent?: ConsentAnswer) {
   const response = await request<{ userId: string; nickname: string; email: string; token?: string }>('/api/auth/google', {
     method: 'POST',
-    body: JSON.stringify({ idToken }),
+    body: JSON.stringify({ idToken, ...consent }),
   })
   if (response.data.token) setAuthToken(response.data.token, remember)
   return response.data
 }
 
-export async function facebookLogin(accessToken: string, remember: boolean) {
+export async function facebookLogin(accessToken: string, remember: boolean, consent?: ConsentAnswer) {
   const response = await request<{ userId: string; nickname: string; email: string; token?: string }>('/api/auth/facebook', {
     method: 'POST',
-    body: JSON.stringify({ accessToken }),
+    body: JSON.stringify({ accessToken, ...consent }),
   })
   if (response.data.token) setAuthToken(response.data.token, remember)
   return response.data

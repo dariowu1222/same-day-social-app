@@ -25,6 +25,11 @@ export function toUserMessage(code?: string, message?: string) {
       return '請先閱讀並同意服務條款與隱私權政策'
     case 'UNDERAGE':
       return '未滿 18 歲暫時不能使用同頻 Today'
+    // 第一次用 Google／Facebook 登入。登入頁收到這個碼會直接換成確認畫面，
+    // 正常情況下這句不會出現；會看到它，代表確認畫面送出去的同意或年次沒被後端收到。
+    // 後端自己的訊息是寫給舊版 App 看的（叫人去更新），這裡不沿用。
+    case 'SOCIAL_CONSENT_REQUIRED':
+      return '需要先同意服務條款並填寫出生年次，請再確認一次'
     case 'INVALID_CODE':
       return '驗證碼錯誤或已過期，請確認後再輸入'
     case 'EMAIL_SEND_FAILED':

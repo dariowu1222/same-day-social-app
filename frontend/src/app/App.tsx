@@ -11,6 +11,7 @@ import { ensureSocialInit } from '../features/auth/googleAuth'
 import { syncPushRegistration, onPushOpened } from '../shared/push/push'
 import type { DemoUser } from '../features/auth/types'
 import LoginPage from '../features/auth/LoginPage'
+import ConsentGate from '../features/auth/ConsentGate'
 import OnboardingOverlay from '../features/profile/OnboardingOverlay'
 import TodayPage from '../features/today/TodayPage'
 import MatchResultPage from '../features/match/MatchResultPage'
@@ -32,7 +33,7 @@ import NotificationCenterPage from '../features/notifications/NotificationCenter
 function App() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { user, authenticate } = useAuth()
+  const { user, authenticate, logout } = useAuth()
   const { totalUnread } = useChatRealtime()
   const [showMatchResult, setShowMatchResult] = useState(false)
   const [selectedMoodLabel, setSelectedMoodLabel] = useState<string>('')
@@ -149,6 +150,10 @@ function App() {
       {!onboardingDone && (
         <OnboardingOverlay user={user} onComplete={handleOnboardingComplete} />
       )}
+      {/* 以前用社群登入建的帳號沒問過條款與年齡，登入後補問一次。
+          key 綁使用者：換一個帳號登入要重新問後端，不能沿用上一個人的答案。
+          放在 onboarding 後面＝疊在它上面：先確認能不能用，再談怎麼用。 */}
+      <ConsentGate key={user.userId} userId={user.userId} onLogout={logout} />
     </>
   )
 }
