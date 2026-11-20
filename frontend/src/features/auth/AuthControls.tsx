@@ -204,7 +204,7 @@ export function LegalModal({ type, onClose }: { type: LegalDoc; onClose: () => v
             ×
           </button>
         </div>
-        <p className="legal-updated">最後更新：2026 年 6 月 1 日</p>
+        <p className="legal-updated">最後更新：{doc.updated}</p>
         <div className="legal-modal-body">
           {doc.sections.map((section) => (
             <section key={section.heading}>

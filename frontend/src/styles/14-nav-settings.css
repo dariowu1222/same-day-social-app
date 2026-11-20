@@ -173,6 +173,28 @@
 [data-theme="dark"] .set-confirm { background: #16281e; }
 [data-theme="dark"] .set-confirm-title { color: #d4ede8; }
 [data-theme="dark"] .set-confirm-cancel { border-color: #2a4035; color: #d4ede8; }
+
+/* 條款／隱私權政策視窗從設定頁打開時，跟著深色主題。
+   一定要限定在 .settings-page 底下：同一個視窗也用在登入、註冊與確認畫面，
+   那些畫面固定是亮色的——不限定的話，晚上在亮色的註冊頁會跳出一個深色視窗。 */
+[data-theme="dark"] .settings-page .legal-modal-backdrop { background: rgba(0, 0, 0, 0.55); }
+[data-theme="dark"] .settings-page .legal-modal {
+  background: #16281e;
+  border-color: #2a4035;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+}
+[data-theme="dark"] .settings-page .legal-modal-header { border-bottom-color: #2a4035; }
+[data-theme="dark"] .settings-page .legal-modal-header p { color: #4caf7d; }
+[data-theme="dark"] .settings-page .legal-modal-header h2 { color: #d4ede8; }
+[data-theme="dark"] .settings-page .legal-modal-header button {
+  background: rgba(22, 40, 32, 0.6);
+  border-color: #2a4035;
+  color: #d4ede8;
+}
+[data-theme="dark"] .settings-page .legal-updated { color: rgba(168, 212, 204, 0.6); }
+[data-theme="dark"] .settings-page .legal-modal-body h3 { color: #d4ede8; }
+[data-theme="dark"] .settings-page .legal-modal-body p { color: rgba(212, 237, 232, 0.8); }
+
 @media (min-width: 768px) {
   [data-theme="dark"] .appearance-switch { background: rgba(22, 40, 32, 0.6); }
   [data-theme="dark"] .appearance-opt.selected { background: rgba(76, 175, 125, 0.2); }
