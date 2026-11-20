@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using SameDaySocialApp.Application.Dto;
 using SameDaySocialApp.Application.Services;
 using SameDaySocialApp.Application.Validation;
+using SameDaySocialApp.Domain;
 using SameDaySocialApp.Domain.Entities;
 using SameDaySocialApp.Infrastructure.Media;
 using SameDaySocialApp.Infrastructure.Persistence;
@@ -205,6 +206,20 @@ public sealed class ProfileController(JsonStorageService storage, MediaUrlPolicy
             return BadRequest(ApiResponse<User>.Fail("FIELD_TOO_LONG", tooLong));
         }
 
+        // 縣市現在會被拿去比對（MatchService.WithinMyArea），所以只收清單裡的值。
+        // 以前偏好縣市是 40 字以內的自由文字，寫錯一個字就是「設了、但配不到任何人」，
+        // 而且沒有任何地方會告訴他。線上 81 個帳號的現有值全部都在清單內。
+        if (!IsBlankOrKnownArea(request.LocationArea) || !IsBlankOrKnownArea(request.PreferredArea))
+        {
+            return BadRequest(ApiResponse<User>.Fail("INVALID_AREA", "請從清單選擇縣市"));
+        }
+
+        // 0 是「清掉距離偏好」（見 ApplyArea），所以下限是 0 不是 1。
+        if (request.DistanceKm is < 0 or > MaxDistanceKm)
+        {
+            return BadRequest(ApiResponse<User>.Fail("INVALID_DISTANCE", $"距離需為 1 到 {MaxDistanceKm} 公里"));
+        }
+
         if (db != null)
         {
             try
@@ -235,8 +250,8 @@ public sealed class ProfileController(JsonStorageService storage, MediaUrlPolicy
                     if (request.LookingFor != null) record.LookingFor = EmptyToNull(request.LookingFor);
                     if (request.AgeMin.HasValue) record.AgeMin = request.AgeMin;
                     if (request.AgeMax.HasValue) record.AgeMax = request.AgeMax;
-                    if (request.DistanceKm.HasValue) record.DistanceKm = request.DistanceKm;
-                    if (request.PreferredArea != null) record.PreferredArea = EmptyToNull(request.PreferredArea);
+                    (record.LocationArea, record.DistanceKm, record.PreferredArea) =
+                        ApplyArea(request, record.LocationArea, record.DistanceKm, record.PreferredArea);
                     if (request.Languages != null) record.Languages = [.. request.Languages];
                     if (request.ActiveTime != null) record.ActiveTime = EmptyToNull(request.ActiveTime);
                     if (request.VoiceFirst.HasValue) record.VoiceFirst = request.VoiceFirst.Value;
@@ -275,8 +290,8 @@ public sealed class ProfileController(JsonStorageService storage, MediaUrlPolicy
             if (request.LookingFor != null) target.LookingFor = EmptyToNull(request.LookingFor);
             if (request.AgeMin.HasValue) target.AgeMin = request.AgeMin;
             if (request.AgeMax.HasValue) target.AgeMax = request.AgeMax;
-            if (request.DistanceKm.HasValue) target.DistanceKm = request.DistanceKm;
-            if (request.PreferredArea != null) target.PreferredArea = EmptyToNull(request.PreferredArea);
+            (target.LocationArea, target.DistanceKm, target.PreferredArea) =
+                ApplyArea(request, target.LocationArea, target.DistanceKm, target.PreferredArea);
             if (request.Languages != null) target.Languages = [.. request.Languages];
             if (request.ActiveTime != null) target.ActiveTime = EmptyToNull(request.ActiveTime);
             if (request.VoiceFirst.HasValue) target.VoiceFirst = request.VoiceFirst.Value;
@@ -355,6 +370,50 @@ public sealed class ProfileController(JsonStorageService storage, MediaUrlPolicy
     }
 
     private static string? EmptyToNull(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private const int MaxDistanceKm = 500;
+
+    private static bool IsBlankOrKnownArea(string? area)
+        => string.IsNullOrWhiteSpace(area) || TaiwanAreas.IsKnown(area);
+
+    /// <summary>
+    /// 所在縣市、距離偏好、偏好縣市三欄一起算。資料庫與 JSON 兩條寫入路徑共用，
+    /// 免得規則只改到一邊。
+    ///
+    /// 沒送的欄位（null）維持原值，跟這支端點其他欄位同一個慣例。
+    ///
+    /// 距離與縣市擇一，寫入其中一個就清掉另一個。互斥放在伺服器而不是只靠畫面：
+    /// 已經上架的舊版 App 個人檔案頁只有距離輸入框，不會送偏好縣市——
+    /// 在 onboarding 選了「依縣市」的人之後到那一頁填了距離，兩欄就同時有值，
+    /// 配對時無從得知哪一個才是他現在要的。寫入時收斂，讀的那一側就不用猜。
+    ///
+    /// 距離送 0 代表清掉。int 沒有「空字串」可用，而 null 在這裡已經是「這次不改」，
+    /// 少了這個約定的話，距離偏好一旦設過就永遠拿不掉——它生效之後這會變成真的問題。
+    /// </summary>
+    private static (string? LocationArea, int? DistanceKm, string? PreferredArea) ApplyArea(
+        UpdateProfileRequest request, string? locationArea, int? distanceKm, string? preferredArea)
+    {
+        if (request.LocationArea != null)
+        {
+            locationArea = TaiwanAreas.Normalize(request.LocationArea);
+        }
+
+        if (request.DistanceKm.HasValue)
+        {
+            distanceKm = request.DistanceKm > 0 ? request.DistanceKm : null;
+            if (distanceKm != null) preferredArea = null;
+        }
+
+        // 同一個請求兩個都送了有效值時，縣市放後面、以它為準：
+        // 它是明確的選擇，距離則是縣市對縣市的估算。
+        if (request.PreferredArea != null)
+        {
+            preferredArea = TaiwanAreas.Normalize(request.PreferredArea);
+            if (preferredArea != null) distanceKm = null;
+        }
+
+        return (locationArea, distanceKm, preferredArea);
+    }
 }
 
 public sealed record UpdateProfileRequest(
@@ -368,4 +427,6 @@ public sealed record UpdateProfileRequest(
     int? AgeMin = null, int? AgeMax = null, int? DistanceKm = null,
     string? PreferredArea = null,
     List<string>? Languages = null, string? ActiveTime = null,
-    bool? VoiceFirst = null, bool? MeetSoon = null);
+    bool? VoiceFirst = null, bool? MeetSoon = null,
+    // 自己的所在縣市。新參數放尾端並給預設值，既有的位置呼叫不受影響。
+    string? LocationArea = null);

@@ -23,6 +23,9 @@ export type UserProfile = {
   ageMin?: number | null
   ageMax?: number | null
   distanceKm?: number | null
+  preferredArea?: string | null
+  // 自己的所在縣市（會顯示在配對卡上，也是距離偏好的起點）
+  locationArea?: string | null
   languages?: string[]
   activeTime?: string
   voiceFirst?: boolean

@@ -3,10 +3,14 @@ import type { DemoUser } from '../auth/types'
 import { updateProfile } from './api'
 import AgeRangeSlider, { AGE_FLOOR } from '../../shared/ui/AgeRangeSlider'
 import {
+  AREA_OPTIONS,
   DATING_GOAL_OPTIONS,
+  DISTANCE_KM_MAX,
+  DISTANCE_KM_MIN,
   GENDER_OPTIONS,
   LOOKING_FOR_OPTIONS,
   RELATIONSHIP_OPTIONS,
+  type DistanceMode,
 } from './profileFields'
 import slide1 from '../../assets/1.webp'
 import slide2 from '../../assets/2.webp'
@@ -60,14 +64,6 @@ const INTEREST_OPTIONS = [
   '貓狗', '手作', '冥想', '追劇', '寫作', '展覽',
 ]
 
-// 距離偏好「依縣市」用的台灣縣市清單
-const AREA_OPTIONS = [
-  '台北市', '新北市', '基隆市', '桃園市', '新竹市', '新竹縣',
-  '苗栗縣', '台中市', '彰化縣', '南投縣', '雲林縣', '嘉義市',
-  '嘉義縣', '台南市', '高雄市', '屏東縣', '宜蘭縣', '花蓮縣',
-  '台東縣', '澎湖縣', '金門縣', '連江縣',
-]
-
 function clampOptionalNumber(value: string, min: number, max: number) {
   if (!value) return null
   const parsed = Number(value)
@@ -96,8 +92,9 @@ export default function OnboardingOverlay({ user, onComplete }: Props) {
   const [lookingFor, setLookingFor] = useState('')
   const [ageMin, setAgeMin] = useState(AGE_FLOOR)
   const [ageMax, setAgeMax] = useState(40)
+  const [locationArea, setLocationArea] = useState('')
   const [distanceKm, setDistanceKm] = useState('')
-  const [distanceMode, setDistanceMode] = useState<'km' | 'area'>('km')
+  const [distanceMode, setDistanceMode] = useState<DistanceMode>('km')
   const [preferredArea, setPreferredArea] = useState('')
   const [saving, setSaving] = useState(false)
   const savingRef = useRef(false)
@@ -151,8 +148,11 @@ export default function OnboardingOverlay({ user, onComplete }: Props) {
         lookingFor: lookingFor || undefined,
         ageMin,
         ageMax,
-        // 依距離或依縣市二擇一：只送目前模式的值
-        distanceKm: distanceMode === 'km' ? clampOptionalNumber(distanceKm, 1, 500) : undefined,
+        // 自己在哪。依距離要靠它當起點，別人指定縣市時也是拿它比對——
+        // 沒填的人對所有設了地區偏好的人都是隱形的。
+        locationArea: locationArea || undefined,
+        // 依距離或依縣市二擇一：只送目前模式的值（後端寫入其中一個就會清掉另一個）
+        distanceKm: distanceMode === 'km' ? clampOptionalNumber(distanceKm, DISTANCE_KM_MIN, DISTANCE_KM_MAX) : undefined,
         preferredArea: distanceMode === 'area' ? (preferredArea.trim() || undefined) : undefined,
       })
     } catch {
@@ -217,6 +217,21 @@ export default function OnboardingOverlay({ user, onComplete }: Props) {
             </div>
 
             <div className="ob-field">
+              <span className="ob-field-label">你在哪個縣市</span>
+              <select
+                className="ob-select"
+                aria-label="所在縣市"
+                value={locationArea}
+                onChange={event => setLocationArea(event.target.value)}
+              >
+                <option value="">先不填</option>
+                {AREA_OPTIONS.map(area => (
+                  <option key={area} value={area}>{area}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="ob-field">
               <span className="ob-field-label">距離偏好</span>
               <div className="ob-segment" role="group" aria-label="距離偏好方式">
                 <button
@@ -236,8 +251,8 @@ export default function OnboardingOverlay({ user, onComplete }: Props) {
                     className="ob-number-input"
                     type="number"
                     inputMode="numeric"
-                    min={1}
-                    max={500}
+                    min={DISTANCE_KM_MIN}
+                    max={DISTANCE_KM_MAX}
                     placeholder="距離"
                     aria-label="距離偏好"
                     value={distanceKm}
@@ -257,6 +272,13 @@ export default function OnboardingOverlay({ user, onComplete }: Props) {
                     <option key={area} value={area}>{area}</option>
                   ))}
                 </select>
+              )}
+              {/* 距離是縣市對縣市的估算，不是定位。講清楚，免得填了 5 公里的人
+                  以為隔壁縣市的人一定近在咫尺；沒有起點時也直接說，而不是讓它安靜地不生效。 */}
+              {distanceMode === 'km' && (
+                <span className="profile-hint profile-hint-block">
+                  {locationArea ? '以雙方所在的縣市估算，同縣市一律算在內' : '要先選上面的所在縣市，才算得出距離'}
+                </span>
               )}
             </div>
           </div>

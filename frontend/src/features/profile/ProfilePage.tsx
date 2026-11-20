@@ -10,6 +10,7 @@ import AgeRangeSlider, { AGE_FLOOR, AGE_CEIL } from "../../shared/ui/AgeRangeSli
 import {
   GENDER_OPTIONS, RELATIONSHIP_OPTIONS, DATING_GOAL_OPTIONS, LOOKING_FOR_OPTIONS,
   PERSONALITY_OPTIONS, APPEARANCE_OPTIONS, BLOOD_OPTIONS,
+  AREA_OPTIONS, DISTANCE_MODE_LABELS, DISTANCE_KM_MIN, DISTANCE_KM_MAX, type DistanceMode,
 } from "./profileFields"
 
 const INTEREST_OPTIONS = [
@@ -20,6 +21,19 @@ const INTEREST_OPTIONS = [
 
 const ACTIVE_TIME_OPTIONS = ['早上', '下午', '晚上', '深夜'] as const
 const LANGUAGE_OPTIONS = ['中文', '英文', '台語', '日文', '韓文'] as const
+const DISTANCE_MODE_OPTIONS = [DISTANCE_MODE_LABELS.km, DISTANCE_MODE_LABELS.area] as const
+
+/**
+ * 距離輸入框的值 → 要送給後端的數字。
+ * 留白、不是數字、或小於等於 0 → 0（代表清掉這個偏好）。
+ * 其餘四捨五入並收進後端接受的範圍：後端欄位是整數，送小數會整包被擋下來，
+ * 而且使用者只會看到「儲存失敗」，不會知道是哪一格。
+ */
+function clampDistance(value: string) {
+  const parsed = Number(value)
+  if (!value || !Number.isFinite(parsed) || parsed <= 0) return 0
+  return Math.min(DISTANCE_KM_MAX, Math.max(DISTANCE_KM_MIN, Math.round(parsed)))
+}
 
 // 欄位小標：只顯示標題 +（必填時）*；optional/mode 仍保留於型別供呼叫端沿用，但不再顯示提示文字
 function FieldLabel({ title, required }: {
@@ -171,7 +185,10 @@ export default function ProfilePage() {
   const [ageMin, setAgeMin] = useState(AGE_FLOOR)
   const [ageMax, setAgeMax] = useState(AGE_CEIL)
   const [ageTouched, setAgeTouched] = useState(false)
+  const [locationArea, setLocationArea] = useState('')
+  const [distanceMode, setDistanceMode] = useState<DistanceMode>('km')
   const [distanceKm, setDistanceKm] = useState('')
+  const [preferredArea, setPreferredArea] = useState('')
   const [languages, setLanguages] = useState<string[]>([])
   const [activeTime, setActiveTime] = useState('')
   const [voiceFirst, setVoiceFirst] = useState(false)
@@ -216,7 +233,12 @@ export default function ProfilePage() {
         setAgeMin(res.data.ageMin ?? AGE_FLOOR)
         setAgeMax(res.data.ageMax ?? AGE_CEIL)
         if (res.data.ageMin != null || res.data.ageMax != null) setAgeTouched(true)
+        setLocationArea(res.data.locationArea ?? '')
         setDistanceKm(res.data.distanceKm != null ? String(res.data.distanceKm) : '')
+        setPreferredArea(res.data.preferredArea ?? '')
+        // 在 onboarding 選了「依縣市」的人，回到這頁要看到的是縣市那一格，
+        // 不然他只會看到一個空的距離輸入框，以為自己的設定不見了。
+        setDistanceMode(res.data.preferredArea ? 'area' : 'km')
         setLanguages(res.data.languages ?? [])
         setActiveTime(res.data.activeTime ?? '')
         setVoiceFirst(res.data.voiceFirst ?? false)
@@ -319,7 +341,12 @@ export default function ProfilePage() {
         lookingFor: lookingFor || undefined,
         ageMin: ageTouched ? ageMin : undefined,
         ageMax: ageTouched ? ageMax : undefined,
-        distanceKm: distanceKm ? Number(distanceKm) : null,
+        locationArea,
+        // 距離與縣市擇一：目前方式的值照送，另一個明確清掉。
+        // 距離留白送 0（清掉）而不是 null——null 在這支端點是「這次不改」，
+        // 以前留白存檔其實什麼都沒清，設過的距離永遠拿不掉。
+        distanceKm: distanceMode === 'km' ? clampDistance(distanceKm) : 0,
+        preferredArea: distanceMode === 'area' ? preferredArea : '',
         languages,
         activeTime: activeTime || undefined,
         voiceFirst,
@@ -449,6 +476,16 @@ export default function ProfilePage() {
         )}
       </section>
 
+      {/* 所在縣市：會顯示在配對卡上，也是距離偏好的起點。
+          別人指定縣市或距離時拿這一欄比對，沒填的人對他們是隱形的。 */}
+      <section className="panel">
+        <FieldLabel title="所在縣市" optional />
+        <select className="profile-text-input" aria-label="所在縣市" value={locationArea} onChange={e => setLocationArea(e.target.value)}>
+          <option value="">不填</option>
+          {AREA_OPTIONS.map(area => <option key={area} value={area}>{area}</option>)}
+        </select>
+      </section>
+
       {/* Bio */}
       <section className="panel">
         <FieldLabel title="自我介紹" optional />
@@ -560,9 +597,9 @@ export default function ProfilePage() {
       </section>
 
       {/* ── 交友意圖 ──
-          註：後端 MatchService.MatchesPreferences 目前只用 lookingFor + ageMin/ageMax 篩選候選；
-          datingGoal / distanceKm / languages / activeTime / voiceFirst / meetSoon 只有存檔，尚未進配對邏輯。
-          （distanceKm 沒有位置資料可算，未來預計改用 preferredArea 偏好縣市。）
+          註：後端 MatchService.MatchesPreferences 用 lookingFor、ageMin/ageMax 與地區
+          （distanceKm 或 preferredArea，擇一）篩選候選，都是硬界線。
+          datingGoal / languages / activeTime / voiceFirst / meetSoon 只有存檔，尚未進配對邏輯。
           這是內部資訊，UI 不對使用者標示。 */}
 
       <section className="panel">
@@ -586,11 +623,36 @@ export default function ProfilePage() {
         />
       </section>
 
+      {/* 距離偏好：依距離或依縣市，擇一（和 onboarding 同一組選項）。
+          以前這頁只有距離輸入框——在 onboarding 選了「依縣市」的人回來改不了，
+          而且這兩欄當時都只有存檔，沒有進配對。 */}
       <section className="panel">
         <FieldLabel title="距離偏好" optional />
-        <div className="profile-field-unit">
-          <input className="profile-text-input" type="number" inputMode="numeric" min={1} max={500} placeholder="距離" value={distanceKm} onChange={e => setDistanceKm(e.target.value)} />
-          <span className="profile-unit">km</span>
+        <SingleChips
+          options={DISTANCE_MODE_OPTIONS}
+          value={DISTANCE_MODE_LABELS[distanceMode]}
+          onChange={label => setDistanceMode(label === DISTANCE_MODE_LABELS.area ? 'area' : 'km')}
+          allowClear={false}
+        />
+        <div className="profile-distance-value">
+          {distanceMode === 'km' ? (
+            <>
+              <div className="profile-field-unit">
+                <input className="profile-text-input" type="number" inputMode="numeric" min={DISTANCE_KM_MIN} max={DISTANCE_KM_MAX} placeholder="不限" aria-label="距離偏好" value={distanceKm} onChange={e => setDistanceKm(e.target.value)} />
+                <span className="profile-unit">km</span>
+              </div>
+              {/* 距離是縣市對縣市的估算，不是定位。沒有起點時直接說，
+                  而不是讓使用者填了數字卻安靜地不生效。 */}
+              <span className="profile-hint profile-hint-block">
+                {locationArea ? '以雙方所在的縣市估算，同縣市一律算在內' : '要先填上面的所在縣市，才算得出距離'}
+              </span>
+            </>
+          ) : (
+            <select className="profile-text-input" aria-label="偏好縣市" value={preferredArea} onChange={e => setPreferredArea(e.target.value)}>
+              <option value="">不限縣市</option>
+              {AREA_OPTIONS.map(area => <option key={area} value={area}>{area}</option>)}
+            </select>
+          )}
         </div>
       </section>
 
