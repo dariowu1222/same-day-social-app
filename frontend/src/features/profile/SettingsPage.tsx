@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ChevronRight, Palette, Bell, UserCircle, Shield, Ban, HelpCircle, LogOut,
-  Sun, Moon, Smartphone, ShieldCheck,
+  Sun, Moon, Smartphone, ShieldCheck, FileText, Lock,
 } from 'lucide-react'
 import { checkIsAdmin } from '../../shared/admin/api'
 import { useAuth } from '../auth/AuthContext'
+import { LegalModal } from '../auth/AuthControls'
+import type { LegalDoc } from '../auth/legalDocuments'
 import { useTheme, type ThemePreference } from '../../shared/theme/ThemeContext'
 import { APP_VERSION_LABEL } from '../../shared/lib/appVersion'
 
@@ -46,6 +48,7 @@ export default function SettingsPage() {
   const { logout } = useAuth()
   const { preference, isAnimating, setPreference } = useTheme()
   const [confirmLogout, setConfirmLogout] = useState(false)
+  const [legalDoc, setLegalDoc] = useState<LegalDoc | null>(null)
   // 管理者才看得到後台入口。預設 false：問不到答案時一律當成不是管理者，
   // 寧可少顯示一列，也不要讓一般使用者看到這個東西存在。
   const [isAdmin, setIsAdmin] = useState(false)
@@ -125,6 +128,15 @@ export default function SettingsPage() {
         </>
       )}
 
+      {/* 條款與政策。以前這兩份文件只在註冊表單上讀得到，註冊完就再也找不到——
+          使用者同意過的東西，應該隨時回得來看。內容跟註冊時讀到的是同一份
+          （features/auth/legalDocuments.ts），直接在這裡開，不必連網、也不用離開 App。 */}
+      <p className="set-group-title">條款與政策</p>
+      <section className="set-card">
+        <SettingRow Icon={FileText} seatBg="#fdf0e4" iconColor="#c88a3c" title="服務條款" desc="使用同頻 Today 的規則" onClick={() => setLegalDoc('terms')} />
+        <SettingRow Icon={Lock} seatBg="#e9f2ec" iconColor="#4a8a62" title="隱私權政策" desc="我們蒐集哪些資料、怎麼使用" onClick={() => setLegalDoc('privacy')} />
+      </section>
+
       {/* 其他 */}
       <p className="set-group-title">其他</p>
       <section className="set-card">
@@ -146,6 +158,8 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
+
+      {legalDoc && <LegalModal type={legalDoc} onClose={() => setLegalDoc(null)} />}
     </div>
   )
 }
