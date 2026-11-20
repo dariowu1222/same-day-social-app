@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import { Plus, X, Eye, Check, Pencil } from "lucide-react"
+import { Plus, X, Eye, Check, Pencil, LocateFixed } from "lucide-react"
 import { useAuth } from "../auth/AuthContext"
 import { getProfile, updateProfile } from "./api"
 import { CalendarPicker } from "./CalendarPicker"
@@ -12,6 +12,8 @@ import {
   PERSONALITY_OPTIONS, APPEARANCE_OPTIONS, BLOOD_OPTIONS,
   AREA_OPTIONS, DISTANCE_MODE_LABELS, DISTANCE_KM_MIN, DISTANCE_KM_MAX, type DistanceMode,
 } from "./profileFields"
+import { locateMyArea } from "../../shared/geo/locate"
+import { locateFailureCopy } from "./locationCopy"
 
 const INTEREST_OPTIONS = [
   "咖啡", "散步", "電影", "音樂", "閱讀", "料理",
@@ -186,6 +188,8 @@ export default function ProfilePage() {
   const [ageMax, setAgeMax] = useState(AGE_CEIL)
   const [ageTouched, setAgeTouched] = useState(false)
   const [locationArea, setLocationArea] = useState('')
+  const [locating, setLocating] = useState(false)
+  const [locateNote, setLocateNote] = useState('')
   const [distanceMode, setDistanceMode] = useState<DistanceMode>('km')
   const [distanceKm, setDistanceKm] = useState('')
   const [preferredArea, setPreferredArea] = useState('')
@@ -210,6 +214,23 @@ export default function ProfilePage() {
     window.addEventListener('nav-reselect-profile', onReselect)
     return () => window.removeEventListener('nav-reselect-profile', onReselect)
   }, [])
+
+  // 用定位帶入所在縣市。onboarding 時按了「先不用」或當時沒定到的人，回頭補的入口。
+  // 只是把選單改成定到的縣市，跟其他欄位一樣要按儲存才會寫進去。
+  async function handleLocate() {
+    if (locating) return
+    setLocating(true)
+    setLocateNote('')
+    const result = await locateMyArea()
+    setLocating(false)
+    if (result.status === 'ok') {
+      setLocationArea(result.area)
+      setLocateNote(`已帶入${result.area}，記得按儲存`)
+    } else {
+      const copy = locateFailureCopy(result, 'profile')
+      setLocateNote(`${copy.title}。${copy.detail}`)
+    }
+  }
 
   function loadProfile() {
     if (!user) return
@@ -385,6 +406,8 @@ export default function ProfilePage() {
               className={`profile-edit-toggle${isEditing ? ' editing' : ''}`}
               type="button"
               onClick={() => {
+                // 定位的結果訊息只對「這一次編輯」有意義，進出編輯模式都清掉
+                setLocateNote('')
                 if (isEditing) { setIsEditing(false); loadProfile() }
                 else setIsEditing(true)
               }}
@@ -480,10 +503,21 @@ export default function ProfilePage() {
           別人指定縣市或距離時拿這一欄比對，沒填的人對他們是隱形的。 */}
       <section className="panel">
         <FieldLabel title="所在縣市" optional />
-        <select className="profile-text-input" aria-label="所在縣市" value={locationArea} onChange={e => setLocationArea(e.target.value)}>
+        <select className="profile-text-input" aria-label="所在縣市" value={locationArea} onChange={e => { setLocationArea(e.target.value); setLocateNote('') }}>
           <option value="">不填</option>
           {AREA_OPTIONS.map(area => <option key={area} value={area}>{area}</option>)}
         </select>
+        {isEditing && (
+          <div className="profile-locate">
+            <button type="button" className="profile-locate-btn" disabled={locating} onClick={handleLocate}>
+              <LocateFixed size={14} strokeWidth={2.2} aria-hidden="true" />
+              {locating ? '定位中⋯' : '用定位帶入'}
+            </button>
+            <span className="profile-hint" role="status" aria-live="polite">
+              {locateNote || '只用來判斷縣市，座標不會上傳'}
+            </span>
+          </div>
+        )}
       </section>
 
       {/* Bio */}

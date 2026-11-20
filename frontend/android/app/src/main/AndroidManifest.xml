@@ -56,4 +56,21 @@
          注意：連續拒絕兩次之後系統就不再跳視窗，所以 App 啟動時不要問，
          等使用者真的進到對話裡再問（見 shared/push/push.ts）。 -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- 定位：只用來判斷使用者在哪個縣市（見 shared/geo/locate.ts）。
+         刻意「只」宣告大概位置，不宣告 ACCESS_FINE_LOCATION：
+         1. 判斷縣市用不到公尺級的精度；
+         2. 系統的權限視窗會因此只問「大概位置」，不會出現「精確位置」的選項；
+         3. Play 的資料安全表單與商店頁寫的是「不收集精準位置」，
+            宣告了 FINE 那句話就得改。
+         定位外掛（8.2 起）看到只宣告 COARSE，就會在所有 Android 版本上只要這一個權限。
+         哪天真的要精確位置，要同時改這裡、locate.ts 的 enableHighAccuracy、
+         隱私權政策與資料安全表單——四個地方是同一個承諾。 -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- 跟麥克風同一個道理：Play 會從定位權限推斷「必須有定位硬體」，
+         把沒有的裝置（部分平板、電視）整個濾掉。不開定位也能自己選縣市，
+         所以宣告為非必要。 -->
+    <uses-feature android:name="android.hardware.location" android:required="false" />
+    <uses-feature android:name="android.hardware.location.network" android:required="false" />
 </manifest>
