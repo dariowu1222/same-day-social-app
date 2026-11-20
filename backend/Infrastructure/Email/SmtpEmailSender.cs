@@ -138,12 +138,35 @@ public sealed class SmtpEmailSender(IOptions<SmtpOptions> options) : IEmailSende
         };
         message.To.Add(new MailAddress(toEmail));
 
+        // 下限 1 秒：設定值寫成 0 或負數時不要變成「立刻取消、永遠寄不出去」。
+        var timeout = TimeSpan.FromSeconds(Math.Max(1, smtp.TimeoutSeconds));
+
         using var client = new SmtpClient(smtp.Host, smtp.Port)
         {
             EnableSsl = smtp.EnableSsl,
-            Credentials = new NetworkCredential(smtp.Username, smtp.Password)
+            Credentials = new NetworkCredential(smtp.Username, smtp.Password),
+
+            // SmtpClient.Timeout 只對同步的 Send 有效，對 SendMailAsync 沒有作用。
+            // 這一行設了也夾不住下面那個 await——留著是為了「逾時只有一個設定來源」，
+            // 以免日後有人改走同步路徑時又踩一次沒有上限的坑。
+            Timeout = (int)timeout.TotalMilliseconds
         };
 
-        await client.SendMailAsync(message, cancellationToken);
+        // 真正把非同步這條路夾住的是這裡：SendMailAsync 的 CancellationToken 多載
+        // 在 token 觸發時會去呼叫 SendAsyncCancel。
+        //
+        // 要和呼叫端的 token 連動（而不是只用逾時）：使用者關掉分頁、請求被中止時，
+        // 這封信也該停下來，不要讓一個沒人在等的請求佔著 SMTP 連線。
+        //
+        // 連動的另一個好處是上層的錯誤處理不用改：逾時取消的是這裡建立的來源，
+        // 呼叫端那個 `when (!cancellationToken.IsCancellationRequested)` 仍然成立，
+        // 所以逾時會落進既有的 catch、回 EMAIL_SEND_FAILED，而不是往外炸成 500。
+        //
+        // 夾不住的那一段：主機不通時 TCP 連線本身有自己的底（實測約 20 秒），
+        // 那一層沒有可設定的逾時。這裡擋的是「連得上但對方不回」的情況，那才是常見的那種。
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        deadline.CancelAfter(timeout);
+
+        await client.SendMailAsync(message, deadline.Token);
     }
 }
