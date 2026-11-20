@@ -14,6 +14,11 @@ public sealed class User
     public List<string> ValueTags { get; set; } = [];
     public List<string> PhotoDataUrls { get; set; } = [];
     public DateOnly? Birthday { get; set; }
+    // 年齡與星座：只在「給別人看的版本」上有值（ProfileController.PublicViewOf）。
+    // 別人的卡片顯示的是這兩樣，由後端從生日算好再給，完整的出生年月日不離開伺服器。
+    // 不存資料庫、也不從資料庫讀——它們隨日期變，存了就會過期。
+    public int? Age { get; set; }
+    public string? Zodiac { get; set; }
     public ResponseMode ResponsePreference { get; set; } = ResponseMode.JUST_LISTEN;
     // 個人資料欄位（性別必填，其餘可空）
     public string? Relationship { get; set; }

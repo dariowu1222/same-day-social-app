@@ -148,8 +148,11 @@ public sealed class ProfileController(JsonStorageService storage, MediaUrlPolicy
         PersonalityTags = user.PersonalityTags,
         AppearanceTags = user.AppearanceTags,
         Gender = user.Gender,
-        AgeRange = user.AgeRange,
-        Birthday = user.Birthday,
+        // 生日與出生年次不給別人。卡片上顯示的是年齡與星座，這裡算好再給——
+        // 完整的出生年月日是註冊必填的身分資料，不是個人卡的內容。
+        // （以前整個日期照給，因為星座是前端拿月日算的。）
+        Age = user.Birthday is { } birthday ? AgeRules.AgeOf(birthday) : null,
+        Zodiac = user.Birthday is { } born ? AgeRules.ZodiacOf(born) : null,
         Relationship = user.Relationship,
         Height = user.Height,
         Weight = user.Weight,
@@ -158,7 +161,7 @@ public sealed class ProfileController(JsonStorageService storage, MediaUrlPolicy
         BloodType = user.BloodType,
         DatingGoal = user.DatingGoal,
         LookingFor = user.LookingFor,
-        PreferredArea = user.PreferredArea,
+        // 偏好縣市不給：那是他拿來篩別人的條件，跟年齡範圍、距離一樣，沒有畫面會顯示別人的這一欄。
         Languages = user.Languages,
         ActiveTime = user.ActiveTime,
         VoiceFirst = user.VoiceFirst,
@@ -363,11 +366,8 @@ public sealed class ProfileController(JsonStorageService storage, MediaUrlPolicy
             : $"照片最多 {InputLimits.MaxPhotos} 張";
     }
 
-    private static bool IsAdult(DateOnly birthday)
-    {
-        var today = DateOnly.FromDateTime(DateTimeOffset.Now.DateTime);
-        return birthday.AddYears(18) <= today;
-    }
+    // 成年的定義只有一份，在 AgeRules——註冊、補問與這裡改生日用的是同一個「今天」。
+    private static bool IsAdult(DateOnly birthday) => AgeRules.IsAdult(birthday);
 
     private static string? EmptyToNull(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 

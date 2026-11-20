@@ -62,7 +62,8 @@ function mapMatch(m: MatchResult): EnrichedMatch {
     age: age ?? undefined,
     city: m.city ?? undefined,
     bio: m.bio ?? undefined,
-    zodiac: m.birthday ? getZodiac(m.birthday) : undefined,
+    // 星座以後端給的為準；birthday 只有還沒更新的舊後端才會帶（見 types.ts）
+    zodiac: m.zodiac ?? (m.birthday ? getZodiac(m.birthday) : undefined),
   }
 }
 

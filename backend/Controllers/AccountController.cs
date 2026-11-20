@@ -61,7 +61,7 @@ public sealed class AccountController(AuthService authService) : ControllerBase
     public async Task<ActionResult<ApiResponse<ConsentStatus>>> GiveConsent(
         [FromBody] GiveConsentRequest request, CancellationToken cancellationToken)
         => ToActionResult(await authService.RecordConsentAsync(
-            CallerId, request.TermsAccepted, request.BirthYear, cancellationToken));
+            CallerId, request.TermsAccepted, request.Birthday, cancellationToken));
 
     private ActionResult<ApiResponse<ConsentStatus>> ToActionResult(AuthServiceResult<ConsentStatus> result)
         => result.Success
@@ -73,4 +73,4 @@ public sealed record UpdateUserSettingRequest(
     bool? ProfilePublic = null, bool? PauseMatching = null,
     bool? NotifyMatch = null, bool? NotifyMessage = null, bool? NotifyRant = null);
 
-public sealed record GiveConsentRequest(bool TermsAccepted = false, string? BirthYear = null);
+public sealed record GiveConsentRequest(bool TermsAccepted = false, string? Birthday = null);

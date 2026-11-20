@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using SameDaySocialApp.Application.Services;
 using SameDaySocialApp.Controllers;
+using SameDaySocialApp.Domain;
 using SameDaySocialApp.Domain.Enums;
 using SameDaySocialApp.Infrastructure.Email;
 using SameDaySocialApp.Infrastructure.Persistence;
@@ -10,14 +11,17 @@ using Xunit;
 namespace SameDaySocialApp.Tests;
 
 /// <summary>
-/// 第一次用 Google／Facebook 登入（＝註冊）時的條款同意與年齡門檻。
+/// 第一次用 Google／Facebook 登入（＝註冊）時的條款同意與出生年月日。
 ///
 /// 以前這條路是按一下就建帳號：沒有同意條款、沒有年齡限制，而 Email 註冊兩樣都要。
 /// 隱私權政策寫的「僅提供年滿十八歲之使用者」對社群登入沒有效力——
 /// 未滿 18 歲的人在 Email 註冊被擋下之後，改按 Google 就進來了。
 ///
+/// 要的是完整的出生年月日，不是年次：配對的年齡篩選比的是 users.birthday，
+/// 沒有生日的人對所有設了年齡範圍的人都是隱形的。
+///
 /// 另一半要釘住的是「不能因此把既有使用者鎖在外面」：已上架的版本只送憑證、
-/// 不送同意與年次。所以門檻只加在「建立新帳號」，登入既有帳號一律照舊。
+/// 不送同意與生日。所以門檻只加在「建立新帳號」，登入既有帳號一律照舊。
 ///
 /// Google 與 Facebook 走同一條 SocialLoginAsync，主要用 Google 測，
 /// Facebook 另外釘一條確認它沒有漏接參數。
@@ -25,7 +29,7 @@ namespace SameDaySocialApp.Tests;
 public sealed class SocialSignupConsentTests
 {
     private const string NewEmail = "newcomer@example.com";
-    private const string AdultYear = "1995";
+    private const string AdultBirthday = "1995-03-21";
 
     // ── 建立新帳號：兩樣都要 ──
 
@@ -42,96 +46,121 @@ public sealed class SocialSignupConsentTests
         AssertNothingCreated(db);
     }
 
-    /// <summary>填了年次但沒勾同意：不建。年齡對了不代表同意了。</summary>
+    /// <summary>填了生日但沒勾同意：不建。年齡對了不代表同意了。</summary>
     [Fact]
-    public async Task BirthYearAloneIsNotConsent()
+    public async Task BirthdayAloneIsNotConsent()
     {
-        var (auth, db) = World(nameof(BirthYearAloneIsNotConsent));
+        var (auth, db) = World(nameof(BirthdayAloneIsNotConsent));
 
         var result = await auth.GoogleLoginAsync(
-            new GoogleLoginCommand(NewEmail, "小安", TermsAccepted: false, BirthYear: AdultYear), CancellationToken.None);
+            new GoogleLoginCommand(NewEmail, "小安", TermsAccepted: false, Birthday: AdultBirthday), CancellationToken.None);
 
         Assert.Equal("SOCIAL_CONSENT_REQUIRED", result.Code);
         AssertNothingCreated(db);
     }
 
-    /// <summary>勾了同意但沒給年次：不建。少了這一條，年齡門檻只要不填就繞過去了。</summary>
+    /// <summary>勾了同意但沒給生日：不建。少了這一條，年齡門檻只要不填就繞過去了。</summary>
     [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public async Task ConsentWithoutBirthYearIsNotEnough(string? birthYear)
+    public async Task ConsentWithoutBirthdayIsNotEnough(string? birthday)
     {
-        var (auth, db) = World(nameof(ConsentWithoutBirthYearIsNotEnough) + (birthYear?.Length.ToString() ?? "null"));
+        var (auth, db) = World(nameof(ConsentWithoutBirthdayIsNotEnough) + (birthday?.Length.ToString() ?? "null"));
 
         var result = await auth.GoogleLoginAsync(
-            new GoogleLoginCommand(NewEmail, "小安", TermsAccepted: true, BirthYear: birthYear), CancellationToken.None);
+            new GoogleLoginCommand(NewEmail, "小安", TermsAccepted: true, Birthday: birthday), CancellationToken.None);
 
         Assert.Equal("SOCIAL_CONSENT_REQUIRED", result.Code);
         AssertNothingCreated(db);
     }
 
     /// <summary>
-    /// 未滿 18 歲、或根本不是年份：不建，而且回的是 UNDERAGE 不是「請同意」——
+    /// 不是一個真的日期：不建。只給年次也算——這條路要的是完整的出生年月日，
+    /// 收下一個年次，建出來的帳號就沒有生日，等於一開始就是隱形的。
+    /// </summary>
+    [Theory]
+    [InlineData("1995")]          // 只有年次
+    [InlineData("1995-02-30")]    // 不存在的日期
+    [InlineData("1899-01-01")]    // 年份離譜
+    [InlineData("2995-01-01")]    // 還沒到的日子
+    [InlineData("abcd")]
+    public async Task SomethingThatIsNotABirthdayIsRejected(string birthday)
+    {
+        var (auth, db) = World(nameof(SomethingThatIsNotABirthdayIsRejected) + birthday);
+
+        var result = await auth.GoogleLoginAsync(
+            new GoogleLoginCommand(NewEmail, "小安", TermsAccepted: true, Birthday: birthday), CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Equal("INVALID_BIRTHDAY", result.Code);
+        AssertNothingCreated(db);
+    }
+
+    /// <summary>
+    /// 未滿 18 歲：不建，而且回的是 UNDERAGE 不是「請同意」——
     /// 前端收到 SOCIAL_CONSENT_REQUIRED 會把人帶回確認畫面再問一次，
     /// 年齡不符的人不該被請回去「再填一次試試」。
     /// </summary>
-    [Theory]
-    [InlineData("2012")]
-    [InlineData("1899")]
-    [InlineData("abcd")]
-    public async Task UnderageOrNonsenseBirthYearIsRejected(string birthYear)
+    [Fact]
+    public async Task UnderageBirthdayIsRejected()
     {
-        var (auth, db) = World(nameof(UnderageOrNonsenseBirthYearIsRejected) + birthYear);
+        var (auth, db) = World(nameof(UnderageBirthdayIsRejected));
+        var seventeen = AgeRules.Format(AgeRules.Today().AddYears(-17));
 
         var result = await auth.GoogleLoginAsync(
-            new GoogleLoginCommand(NewEmail, "小安", TermsAccepted: true, BirthYear: birthYear), CancellationToken.None);
+            new GoogleLoginCommand(NewEmail, "小安", TermsAccepted: true, Birthday: seventeen), CancellationToken.None);
 
         Assert.False(result.Success);
         Assert.Equal("UNDERAGE", result.Code);
         AssertNothingCreated(db);
     }
 
-    /// <summary>今年剛好滿 18 歲的出生年次是界線，要放行；再晚一年就不行。</summary>
+    /// <summary>
+    /// 界線是「今天剛好滿 18 歲」那一天：放行；晚一天出生的還差一天，不行。
+    /// 以前只看年次，同一年出生的人不管幾月都算成年。
+    /// </summary>
     [Fact]
-    public async Task TheYearThatTurnsEighteenIsTheBoundary()
+    public async Task EighteenthBirthdayIsTheBoundary()
     {
-        var justAdult = (DateTimeOffset.Now.Year - 18).ToString();
-        var notYet = (DateTimeOffset.Now.Year - 17).ToString();
+        var turnsEighteenToday = AgeRules.Format(AgeRules.Today().AddYears(-18));
+        var turnsEighteenTomorrow = AgeRules.Format(AgeRules.Today().AddYears(-18).AddDays(1));
 
-        var (authA, _) = World(nameof(TheYearThatTurnsEighteenIsTheBoundary) + "a");
-        var (authB, _) = World(nameof(TheYearThatTurnsEighteenIsTheBoundary) + "b");
+        var (authA, _) = World(nameof(EighteenthBirthdayIsTheBoundary) + "a");
+        var (authB, dbB) = World(nameof(EighteenthBirthdayIsTheBoundary) + "b");
 
-        var allowed = await authA.GoogleLoginAsync(new GoogleLoginCommand(NewEmail, "小安", true, justAdult), CancellationToken.None);
-        var refused = await authB.GoogleLoginAsync(new GoogleLoginCommand(NewEmail, "小安", true, notYet), CancellationToken.None);
+        var allowed = await authA.GoogleLoginAsync(new GoogleLoginCommand(NewEmail, "小安", true, turnsEighteenToday), CancellationToken.None);
+        var refused = await authB.GoogleLoginAsync(new GoogleLoginCommand(NewEmail, "小安", true, turnsEighteenTomorrow), CancellationToken.None);
 
         Assert.True(allowed.Success);
         Assert.Equal("UNDERAGE", refused.Code);
+        AssertNothingCreated(dbB);
     }
 
     // ── 兩樣都有：建帳號，並留下紀錄 ──
 
     [Fact]
-    public async Task ConsentAndAdultBirthYearCreateTheAccount()
+    public async Task ConsentAndAdultBirthdayCreateTheAccount()
     {
-        var (auth, db) = World(nameof(ConsentAndAdultBirthYearCreateTheAccount));
+        var (auth, db) = World(nameof(ConsentAndAdultBirthdayCreateTheAccount));
         var before = DateTimeOffset.UtcNow;
 
         var result = await auth.GoogleLoginAsync(
-            new GoogleLoginCommand(NewEmail, "小安", TermsAccepted: true, BirthYear: AdultYear), CancellationToken.None);
+            new GoogleLoginCommand(NewEmail, "小安", TermsAccepted: true, Birthday: AdultBirthday), CancellationToken.None);
 
         Assert.True(result.Success);
         var account = Assert.Single(db.AuthAccounts);
         Assert.Equal(NewEmail, account.Username);
 
-        // 年次寫在 users 上，跟 Email 註冊同一欄
+        // 生日寫在 users.birthday——配對的年齡篩選比的就是這一欄
         var user = Assert.Single(db.Users);
-        Assert.Equal(AdultYear, user.AgeRange);
+        Assert.Equal(new DateOnly(1995, 3, 21), user.Birthday);
+        Assert.Equal("1995", user.AgeRange);
 
         // 同意的時間留在註冊紀錄表，跟 Email 註冊同一張表
         var record = Assert.Single(db.RegistrationVerificationTokens);
         Assert.Equal(NewEmail, record.Email);
-        Assert.Equal(AdultYear, record.BirthYear);
+        Assert.Equal(AdultBirthday, record.BirthYear);
         Assert.InRange(record.TermsAcceptedAt, before, DateTimeOffset.UtcNow);
     }
 
@@ -145,7 +174,7 @@ public sealed class SocialSignupConsentTests
     {
         var (auth, db) = World(nameof(TheConsentRecordIsNotAUsableVerificationCode));
 
-        await auth.GoogleLoginAsync(new GoogleLoginCommand(NewEmail, "小安", true, AdultYear), CancellationToken.None);
+        await auth.GoogleLoginAsync(new GoogleLoginCommand(NewEmail, "小安", true, AdultBirthday), CancellationToken.None);
 
         var record = Assert.Single(db.RegistrationVerificationTokens);
         Assert.NotNull(record.UsedAt);
@@ -156,24 +185,25 @@ public sealed class SocialSignupConsentTests
     public async Task FacebookSignupFollowsTheSameRule()
     {
         var (auth, db) = World(nameof(FacebookSignupFollowsTheSameRule));
+        var seventeen = AgeRules.Format(AgeRules.Today().AddYears(-17));
 
         var refused = await auth.FacebookLoginAsync(new FacebookLoginCommand(NewEmail, "小安"), CancellationToken.None);
         Assert.Equal("SOCIAL_CONSENT_REQUIRED", refused.Code);
         AssertNothingCreated(db);
 
-        var underage = await auth.FacebookLoginAsync(new FacebookLoginCommand(NewEmail, "小安", true, "2012"), CancellationToken.None);
+        var underage = await auth.FacebookLoginAsync(new FacebookLoginCommand(NewEmail, "小安", true, seventeen), CancellationToken.None);
         Assert.Equal("UNDERAGE", underage.Code);
         AssertNothingCreated(db);
 
-        var created = await auth.FacebookLoginAsync(new FacebookLoginCommand(NewEmail, "小安", true, AdultYear), CancellationToken.None);
+        var created = await auth.FacebookLoginAsync(new FacebookLoginCommand(NewEmail, "小安", true, AdultBirthday), CancellationToken.None);
         Assert.True(created.Success);
-        Assert.Equal(AdultYear, Assert.Single(db.Users).AgeRange);
+        Assert.Equal(new DateOnly(1995, 3, 21), Assert.Single(db.Users).Birthday);
     }
 
     // ── 登入既有帳號：照舊 ──
 
     /// <summary>
-    /// 已上架的版本登入既有帳號：只有憑證，沒有同意、沒有年次。必須照樣進得來。
+    /// 已上架的版本登入既有帳號：只有憑證，沒有同意、沒有生日。必須照樣進得來。
     /// 這條紅了，代表所有還沒更新 App 的人都被鎖在外面。
     /// </summary>
     [Fact]
@@ -195,23 +225,25 @@ public sealed class SocialSignupConsentTests
     }
 
     /// <summary>
-    /// 既有帳號就算帶了一個未成年的年次進來，也是登入，不是重新審一次年齡。
+    /// 既有帳號就算帶了一個未成年的生日進來，也是登入，不是重新審一次年齡。
     /// （前端只有在後端說要確認時才會送這兩欄，這條釘的是後端自己不要搞混兩條路。）
     /// </summary>
     [Fact]
-    public async Task ExistingAccountIsNotReScreenedByBirthYear()
+    public async Task ExistingAccountIsNotReScreenedByBirthday()
     {
-        var (auth, db) = World(nameof(ExistingAccountIsNotReScreenedByBirthYear));
+        var (auth, db) = World(nameof(ExistingAccountIsNotReScreenedByBirthday));
         var user = TestWorld.User("user_already_here");
         var account = TestWorld.Account(user, "Test-passw0rd");
         db.Users.Add(user);
         db.AuthAccounts.Add(account);
         db.SaveChanges();
+        var seventeen = AgeRules.Format(AgeRules.Today().AddYears(-17));
 
         var result = await auth.GoogleLoginAsync(
-            new GoogleLoginCommand(account.Username, "阿明", TermsAccepted: true, BirthYear: "2012"), CancellationToken.None);
+            new GoogleLoginCommand(account.Username, "阿明", TermsAccepted: true, Birthday: seventeen), CancellationToken.None);
 
         Assert.True(result.Success);
+        Assert.Null(db.Users.Single().Birthday);
     }
 
     /// <summary>被封鎖的人不能靠「再同意一次」進來：帳號存在就走登入那條路，而登入會擋。</summary>
@@ -226,7 +258,7 @@ public sealed class SocialSignupConsentTests
         db.SaveChanges();
 
         var result = await auth.GoogleLoginAsync(
-            new GoogleLoginCommand(account.Username, "阿明", TermsAccepted: true, BirthYear: AdultYear), CancellationToken.None);
+            new GoogleLoginCommand(account.Username, "阿明", TermsAccepted: true, Birthday: AdultBirthday), CancellationToken.None);
 
         Assert.False(result.Success);
         Assert.Equal("ACCOUNT_DISABLED", result.Code);
@@ -247,33 +279,33 @@ public sealed class SocialSignupConsentTests
         var google = JsonSerializer.Deserialize<GoogleLoginHttpRequest>("""{"idToken":"abc"}""", web)!;
         Assert.Equal("abc", google.IdToken);
         Assert.False(google.TermsAccepted);
-        Assert.Null(google.BirthYear);
+        Assert.Null(google.Birthday);
 
         var facebook = JsonSerializer.Deserialize<FacebookLoginHttpRequest>("""{"accessToken":"xyz"}""", web)!;
         Assert.Equal("xyz", facebook.AccessToken);
         Assert.False(facebook.TermsAccepted);
-        Assert.Null(facebook.BirthYear);
+        Assert.Null(facebook.Birthday);
 
         var confirmed = JsonSerializer.Deserialize<GoogleLoginHttpRequest>(
-            """{"idToken":"abc","termsAccepted":true,"birthYear":"1995"}""", web)!;
+            """{"idToken":"abc","termsAccepted":true,"birthday":"1995-03-21"}""", web)!;
         Assert.True(confirmed.TermsAccepted);
-        Assert.Equal("1995", confirmed.BirthYear);
+        Assert.Equal(AdultBirthday, confirmed.Birthday);
     }
 
     /// <summary>
-    /// 請求 → 指令：身分來自驗證過的憑證，同意與年次來自請求，四樣都要到。
+    /// 請求 → 指令：身分來自驗證過的憑證，同意與生日來自請求，四樣都要到。
     /// 少帶一樣，新使用者就會永遠被請回確認畫面。
     /// </summary>
     [Fact]
     public void RequestCarriesConsentIntoTheCommand()
     {
-        var google = new GoogleLoginHttpRequest("token", TermsAccepted: true, BirthYear: AdultYear)
+        var google = new GoogleLoginHttpRequest("token", TermsAccepted: true, Birthday: AdultBirthday)
             .ToCommand(new GoogleUserInfo("verified@example.com", "驗證過的名字"));
-        Assert.Equal(new GoogleLoginCommand("verified@example.com", "驗證過的名字", true, AdultYear), google);
+        Assert.Equal(new GoogleLoginCommand("verified@example.com", "驗證過的名字", true, AdultBirthday), google);
 
-        var facebook = new FacebookLoginHttpRequest("token", TermsAccepted: true, BirthYear: AdultYear)
+        var facebook = new FacebookLoginHttpRequest("token", TermsAccepted: true, Birthday: AdultBirthday)
             .ToCommand(new FacebookUserInfo("verified@example.com", "驗證過的名字"));
-        Assert.Equal(new FacebookLoginCommand("verified@example.com", "驗證過的名字", true, AdultYear), facebook);
+        Assert.Equal(new FacebookLoginCommand("verified@example.com", "驗證過的名字", true, AdultBirthday), facebook);
     }
 
     // ── 測試資料 ──

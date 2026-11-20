@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import type { DemoUser } from '../auth/types'
 import { updateProfile } from './api'
-import AgeRangeSlider, { AGE_FLOOR } from '../../shared/ui/AgeRangeSlider'
+import AgeRangeSlider, { AGE_CEIL, AGE_FLOOR } from '../../shared/ui/AgeRangeSlider'
 import LocationPrimer from './LocationPrimer'
 import {
   AREA_OPTIONS,
@@ -94,8 +94,15 @@ export default function OnboardingOverlay({ user, onComplete }: Props) {
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [datingGoal, setDatingGoal] = useState('')
   const [lookingFor, setLookingFor] = useState('')
+  // 年齡範圍：滑桿一定有值，所以另外記「有沒有真的動過」，沒動過就不送出。
+  //
+  // 以前這裡預設 18–40，而且不管有沒有動、甚至按「先跳過」都會寫進去。
+  // 於是每個人身上都有一組自己沒選過的年齡範圍：41 歲以上的人被濾掉，
+  // 沒填生日的人也被濾掉（配對拿生日比年齡，對不上就排除）——真人之間幾乎互相看不到。
+  // 預設改成整條滑桿（18–99），畫面上看到的就是實際的效果：沒動，就是不限。
   const [ageMin, setAgeMin] = useState(AGE_FLOOR)
-  const [ageMax, setAgeMax] = useState(40)
+  const [ageMax, setAgeMax] = useState(AGE_CEIL)
+  const [ageTouched, setAgeTouched] = useState(false)
   const [locationArea, setLocationArea] = useState('')
   // 所在縣市是定位帶出來的、還是使用者自己選的。只影響那一格底下的說明文字。
   const [areaFromLocation, setAreaFromLocation] = useState(false)
@@ -160,8 +167,8 @@ export default function OnboardingOverlay({ user, onComplete }: Props) {
         interestTags: selectedTags.length > 0 ? selectedTags : undefined,
         datingGoal: datingGoal || undefined,
         lookingFor: lookingFor || undefined,
-        ageMin,
-        ageMax,
+        ageMin: ageTouched ? ageMin : undefined,
+        ageMax: ageTouched ? ageMax : undefined,
         // 自己在哪。依距離要靠它當起點，別人指定縣市時也是拿它比對——
         // 沒填的人對所有設了地區偏好的人都是隱形的。
         locationArea: locationArea || undefined,
@@ -234,7 +241,7 @@ export default function OnboardingOverlay({ user, onComplete }: Props) {
               <AgeRangeSlider
                 min={ageMin}
                 max={ageMax}
-                onChange={(lo, hi) => { setAgeMin(lo); setAgeMax(hi) }}
+                onChange={(lo, hi) => { setAgeMin(lo); setAgeMax(hi); setAgeTouched(true) }}
               />
             </div>
 

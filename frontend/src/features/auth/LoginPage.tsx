@@ -15,7 +15,8 @@ import {
   type ConsentAnswer,
 } from './api'
 import ConsentScreen, { TermsRow } from './ConsentScreen'
-import { isAdultBirthYear } from './ageRule'
+import BirthdayField from './BirthdayField'
+import { isAdultBirthday } from '../profile/profileUtils'
 import type { DemoUser } from './types'
 import type { LegalDoc } from './legalDocuments'
 import { APP_VERSION_LABEL } from '../../shared/lib/appVersion'
@@ -144,7 +145,7 @@ type SocialProvider = 'google' | 'facebook'
  * 第一次用社群帳號登入時，卡在「等使用者確認條款與年齡」的那一筆。
  *
  * credential 是 Google 的 idToken 或 Facebook 的 accessToken。只放在記憶體裡、
- * 不寫進任何儲存：使用者確認完，拿它加上同意與年次再向後端送一次。
+ * 不寫進任何儲存：使用者確認完，拿它加上同意與出生年月日再向後端送一次。
  * 憑證約一小時過期，放太久後端會退回「驗證失敗」，回上一頁重按一次就好。
  */
 type PendingSocial = { provider: SocialProvider; credential: string }
@@ -196,7 +197,7 @@ export default function LoginPage({ onAuthenticated }: Props) {
   const [registerEmail, setRegisterEmail] = useState('')
   const [registerCode, setRegisterCode] = useState('')
   const [registerStep, setRegisterStep] = useState<RegisterStep>('form')
-  const [birthYear, setBirthYear] = useState('')
+  const [birthday, setBirthday] = useState('')
   const [gender, setGender] = useState('PRIVATE')
   const [agreed, setAgreed] = useState(false)
   const [pendingSocial, setPendingSocial] = useState<PendingSocial | null>(null)
@@ -449,7 +450,10 @@ export default function LoginPage({ onAuthenticated }: Props) {
         setRegisterEmailError('請輸入有效的 Email 格式')
         throw new Error('請輸入有效的 Email 格式')
       }
-      if (!isAdultBirthYear(birthYear)) {
+      if (!birthday) {
+        throw new Error('請選擇出生年月日')
+      }
+      if (!isAdultBirthday(birthday)) {
         throw new Error('未滿 18 歲暫時不能使用同頻 Today')
       }
 
@@ -468,7 +472,9 @@ export default function LoginPage({ onAuthenticated }: Props) {
         email: registerEmail,
         password,
         confirmPassword,
-        birthYear,
+        // 舊的後端只認得年次那一欄，所以兩個都送（見 api.ts）
+        birthYear: birthday.slice(0, 4),
+        birthday,
         gender,
         termsAccepted: agreed,
       })
@@ -783,8 +789,8 @@ export default function LoginPage({ onAuthenticated }: Props) {
                 onAction={() => setShowRegisterPassword(!showRegisterPassword)}
               />
             </FloatingField>
-            <FloatingField label="出生年次">
-              <AuthField icon="calendar" value={birthYear} onChange={(value) => { clearAuthError(); setBirthYear(value) }} placeholder="出生年份，例如 1995" inputMode="numeric" autoComplete="bday-year" />
+            <FloatingField label="出生年月日">
+              <BirthdayField value={birthday} onChange={(value) => { clearAuthError(); setBirthday(value) }} />
             </FloatingField>
 
             <div className="gender-field">
