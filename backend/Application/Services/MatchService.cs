@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using SameDaySocialApp.Domain;
 using SameDaySocialApp.Domain.Entities;
 using SameDaySocialApp.Domain.Enums;
 using SameDaySocialApp.Infrastructure.Persistence;
@@ -104,8 +105,8 @@ public sealed class MatchService
         return ApplyDisplayScore(MaterializeDeck(userId, current, deck, users));
     }
 
-    // 依登入者交友意圖篩選候選：想認識的對象（性別）+ 年齡範圍。
-    // 兩者都是硬界線，不因為候選不足而放寬——使用者明說不想看的人硬塞進去，
+    // 依登入者交友意圖篩選候選：想認識的對象（性別）+ 年齡範圍 + 地區（見 WithinMyArea）。
+    // 都是硬界線，不因為候選不足而放寬——使用者明說不想看的人硬塞進去，
     // 比沒卡可滑更糟。
     //
     // 候選的資料缺漏也擋。先前是「比不出來就放行」，立意是別把真實用戶濾光，
@@ -133,6 +134,43 @@ public sealed class MatchService
             if (me.AgeMin != null && age < me.AgeMin) return false;
             if (me.AgeMax != null && age > me.AgeMax) return false;
         }
+
+        return WithinMyArea(me, candidate);
+    }
+
+    /// <summary>
+    /// 地區偏好：依縣市，或依距離，擇一。
+    ///
+    /// 這兩個欄位從 onboarding 第一版就讓人填，但一直只有存檔、沒有進配對——
+    /// 設了「台北市」照樣滑到高雄。上面那條原則同樣適用：收了偏好卻不照做，
+    /// 使用者得到的結論是「偏好設定沒有用」，之後連會生效的那幾項也不信了。
+    ///
+    /// 依縣市：對方的所在縣市要等於我選的那個。
+    /// 依距離：縣市對縣市的直線距離（見 TaiwanAreas，同縣市算 0）要在我設的公里數以內。
+    ///
+    /// 寫入時兩者已經互斥（ProfileController）；兩個都有值的只剩種子資料，
+    /// 以縣市為準——它是明確的選擇，距離則是估算。
+    ///
+    /// 依距離而我自己沒填所在縣市時不篩：沒有起點就沒有距離可算。這時把所有人
+    /// 濾掉等於懲罰一個還沒被問過「你在哪」的人——所在縣市是跟著這次修改才開始收的，
+    /// 既有帳號一開始全都是空的。前端會在這個狀態下提示他補上。
+    ///
+    /// 對方沒填所在縣市則照硬界線的規則擋：我表明了偏好、而對方沒有可比對的欄位。
+    /// </summary>
+    private static bool WithinMyArea(User me, User candidate)
+    {
+        var wantArea = TaiwanAreas.Normalize(me.PreferredArea);
+        if (wantArea != null)
+        {
+            return TaiwanAreas.Normalize(candidate.LocationArea) == wantArea;
+        }
+
+        if (me.DistanceKm is > 0 && TaiwanAreas.IsKnown(me.LocationArea))
+        {
+            var km = TaiwanAreas.DistanceKm(me.LocationArea, candidate.LocationArea);
+            return km != null && km <= me.DistanceKm;
+        }
+
         return true;
     }
 

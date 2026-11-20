@@ -349,6 +349,10 @@
 .profile-required { color: #c8785a; }
 .profile-optional { font-size: 12px; font-weight: 400; color: #b5a895; }
 .profile-hint { font-size: 12px; font-weight: 400; color: #9a8f82; }
+/* 欄位下方獨立一行的說明（距離偏好的估算方式、還沒填所在縣市的提醒） */
+.profile-hint-block { display: block; margin-top: 6px; line-height: 1.5; }
+/* 距離偏好：方式（chips）下面那一格輸入 */
+.profile-distance-value { margin-top: 10px; }
 .profile-field-label { display: flex; align-items: baseline; flex-wrap: wrap; gap: 3px; }
 
 

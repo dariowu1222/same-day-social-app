@@ -17,3 +17,21 @@ export const APPEARANCE_OPTIONS = [
   '鄰家感', '陽光', '文青', '酷帥', '可愛', '成熟', '中性', '運動風', '氣質',
 ]
 export const BLOOD_OPTIONS = ['A', 'B', 'O', 'AB', '其他', '不確定'] as const
+
+// 縣市清單：「所在縣市」與「偏好縣市」共用。
+//
+// 必須和後端的 TaiwanAreas（backend/Domain/TaiwanAreas.cs）一字不差：後端只收
+// 清單裡的值，配對也拿它逐字比對。這裡多一個選項，就是一個選得到、存不進去的選項。
+export const AREA_OPTIONS = [
+  '台北市', '新北市', '基隆市', '桃園市', '新竹市', '新竹縣',
+  '苗栗縣', '台中市', '彰化縣', '南投縣', '雲林縣', '嘉義市',
+  '嘉義縣', '台南市', '高雄市', '屏東縣', '宜蘭縣', '花蓮縣',
+  '台東縣', '澎湖縣', '金門縣', '連江縣',
+] as const
+
+// 距離偏好的兩種方式，擇一。
+// 距離是「縣市對縣市」的估算（同縣市算 0），不是定位——這個 App 不向使用者要位置。
+export type DistanceMode = 'km' | 'area'
+export const DISTANCE_MODE_LABELS = { km: '依距離', area: '依縣市' } as const
+export const DISTANCE_KM_MIN = 1
+export const DISTANCE_KM_MAX = 500
