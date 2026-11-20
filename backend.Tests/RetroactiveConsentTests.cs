@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SameDaySocialApp.Application.Dto;
 using SameDaySocialApp.Application.Services;
 using SameDaySocialApp.Controllers;
+using SameDaySocialApp.Domain;
 using SameDaySocialApp.Domain.Enums;
 using SameDaySocialApp.Infrastructure.Email;
 using SameDaySocialApp.Infrastructure.Persistence;
@@ -15,11 +16,13 @@ using Xunit;
 namespace SameDaySocialApp.Tests;
 
 /// <summary>
-/// 既有帳號補問「同意條款」與「年齡確認」。
+/// 既有帳號補問「同意條款」與「出生年月日」。
 ///
-/// 以前用 Google／Facebook 按一下就建好的帳號，當時什麼都沒問。新的社群註冊已經
-/// 補上門檻（SocialSignupConsentTests），但已經存在的帳號不會再走到註冊那條路，
-/// 所以另外做一組「缺不缺」的查詢與「補上」的寫入，由新版 App 登入後自己問。
+/// 會缺的有兩種人：以前用 Google／Facebook 按一下就建好的帳號（什麼都沒問過），
+/// 以及用舊版 App 以 Email 註冊的帳號（同意過條款，但當時只問出生年次）。
+/// 新的註冊已經在建立帳號之前問齊（SocialSignupConsentTests、BirthdayRequirementTests），
+/// 但已經存在的帳號不會再走到註冊那條路，所以另外做一組「缺不缺」的查詢與
+/// 「補上」的寫入，由新版 App 登入後自己問。
 ///
 /// 這裡要釘住的有三件事：
 /// 1. 誰會被問——只有真的缺的人。問到不該問的人，是每個人每次開 App 都被擋一次。
@@ -30,11 +33,12 @@ namespace SameDaySocialApp.Tests;
 public sealed class RetroactiveConsentTests
 {
     private const string Me = "user_legacy";
-    private const string AdultYear = "1995";
+    private const string AdultBirthday = "1995-03-21";
+    private static readonly DateOnly AdultBirthDate = new(1995, 3, 21);
 
     // ── 誰會被問 ──
 
-    /// <summary>舊的社群登入建的帳號：沒有年次、沒有任何紀錄。</summary>
+    /// <summary>舊的社群登入建的帳號：沒有生日、沒有年次、沒有任何紀錄。</summary>
     [Fact]
     public async Task LegacySocialAccountIsAsked()
     {
@@ -43,11 +47,37 @@ public sealed class RetroactiveConsentTests
         Assert.True(await IsAsked(auth));
     }
 
-    /// <summary>Email 註冊的帳號兩樣都有（年次在 users 上、驗證完的那一列在註冊紀錄表裡）。</summary>
+    /// <summary>
+    /// 舊的社群帳號自己在個人檔案填過生日：仍然要問。
+    /// 有生日不代表同意過條款——個人檔案那一格誰都能填，跟同意流程無關。
+    /// </summary>
     [Fact]
-    public async Task EmailRegisteredAccountIsNotAsked()
+    public async Task LegacySocialAccountWithAProfileBirthdayIsStillAsked()
     {
-        var (auth, db) = World(nameof(EmailRegisteredAccountIsNotAsked), birthYear: AdultYear);
+        var (auth, _) = World(nameof(LegacySocialAccountWithAProfileBirthdayIsStillAsked), birthday: AdultBirthDate);
+
+        Assert.True(await IsAsked(auth));
+    }
+
+    /// <summary>
+    /// 用舊版 App 以 Email 註冊的帳號：同意過、有年次，但沒有完整的生日。要問——
+    /// 配對的年齡篩選比的是生日，光有年次的人對設了年齡範圍的人仍然是隱形的。
+    /// </summary>
+    [Fact]
+    public async Task OldClientEmailAccountIsAskedForTheBirthday()
+    {
+        var (auth, db) = World(nameof(OldClientEmailAccountIsAskedForTheBirthday), birthYear: "1995");
+        db.RegistrationVerificationTokens.Add(Token(EmailOf(Me), usedAt: DateTimeOffset.UtcNow.AddDays(-30)));
+        db.SaveChanges();
+
+        Assert.True(await IsAsked(auth));
+    }
+
+    /// <summary>三樣都有的帳號（新版 Email 註冊驗證完就是這樣）：不問。</summary>
+    [Fact]
+    public async Task CompleteAccountIsNotAsked()
+    {
+        var (auth, db) = World(nameof(CompleteAccountIsNotAsked), birthday: AdultBirthDate, birthYear: "1995");
         db.RegistrationVerificationTokens.Add(Token(EmailOf(Me), usedAt: DateTimeOffset.UtcNow.AddDays(-30)));
         db.SaveChanges();
 
@@ -61,7 +91,7 @@ public sealed class RetroactiveConsentTests
         var (auth, _) = World(nameof(AccountFromTheNewSocialSignupIsNotAsked));
 
         var created = await auth.GoogleLoginAsync(
-            new GoogleLoginCommand("brand-new@example.com", "小安", TermsAccepted: true, BirthYear: AdultYear), CancellationToken.None);
+            new GoogleLoginCommand("brand-new@example.com", "小安", TermsAccepted: true, Birthday: AdultBirthday), CancellationToken.None);
 
         Assert.True(created.Success);
         Assert.False(await IsAsked(auth, created.Data!.UserId));
@@ -74,14 +104,15 @@ public sealed class RetroactiveConsentTests
     [Fact]
     public async Task UnfinishedOrVoidedRegistrationIsNotConsent()
     {
-        // 年次空著（舊社群帳號），信箱上躺著一列作廢的註冊：仍然要問
-        var (authA, dbA) = World(nameof(UnfinishedOrVoidedRegistrationIsNotConsent) + "a");
+        // 有生日、沒有年次（舊社群帳號自己填了生日），信箱上躺著一列作廢的註冊：仍然要問。
+        // 這一組擋的是「有生日＋有一列結掉的紀錄就當作齊了」。
+        var (authA, dbA) = World(nameof(UnfinishedOrVoidedRegistrationIsNotConsent) + "a", birthday: AdultBirthDate);
         dbA.RegistrationVerificationTokens.Add(Token(EmailOf(Me), usedAt: DateTimeOffset.UtcNow.AddDays(-3)));
         dbA.SaveChanges();
         Assert.True(await IsAsked(authA));
 
-        // 有年次，但信箱上只有一列還沒結掉的註冊：仍然要問
-        var (authB, dbB) = World(nameof(UnfinishedOrVoidedRegistrationIsNotConsent) + "b", birthYear: AdultYear);
+        // 生日與年次都有，但信箱上只有一列還沒結掉的註冊：仍然要問
+        var (authB, dbB) = World(nameof(UnfinishedOrVoidedRegistrationIsNotConsent) + "b", birthday: AdultBirthDate, birthYear: "1995");
         dbB.RegistrationVerificationTokens.Add(Token(EmailOf(Me), usedAt: null));
         dbB.SaveChanges();
         Assert.True(await IsAsked(authB));
@@ -91,7 +122,7 @@ public sealed class RetroactiveConsentTests
     [Fact]
     public async Task SomeoneElsesRecordDoesNotCount()
     {
-        var (auth, db) = World(nameof(SomeoneElsesRecordDoesNotCount), birthYear: AdultYear);
+        var (auth, db) = World(nameof(SomeoneElsesRecordDoesNotCount), birthday: AdultBirthDate, birthYear: "1995");
         db.RegistrationVerificationTokens.Add(Token("someone-else@example.com", usedAt: DateTimeOffset.UtcNow));
         db.SaveChanges();
 
@@ -104,7 +135,7 @@ public sealed class RetroactiveConsentTests
         var (auth, _) = World(nameof(UnknownAccountIsAnError));
 
         var status = await auth.GetConsentStatusAsync("user_nobody", CancellationToken.None);
-        var give = await auth.RecordConsentAsync("user_nobody", true, AdultYear, CancellationToken.None);
+        var give = await auth.RecordConsentAsync("user_nobody", true, AdultBirthday, CancellationToken.None);
 
         Assert.Equal("ACCOUNT_NOT_FOUND", status.Code);
         Assert.Equal("ACCOUNT_NOT_FOUND", give.Code);
@@ -118,15 +149,19 @@ public sealed class RetroactiveConsentTests
         var (auth, db) = World(nameof(GivingConsentRecordsItAndStopsTheAsking));
         var before = DateTimeOffset.UtcNow;
 
-        var result = await auth.RecordConsentAsync(Me, termsAccepted: true, birthYear: AdultYear, CancellationToken.None);
+        var result = await auth.RecordConsentAsync(Me, termsAccepted: true, birthday: AdultBirthday, CancellationToken.None);
 
         Assert.True(result.Success);
         Assert.False(result.Data!.Required);
-        Assert.Equal(AdultYear, db.Users.Single(x => x.Id == Me).AgeRange);
+
+        // 生日進 users.birthday（配對比的就是它），年次跟著生日走
+        var user = db.Users.Single(x => x.Id == Me);
+        Assert.Equal(AdultBirthDate, user.Birthday);
+        Assert.Equal("1995", user.AgeRange);
 
         var record = Assert.Single(db.RegistrationVerificationTokens);
         Assert.Equal(EmailOf(Me), record.Email);
-        Assert.Equal(AdultYear, record.BirthYear);
+        Assert.Equal(AdultBirthday, record.BirthYear);
         Assert.InRange(record.TermsAcceptedAt, before, DateTimeOffset.UtcNow);
         // 這一列跟驗證碼住同一張表，不能是一顆還能用的驗證碼
         Assert.NotNull(record.UsedAt);
@@ -140,7 +175,7 @@ public sealed class RetroactiveConsentTests
     {
         var (auth, db) = World(nameof(WithoutAgreeingNothingIsRecorded));
 
-        var result = await auth.RecordConsentAsync(Me, termsAccepted: false, birthYear: AdultYear, CancellationToken.None);
+        var result = await auth.RecordConsentAsync(Me, termsAccepted: false, birthday: AdultBirthday, CancellationToken.None);
 
         Assert.Equal("TERMS_NOT_ACCEPTED", result.Code);
         AssertUntouched(db);
@@ -148,20 +183,17 @@ public sealed class RetroactiveConsentTests
     }
 
     /// <summary>
-    /// 未成年、沒填、亂填：不放行，而且帳號原封不動。
-    /// 這是自己填的數字，打錯一個鍵也會落在這裡；要不要處置一個確定未成年的帳號是審核的事，
+    /// 未成年：不放行，而且帳號原封不動。
+    /// 這是自己填的日期，選錯一格也會落在這裡；要不要處置一個確定未成年的帳號是審核的事，
     /// 不該由一個輸入框順手決定。
     /// </summary>
-    [Theory]
-    [InlineData("2012")]
-    [InlineData("abcd")]
-    [InlineData("")]
-    [InlineData(null)]
-    public async Task UnderageOrMissingBirthYearIsRefusedAndTheAccountIsLeftAlone(string? birthYear)
+    [Fact]
+    public async Task UnderageBirthdayIsRefusedAndTheAccountIsLeftAlone()
     {
-        var (auth, db) = World(nameof(UnderageOrMissingBirthYearIsRefusedAndTheAccountIsLeftAlone) + (birthYear ?? "null"));
+        var (auth, db) = World(nameof(UnderageBirthdayIsRefusedAndTheAccountIsLeftAlone));
+        var seventeen = AgeRules.Format(AgeRules.Today().AddYears(-17));
 
-        var result = await auth.RecordConsentAsync(Me, termsAccepted: true, birthYear, CancellationToken.None);
+        var result = await auth.RecordConsentAsync(Me, termsAccepted: true, seventeen, CancellationToken.None);
 
         Assert.Equal("UNDERAGE", result.Code);
         AssertUntouched(db);
@@ -169,33 +201,76 @@ public sealed class RetroactiveConsentTests
         Assert.False(db.AuthAccounts.Single(x => x.UserId == Me).IsDisabled);
     }
 
-    /// <summary>連按兩次、或兩台裝置各問一次：只留一列，第一次同意的時間不被蓋掉。</summary>
+    /// <summary>沒填、只給年次、不存在的日期：都不是生日，什麼都不寫。</summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("1995")]
+    [InlineData("1995-02-30")]
+    [InlineData("abcd")]
+    public async Task SomethingThatIsNotABirthdayIsRefused(string? birthday)
+    {
+        var (auth, db) = World(nameof(SomethingThatIsNotABirthdayIsRefused) + (birthday ?? "null"));
+
+        var result = await auth.RecordConsentAsync(Me, termsAccepted: true, birthday, CancellationToken.None);
+
+        Assert.Equal("INVALID_BIRTHDAY", result.Code);
+        AssertUntouched(db);
+    }
+
+    /// <summary>連按兩次、或兩台裝置各問一次：只留一列，第一次確認的內容不被蓋掉。</summary>
     [Fact]
     public async Task GivingConsentTwiceWritesOnce()
     {
         var (auth, db) = World(nameof(GivingConsentTwiceWritesOnce));
 
-        await auth.RecordConsentAsync(Me, true, AdultYear, CancellationToken.None);
+        await auth.RecordConsentAsync(Me, true, AdultBirthday, CancellationToken.None);
         var firstAgreedAt = db.RegistrationVerificationTokens.Single().TermsAcceptedAt;
-        var again = await auth.RecordConsentAsync(Me, true, "1980", CancellationToken.None);
+        var again = await auth.RecordConsentAsync(Me, true, "1980-01-01", CancellationToken.None);
 
         Assert.True(again.Success);
         var record = Assert.Single(db.RegistrationVerificationTokens);
         Assert.Equal(firstAgreedAt, record.TermsAcceptedAt);
-        Assert.Equal(AdultYear, db.Users.Single(x => x.Id == Me).AgeRange);
+        Assert.Equal(AdultBirthDate, db.Users.Single(x => x.Id == Me).Birthday);
     }
 
-    /// <summary>原本就有年次的帳號維持原值——這支端點是補缺的，不是改生日的後門。</summary>
+    /// <summary>
+    /// 舊社群帳號在個人檔案填過別的日期：以這次確認的為準。
+    /// 這是他對著「年滿 18 歲」那句話親手填的；年次也要跟著同一個日期，不能兩欄各說各話。
+    /// </summary>
     [Fact]
-    public async Task ExistingBirthYearIsKept()
+    public async Task TheConfirmedBirthdayReplacesTheProfileOne()
     {
-        var (auth, db) = World(nameof(ExistingBirthYearIsKept), birthYear: "1990");
+        var (auth, db) = World(nameof(TheConfirmedBirthdayReplacesTheProfileOne), birthday: new DateOnly(1990, 5, 5));
 
-        var result = await auth.RecordConsentAsync(Me, true, "1985", CancellationToken.None);
+        var result = await auth.RecordConsentAsync(Me, true, "1988-01-02", CancellationToken.None);
 
         Assert.True(result.Success);
-        Assert.Equal("1990", db.Users.Single(x => x.Id == Me).AgeRange);
-        Assert.Equal("1990", Assert.Single(db.RegistrationVerificationTokens).BirthYear);
+        var user = db.Users.Single(x => x.Id == Me);
+        Assert.Equal(new DateOnly(1988, 1, 2), user.Birthday);
+        Assert.Equal("1988", user.AgeRange);
+    }
+
+    /// <summary>
+    /// 用舊版 App 以 Email 註冊的人：補上生日之後就不再被問。
+    ///
+    /// 當初註冊填的年次（1995）和這次選的生日（1994 年）對不上時，年次要跟著生日走——
+    /// 兩欄講的是同一個人的同一件事，留著舊的年次就是讓資料自己打架。
+    /// </summary>
+    [Fact]
+    public async Task OldClientEmailAccountIsCompleteAfterGivingTheBirthday()
+    {
+        var (auth, db) = World(nameof(OldClientEmailAccountIsCompleteAfterGivingTheBirthday), birthYear: "1995");
+        db.RegistrationVerificationTokens.Add(Token(EmailOf(Me), usedAt: DateTimeOffset.UtcNow.AddDays(-30)));
+        db.SaveChanges();
+
+        var result = await auth.RecordConsentAsync(Me, true, "1994-07-01", CancellationToken.None);
+
+        Assert.True(result.Success);
+        var user = db.Users.Single(x => x.Id == Me);
+        Assert.Equal(new DateOnly(1994, 7, 1), user.Birthday);
+        Assert.Equal("1994", user.AgeRange);
+        Assert.False(await IsAsked(auth));
     }
 
     // ── 端點 ──
@@ -217,7 +292,7 @@ public sealed class RetroactiveConsentTests
         var before = await controller.Consent(CancellationToken.None);
         Assert.True(before.Value!.Data!.Required);
 
-        var given = await controller.GiveConsent(new GiveConsentRequest(TermsAccepted: true, BirthYear: AdultYear), CancellationToken.None);
+        var given = await controller.GiveConsent(new GiveConsentRequest(TermsAccepted: true, Birthday: AdultBirthday), CancellationToken.None);
         Assert.False(given.Value!.Data!.Required);
 
         // 補完之後再問一次：我不缺了，另一個人還缺。兩個人的答案不一樣，
@@ -226,8 +301,8 @@ public sealed class RetroactiveConsentTests
         Assert.False(after.Value!.Data!.Required);
 
         Assert.Equal(EmailOf(Me), Assert.Single(db.RegistrationVerificationTokens).Email);
-        Assert.Equal(AdultYear, db.Users.Single(x => x.Id == Me).AgeRange);
-        Assert.Null(db.Users.Single(x => x.Id == "user_other").AgeRange);
+        Assert.Equal(AdultBirthDate, db.Users.Single(x => x.Id == Me).Birthday);
+        Assert.Null(db.Users.Single(x => x.Id == "user_other").Birthday);
         Assert.True(await IsAsked(auth, "user_other"));
     }
 
@@ -236,8 +311,9 @@ public sealed class RetroactiveConsentTests
     {
         var (auth, _) = World(nameof(EndpointRefusalsAreBadRequestsWithACode));
         var controller = ControllerFor(auth, Me);
+        var seventeen = AgeRules.Format(AgeRules.Today().AddYears(-17));
 
-        var refused = await controller.GiveConsent(new GiveConsentRequest(TermsAccepted: true, BirthYear: "2012"), CancellationToken.None);
+        var refused = await controller.GiveConsent(new GiveConsentRequest(TermsAccepted: true, Birthday: seventeen), CancellationToken.None);
 
         var bad = Assert.IsType<BadRequestObjectResult>(refused.Result);
         Assert.Equal("UNDERAGE", Assert.IsType<ApiResponse<ConsentStatus>>(bad.Value).Code);
@@ -250,7 +326,7 @@ public sealed class RetroactiveConsentTests
         var request = JsonSerializer.Deserialize<GiveConsentRequest>("{}", new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
 
         Assert.False(request.TermsAccepted);
-        Assert.Null(request.BirthYear);
+        Assert.Null(request.Birthday);
     }
 
     // ── 測試資料 ──
@@ -264,9 +340,12 @@ public sealed class RetroactiveConsentTests
         return status.Data!.Required;
     }
 
+    /// <summary>舊社群帳號原本的樣子：沒有生日、沒有年次、沒有任何紀錄。</summary>
     private static void AssertUntouched(AppDbContext db)
     {
-        Assert.Null(db.Users.Single(x => x.Id == Me).AgeRange);
+        var user = db.Users.Single(x => x.Id == Me);
+        Assert.Null(user.Birthday);
+        Assert.Null(user.AgeRange);
         Assert.Empty(db.RegistrationVerificationTokens);
     }
 
@@ -279,17 +358,21 @@ public sealed class RetroactiveConsentTests
             Nickname = "某人",
             PasswordHash = "x",
             CodeHash = "x",
-            BirthYear = AdultYear,
+            BirthYear = "1995",
             TermsAcceptedAt = DateTimeOffset.UtcNow.AddDays(-30),
             ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(10),
             UsedAt = usedAt,
         };
 
-    /// <summary>一個既有帳號。birthYear 不給就是舊社群登入建的那種：users 上沒有年次。</summary>
-    private static (AuthService Auth, AppDbContext Db) World(string databaseName, string? birthYear = null)
+    /// <summary>
+    /// 一個既有帳號。兩個參數都不給，就是舊社群登入建的那種：什麼都沒有。
+    /// birthday 是 users.birthday（個人檔案頁也能填）；birthYear 是 users.age_range（只有同意流程會寫）。
+    /// </summary>
+    private static (AuthService Auth, AppDbContext Db) World(string databaseName, DateOnly? birthday = null, string? birthYear = null)
     {
         var db = TestWorld.Db(databaseName);
         var user = TestWorld.User(Me);
+        user.Birthday = birthday;
         user.AgeRange = birthYear;
         db.Users.Add(user);
         db.AuthAccounts.Add(TestWorld.Account(user, "Test-passw0rd"));

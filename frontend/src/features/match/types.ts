@@ -14,6 +14,10 @@ export type MatchResult = {
   bio?: string | null
   interests?: string[] | null
   photos?: string[] | null
+  // 星座由後端算好再給；對方完整的出生年月日不會出現在卡片的資料裡。
+  zodiac?: string | null
+  // 舊的後端給的是完整的生日、讓前端自己算星座。只在後端還沒更新時才會有值，
+  // 等線上的後端都換成新版，這一欄與 mapMatch 裡的退路就可以一起拿掉。
   birthday?: string | null
   personalityTags?: string[] | null
   appearanceTags?: string[] | null

@@ -5,7 +5,10 @@ export async function registerAccount(payload: {
   email: string
   password: string
   confirmPassword: string
+  // birthday 是完整的出生年月日（yyyy-MM-dd）。birthYear 是同一個日期的年份，
+  // 只為了還沒更新的後端留著——它只認得年次那一欄。
   birthYear: string
+  birthday: string
   gender: string
   termsAccepted: boolean
 }) {
@@ -34,7 +37,7 @@ export async function loginAccount(payload: { email: string; password: string },
 }
 
 /**
- * 使用者在確認畫面（ConsentScreen）給的兩樣東西：同意條款、出生年次。
+ * 使用者在確認畫面（ConsentScreen）給的兩樣東西：同意條款、出生年月日（yyyy-MM-dd）。
  *
  * 兩個地方會送它：
  * · 第一次用社群帳號登入。社群登入的端點同時是登入也是註冊——帳號已經存在就直接登入，
@@ -42,7 +45,7 @@ export async function loginAccount(payload: { email: string; password: string },
  *   拿同一張憑證加上這個再打一次。
  * · 既有帳號登入後的補問（giveConsent）。
  */
-export type ConsentAnswer = { termsAccepted: true; birthYear: string }
+export type ConsentAnswer = { termsAccepted: true; birthday: string }
 
 /** 後端說「這是新帳號，要先同意條款並確認年齡」。 */
 export const SOCIAL_CONSENT_REQUIRED = 'SOCIAL_CONSENT_REQUIRED'

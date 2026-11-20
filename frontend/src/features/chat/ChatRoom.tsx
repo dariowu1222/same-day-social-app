@@ -157,9 +157,13 @@ export default function ChatRoom({
     || `同頻對話 ${otherUserId.slice(-4)}`
   // 正式環境會改用帳號實際 photoDataUrls[0]；目前測試先給寫死照片，照片失效時 Avatar 會退回動物頭像。
   const avatarPhoto = otherProfile?.photoDataUrls?.[0] ?? peer?.photoUrl ?? testAvatarPhoto(otherUserId)
-  const birthday = otherProfile?.birthday
-  const subtitle = birthday
-    ? `${getAge(birthday)} · ${getZodiac(birthday)}`
+  // 對方的年齡與星座由後端算好再給，完整的出生年月日不會送到這裡。
+  // 後面那半是退路：還沒更新的舊後端給的是整個生日，那就照舊自己算。
+  const legacyBirthday = otherProfile?.birthday
+  const otherAge = otherProfile?.age ?? (legacyBirthday ? getAge(legacyBirthday) : null)
+  const otherZodiac = otherProfile?.zodiac ?? (legacyBirthday ? getZodiac(legacyBirthday) : null)
+  const subtitle = otherAge != null && otherZodiac
+    ? `${otherAge} · ${otherZodiac}`
     : '輕觸看 TA 的介紹'
 
   const shownMessages = chatSearch
@@ -846,9 +850,9 @@ export default function ChatRoom({
         <div className="cr-sheet-body">
           <Avatar photo={avatarPhoto} seed={otherUserId} className="cr-bio-avatar" />
           <div className="cr-bio-name">{displayName}</div>
-          {birthday && (
+          {otherAge != null && otherZodiac && (
             <div className="cr-bio-meta">
-              {ZODIAC_ICON[getZodiac(birthday)] ?? '✦'} {getZodiac(birthday)} · {getAge(birthday)} 歲
+              {ZODIAC_ICON[otherZodiac] ?? '✦'} {otherZodiac} · {otherAge} 歲
             </div>
           )}
 

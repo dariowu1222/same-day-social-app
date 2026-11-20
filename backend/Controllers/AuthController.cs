@@ -15,7 +15,7 @@ public sealed class AuthController(AuthService authService, JwtService jwtServic
     public async Task<ActionResult<ApiResponse<RegistrationStartResponse>>> Register([FromBody] RegisterRequest request, CancellationToken cancellationToken)
     {
         var result = await authService.RegisterAsync(
-            new RegisterCommand(request.Nickname, request.Email, request.Password, request.ConfirmPassword, request.BirthYear, request.Gender, request.TermsAccepted),
+            request.ToCommand(),
             cancellationToken);
         return ToActionResult(result);
     }
@@ -124,26 +124,32 @@ public sealed class AuthController(AuthService authService, JwtService jwtServic
     }
 }
 
-public sealed record RegisterRequest(string Nickname, string Email, string Password, string ConfirmPassword, string BirthYear, string Gender, bool TermsAccepted);
+// Birthday：完整的出生年月日（yyyy-MM-dd），新版必送。BirthYear 是舊版 App 唯一送得出來的，
+// 兩個都留著，哪一個算數由 AuthService.ValidateRegister 決定（有生日就以生日為準）。
+public sealed record RegisterRequest(string Nickname, string Email, string Password, string ConfirmPassword, string BirthYear, string Gender, bool TermsAccepted, string? Birthday = null)
+{
+    public RegisterCommand ToCommand()
+        => new(Nickname, Email, Password, ConfirmPassword, BirthYear, Gender, TermsAccepted, Birthday);
+}
 public sealed record RegistrationConfirmRequest(string Email, string Code);
 public sealed record LoginRequest(string Email, string Password);
-// TermsAccepted／BirthYear：第一次用社群帳號登入（＝註冊）時，前端在確認畫面收齊後
+// TermsAccepted／Birthday（yyyy-MM-dd 的出生年月日）：第一次用社群帳號登入（＝註冊）時，前端在確認畫面收齊後
 // 帶著同一張憑證再打一次。登入既有帳號不需要，所以有預設值——已上架的版本只送憑證。
 //
 // ToCommand 把兩個來源合在一起：身分（email、名字）只信驗證過的憑證，
 // 同意與年次來自使用者。獨立成一個方法是為了測得到——憑證驗證要打 Google／Facebook，
 // 測試裡過不去，但「這兩欄有沒有真的被帶進去」不該因此沒人看著：
 // 漏接的話新使用者會永遠卡在確認畫面，而登入既有帳號一切正常，很難發現。
-public sealed record GoogleLoginHttpRequest(string IdToken, bool TermsAccepted = false, string? BirthYear = null)
+public sealed record GoogleLoginHttpRequest(string IdToken, bool TermsAccepted = false, string? Birthday = null)
 {
     public GoogleLoginCommand ToCommand(GoogleUserInfo verified)
-        => new(verified.Email, verified.Name, TermsAccepted, BirthYear);
+        => new(verified.Email, verified.Name, TermsAccepted, Birthday);
 }
 
-public sealed record FacebookLoginHttpRequest(string AccessToken, bool TermsAccepted = false, string? BirthYear = null)
+public sealed record FacebookLoginHttpRequest(string AccessToken, bool TermsAccepted = false, string? Birthday = null)
 {
     public FacebookLoginCommand ToCommand(FacebookUserInfo verified)
-        => new(verified.Email, verified.Name, TermsAccepted, BirthYear);
+        => new(verified.Email, verified.Name, TermsAccepted, Birthday);
 }
 public sealed record PasswordResetRequest(string Email);
 public sealed record PasswordResetVerifyRequest(string Email, string Code);

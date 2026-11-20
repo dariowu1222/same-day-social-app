@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using SameDaySocialApp.Application.Dto;
 using SameDaySocialApp.Controllers;
+using SameDaySocialApp.Domain;
 using SameDaySocialApp.Domain.Entities;
 using SameDaySocialApp.Domain.Enums;
 using SameDaySocialApp.Infrastructure.Persistence;
@@ -85,7 +86,7 @@ public sealed class ProfileVisibilityTests
 
     /// <summary>
     /// 看得到的還是要看得到：暱稱、照片、自我介紹、標籤——這些就是個人卡的內容。
-    /// 生日也留著，聊天室的資料卡顯示的是年齡與星座，星座要月日才算得出來。
+    /// 聊天室的資料卡還會顯示年齡與星座，這兩樣由後端算好再給。
     /// </summary>
     [Fact]
     public async Task TheThingsAProfileCardActuallyShowsAreStillThere()
@@ -94,8 +95,87 @@ public sealed class ProfileVisibilityTests
 
         Assert.Equal("阿佑", seen.Nickname);
         Assert.Equal("今天開始慢慢認識同頻的人", seen.Bio);
-        Assert.Equal(new DateOnly(1995, 3, 14), seen.Birthday);
+        Assert.Equal(AgeRules.AgeOf(new DateOnly(1995, 3, 14)), seen.Age);
+        Assert.Equal("雙魚座", seen.Zodiac);
         Assert.Equal(["看電影"], seen.InterestTags);
+    }
+
+    /// <summary>
+    /// 別人拿不到完整的出生年月日，也拿不到出生年次。
+    ///
+    /// 以前整個日期照給——星座是前端拿月日算的，所以把生日送了出去。
+    /// 那時候生日是選填，大多數人沒有；現在註冊就必填，等於每個人的出生年月日
+    /// 都會跟著個人卡送到任何看得到這張卡的人手上。卡片上要的只是年齡與星座。
+    /// 出生年次同理：有年次就等於知道生日的一大半，而且沒有任何畫面顯示它。
+    /// </summary>
+    [Fact]
+    public async Task SomebodyElseDoesNotGetMyBirthdayOrBirthYear()
+    {
+        var seen = await Get(nameof(SomebodyElseDoesNotGetMyBirthdayOrBirthYear), caller: Stranger, target: Me);
+
+        Assert.Null(seen.Birthday);
+        Assert.Null(seen.AgeRange);
+    }
+
+    /// <summary>配對成功的人也一樣：能聊天不代表該知道對方哪一天生日。</summary>
+    [Fact]
+    public async Task EvenAMatchedPeerDoesNotGetMyBirthday()
+    {
+        var seen = await Get(nameof(EvenAMatchedPeerDoesNotGetMyBirthday), caller: Peer, target: Me, profilePublic: false);
+
+        Assert.Null(seen.Birthday);
+        Assert.Null(seen.AgeRange);
+        Assert.NotNull(seen.Age);
+        Assert.Equal("雙魚座", seen.Zodiac);
+    }
+
+    /// <summary>
+    /// 送出去的 JSON 裡連日期的影子都不能有。只檢查物件上的屬性是不夠的——
+    /// 哪天有人在 User 上多加一個從生日衍生的欄位，屬性檢查不會知道。
+    /// </summary>
+    [Fact]
+    public async Task TheBirthdayIsNowhereInWhatSomebodyElseReceives()
+    {
+        var seen = await Get(nameof(TheBirthdayIsNowhereInWhatSomebodyElseReceives), caller: Stranger, target: Me);
+
+        var json = System.Text.Json.JsonSerializer.Serialize(
+            seen, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web));
+
+        // 比對完整的值，不是任意子字串：回應裡有時間戳記，某年的 3 月 14 日那天它本來就會含有「03-14」。
+        Assert.DoesNotContain("1995-03-14", json);
+        Assert.DoesNotContain("\"1995\"", json);
+        Assert.DoesNotContain(":1995", json);
+    }
+
+    /// <summary>自己看自己還是完整的：「我的」頁要能顯示、修改自己的生日。</summary>
+    [Fact]
+    public async Task IStillSeeMyOwnBirthday()
+    {
+        var me = await Get(nameof(IStillSeeMyOwnBirthday), caller: Me, target: Me);
+
+        Assert.Equal(new DateOnly(1995, 3, 14), me.Birthday);
+        Assert.Equal("1995", me.AgeRange);
+    }
+
+    /// <summary>偏好縣市是我拿來篩別人的條件，跟年齡範圍、距離一樣，不是給人看的。</summary>
+    [Fact]
+    public async Task SomebodyElseDoesNotSeeWhichCountyIPrefer()
+    {
+        var seen = await Get(nameof(SomebodyElseDoesNotSeeWhichCountyIPrefer), caller: Stranger, target: Me);
+
+        Assert.Null(seen.PreferredArea);
+        // 我住哪個縣市是卡片上會顯示的，仍然看得到
+        Assert.Equal("新北市", seen.LocationArea);
+    }
+
+    /// <summary>沒有生日的人（還沒更新、還沒補填的舊帳號）：年齡與星座就是空的，不是 0 歲。</summary>
+    [Fact]
+    public async Task SomeoneWithoutABirthdayHasNoAgeOrZodiac()
+    {
+        var seen = await Get(nameof(SomeoneWithoutABirthdayHasNoAgeOrZodiac), caller: Me, target: Stranger);
+
+        Assert.Null(seen.Age);
+        Assert.Null(seen.Zodiac);
     }
 
     // ── 「公開個人檔案」關掉之後 ──
@@ -148,6 +228,9 @@ public sealed class ProfileVisibilityTests
         me.Nickname = "阿佑";
         me.Bio = "今天開始慢慢認識同頻的人";
         me.Birthday = new DateOnly(1995, 3, 14);
+        me.AgeRange = "1995";
+        me.LocationArea = "新北市";
+        me.PreferredArea = "台北市";
         me.InterestTags = ["看電影"];
         me.StatusReason = "偷偷記下的處置原因";
         me.LastActiveAt = DateTimeOffset.UtcNow;

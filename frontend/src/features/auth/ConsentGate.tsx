@@ -67,7 +67,7 @@ export default function ConsentGate({ userId, onLogout }: Props) {
     <div className="consent-gate">
       <ConsentScreen
         heading="繼續之前，補確認兩件事"
-        description="你建立帳號的時候我們還沒有問這兩項，所以現在補上。確認一次就好"
+        description="配對會用到你的出生年月日，也需要你同意服務條款。這兩項之前沒有問齊，確認一次就好"
         onSubmit={async (answer) => {
           await giveConsent(answer)
           markSettled(userId)

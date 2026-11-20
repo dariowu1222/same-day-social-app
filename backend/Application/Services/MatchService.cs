@@ -174,14 +174,7 @@ public sealed class MatchService
         return true;
     }
 
-    private static int? AgeOf(DateOnly? birthday)
-    {
-        if (birthday == null) return null;
-        var today = DateOnly.FromDateTime(DateTime.Today);
-        var age = today.Year - birthday.Value.Year;
-        if (birthday.Value > today.AddYears(-age)) age--;
-        return age;
-    }
+    private static int? AgeOf(DateOnly? birthday) => birthday == null ? null : AgeRules.AgeOf(birthday.Value);
 
     private HashSet<string> LoadPausedUserIds()
     {
@@ -670,7 +663,8 @@ public sealed class MatchService
                 user?.Bio,
                 user?.InterestTags ?? [],
                 user?.PhotoDataUrls ?? [],
-                user?.Birthday?.ToString("yyyy-MM-dd"),
+                // 卡片上顯示的是年齡（上面那一欄）與星座。完整的生日不放進回應。
+                user?.Birthday is { } birthday ? AgeRules.ZodiacOf(birthday) : null,
                 user?.PersonalityTags ?? [],
                 user?.AppearanceTags ?? [],
                 user?.Relationship));
@@ -947,7 +941,9 @@ public sealed record MatchResponse(
     string? Bio = null,
     List<string>? Interests = null,
     List<string>? Photos = null,
-    string? Birthday = null,
+    // 星座。這個位置以前是完整的生日（yyyy-MM-dd），讓前端自己算星座；
+    // 現在後端算好再給，出生年月日不再跟著每一張卡片送出去。
+    string? Zodiac = null,
     // 個性／外貌／感情狀態：使用者在個人檔案填了，但配對卡原本沒帶，
     // 所以別人看到的卡片永遠只有興趣。新參數一律放尾端並給預設值，
     // 既有的具名與位置呼叫都不受影響。
