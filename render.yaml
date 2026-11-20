@@ -55,6 +55,11 @@ services:
         sync: false
       - key: Smtp__FromName
         value: "同頻 Today"
+      # 一封信最多等幾秒。沒有上限時 SmtpClient 預設 100 秒，而後台處理檢舉會
+      # 循序寄兩封，等於按下去可能轉 200 秒。寄不出去本來就有退路（回
+      # EMAIL_SEND_FAILED、outcome_mail_sent 記 false），等久一點不會比較好。
+      - key: Smtp__TimeoutSeconds
+        value: "10"
 
       # 媒體儲存（Supabase Storage）。service key 是機密，只放後端
       - key: Media__Provider
