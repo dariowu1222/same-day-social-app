@@ -9,6 +9,12 @@ export function onboardingKey(userId: string) {
   return `same-day-onboarding-${userId}`
 }
 
+// 這個帳號的條款同意與年齡確認已經齊了（本來就不缺，或在這台裝置上補過）。
+// 只是用來省掉每次啟動都問一次後端；真正的紀錄在後端，清掉這個旗標頂多是再問一次。
+export function consentSettledKey(userId: string) {
+  return `same-day-consent-settled-${userId}`
+}
+
 // 安全提示「不再顯示」旗標（全域，一律 localStorage 持久）。
 export const SAFETY_KEYS = {
   chatNotice: 'same-day-chat-safety-dismissed',

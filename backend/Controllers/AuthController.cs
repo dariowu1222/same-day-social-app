@@ -57,7 +57,7 @@ public sealed class AuthController(AuthService authService, JwtService jwtServic
             return Unauthorized(ApiResponse<AuthUserResponse>.Fail("INVALID_GOOGLE_TOKEN", "Google 登入驗證失敗，請重新登入"));
         }
 
-        var result = await authService.GoogleLoginAsync(new GoogleLoginCommand(info.Email, info.Name), cancellationToken);
+        var result = await authService.GoogleLoginAsync(request.ToCommand(info), cancellationToken);
         if (!result.Success) return ToActionResult(result);
         var token = jwtService.IssueToken(result.Data!.UserId, result.Data.Nickname);
         return ApiResponse<AuthUserResponse>.Ok(result.Data with { Token = token });
@@ -80,7 +80,7 @@ public sealed class AuthController(AuthService authService, JwtService jwtServic
             return Unauthorized(ApiResponse<AuthUserResponse>.Fail("INVALID_FACEBOOK_TOKEN", "Facebook 登入驗證失敗，請重新登入"));
         }
 
-        var result = await authService.FacebookLoginAsync(new FacebookLoginCommand(info.Email, info.Name), cancellationToken);
+        var result = await authService.FacebookLoginAsync(request.ToCommand(info), cancellationToken);
         if (!result.Success) return ToActionResult(result);
         var token = jwtService.IssueToken(result.Data!.UserId, result.Data.Nickname);
         return ApiResponse<AuthUserResponse>.Ok(result.Data with { Token = token });
@@ -127,8 +127,24 @@ public sealed class AuthController(AuthService authService, JwtService jwtServic
 public sealed record RegisterRequest(string Nickname, string Email, string Password, string ConfirmPassword, string BirthYear, string Gender, bool TermsAccepted);
 public sealed record RegistrationConfirmRequest(string Email, string Code);
 public sealed record LoginRequest(string Email, string Password);
-public sealed record GoogleLoginHttpRequest(string IdToken);
-public sealed record FacebookLoginHttpRequest(string AccessToken);
+// TermsAccepted／BirthYear：第一次用社群帳號登入（＝註冊）時，前端在確認畫面收齊後
+// 帶著同一張憑證再打一次。登入既有帳號不需要，所以有預設值——已上架的版本只送憑證。
+//
+// ToCommand 把兩個來源合在一起：身分（email、名字）只信驗證過的憑證，
+// 同意與年次來自使用者。獨立成一個方法是為了測得到——憑證驗證要打 Google／Facebook，
+// 測試裡過不去，但「這兩欄有沒有真的被帶進去」不該因此沒人看著：
+// 漏接的話新使用者會永遠卡在確認畫面，而登入既有帳號一切正常，很難發現。
+public sealed record GoogleLoginHttpRequest(string IdToken, bool TermsAccepted = false, string? BirthYear = null)
+{
+    public GoogleLoginCommand ToCommand(GoogleUserInfo verified)
+        => new(verified.Email, verified.Name, TermsAccepted, BirthYear);
+}
+
+public sealed record FacebookLoginHttpRequest(string AccessToken, bool TermsAccepted = false, string? BirthYear = null)
+{
+    public FacebookLoginCommand ToCommand(FacebookUserInfo verified)
+        => new(verified.Email, verified.Name, TermsAccepted, BirthYear);
+}
 public sealed record PasswordResetRequest(string Email);
 public sealed record PasswordResetVerifyRequest(string Email, string Code);
 public sealed record PasswordResetConfirmRequest(string Email, string Code, string NewPassword, string ConfirmPassword);

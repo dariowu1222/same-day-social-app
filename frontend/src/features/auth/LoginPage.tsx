@@ -11,7 +11,11 @@ import {
   registerAccount,
   requestPasswordReset,
   verifyPasswordReset,
+  SOCIAL_CONSENT_REQUIRED,
+  type ConsentAnswer,
 } from './api'
+import ConsentScreen, { TermsRow } from './ConsentScreen'
+import { isAdultBirthYear } from './ageRule'
 import type { DemoUser } from './types'
 import type { LegalDoc } from './legalDocuments'
 import { APP_VERSION_LABEL } from '../../shared/lib/appVersion'
@@ -131,8 +135,26 @@ function useAutoHideHint(visibleMs = 5000, fadeMs = 300) {
   }
 }
 
-type AuthMode = 'welcome' | 'login' | 'forgot' | 'register'
+type AuthMode = 'welcome' | 'login' | 'forgot' | 'register' | 'socialConsent'
 type RegisterStep = 'form' | 'verify'
+
+type SocialProvider = 'google' | 'facebook'
+
+/**
+ * 第一次用社群帳號登入時，卡在「等使用者確認條款與年齡」的那一筆。
+ *
+ * credential 是 Google 的 idToken 或 Facebook 的 accessToken。只放在記憶體裡、
+ * 不寫進任何儲存：使用者確認完，拿它加上同意與年次再向後端送一次。
+ * 憑證約一小時過期，放太久後端會退回「驗證失敗」，回上一頁重按一次就好。
+ */
+type PendingSocial = { provider: SocialProvider; credential: string }
+
+const PROVIDER_NAME: Record<SocialProvider, string> = { google: 'Google', facebook: 'Facebook' }
+
+/** 後端說這是新帳號、要先確認條款與年齡。這不是錯誤，是下一步。 */
+function isConsentRequired(error: unknown): boolean {
+  return (error as { code?: string } | null)?.code === SOCIAL_CONSENT_REQUIRED
+}
 
 type Props = {
   onAuthenticated: (user: DemoUser, remember: boolean) => void
@@ -158,15 +180,6 @@ function FacebookIcon() {
   )
 }
 
-function isAdultBirthYear(birthYear: string) {
-  const normalized = birthYear.replace(/\D/g, '').slice(0, 4)
-  if (normalized.length < 4) return false
-
-  const year = Number(normalized)
-  const currentYear = new Date().getFullYear()
-  return year >= 1940 && year <= currentYear - 18
-}
-
 export default function LoginPage({ onAuthenticated }: Props) {
   const [mode, setModeState] = useState<AuthMode>('welcome')
   const [optionsOpen, setOptionsOpen] = useState(false)
@@ -186,6 +199,7 @@ export default function LoginPage({ onAuthenticated }: Props) {
   const [birthYear, setBirthYear] = useState('')
   const [gender, setGender] = useState('PRIVATE')
   const [agreed, setAgreed] = useState(false)
+  const [pendingSocial, setPendingSocial] = useState<PendingSocial | null>(null)
   const [legalDoc, setLegalDoc] = useState<LegalDoc | null>(null)
   const [authMessage, setAuthMessage] = useState('')
   const [authError, setAuthError] = useState('')
@@ -353,8 +367,7 @@ export default function LoginPage({ onAuthenticated }: Props) {
         if (!accessToken) {
           throw new Error('沒有取得 Facebook 登入憑證，請再試一次')
         }
-        const user = await facebookLogin(accessToken, rememberMe)
-        onAuthenticated(user, rememberMe)
+        await exchangeSocialCredential('facebook', accessToken)
       })
       return
     }
@@ -373,9 +386,42 @@ export default function LoginPage({ onAuthenticated }: Props) {
       if (!idToken) {
         throw new Error('沒有取得 Google 登入憑證，請再試一次')
       }
-      const user = await googleLogin(idToken, rememberMe)
-      onAuthenticated(user, rememberMe)
+      await exchangeSocialCredential('google', idToken)
     })
+  }
+
+  function sendSocialCredential(pending: PendingSocial, consent?: ConsentAnswer) {
+    return pending.provider === 'google'
+      ? googleLogin(pending.credential, rememberMe, consent)
+      : facebookLogin(pending.credential, rememberMe, consent)
+  }
+
+  /**
+   * 拿社群憑證向後端換登入。
+   *
+   * 帳號已經存在 → 直接進去，跟以前一樣。
+   * 後端說是新帳號 → 不建，改去確認畫面（ConsentScreen）：先同意條款、確認成年。
+   * 憑證留在 pendingSocial，使用者確認完再帶著它送一次。
+   *
+   * 以前這裡是按一下就建好帳號，條款與年齡限制只有 Email 註冊那條路才有。
+   */
+  async function exchangeSocialCredential(provider: SocialProvider, credential: string) {
+    const pending: PendingSocial = { provider, credential }
+    try {
+      onAuthenticated(await sendSocialCredential(pending), rememberMe)
+    } catch (error) {
+      if (!isConsentRequired(error)) throw error
+      setPendingSocial(pending)
+      setOptionsOpen(false)
+      setMode('socialConsent')
+    }
+  }
+
+  // 在確認畫面按返回：這次不建帳號。憑證丟掉，下次要重新走一次 Google／Facebook。
+  function cancelSocialConsent() {
+    setPendingSocial(null)
+    resetStatus()
+    setMode('welcome')
   }
 
   // 從歡迎頁的三選項進入 Email 帳密登入畫面
@@ -641,6 +687,25 @@ export default function LoginPage({ onAuthenticated }: Props) {
     )
   }
 
+  // 第一次用 Google／Facebook 登入：帳號還沒建，先確認條款與年齡。
+  // 門檻跟 Email 註冊一樣，只是不用再填暱稱、Email、密碼——那些社群帳號已經給了。
+  if (mode === 'socialConsent' && pendingSocial) {
+    const pending = pendingSocial
+    return (
+      <ConsentScreen
+        heading="再確認兩件事"
+        description={`第一次用 ${PROVIDER_NAME[pending.provider]} 登入，建立帳號前需要你確認`}
+        onSubmit={async (answer) => {
+          onAuthenticated(await sendSocialCredential(pending, answer), rememberMe)
+        }}
+        onBack={cancelSocialConsent}
+        exitPrompt="先不建立帳號？"
+        exitLabel="返回"
+        onExit={cancelSocialConsent}
+      />
+    )
+  }
+
   if (mode === 'register') {
     return (
       <AuthFrame variant="clean" onBack={() => setMode('login')}>
@@ -740,15 +805,7 @@ export default function LoginPage({ onAuthenticated }: Props) {
               </div>
             </div>
 
-            <label className="terms-row">
-              <input type="checkbox" checked={agreed} onChange={(event) => { clearAuthError(); setAgreed(event.target.checked) }} />
-              <span>
-                我已閱讀並同意{' '}
-                <button type="button" onClick={() => setLegalDoc('terms')}>服務條款</button>
-                {' '}與{' '}
-                <button type="button" onClick={() => setLegalDoc('privacy')}>隱私權政策</button>
-              </span>
-            </label>
+            <TermsRow agreed={agreed} onChange={(next) => { clearAuthError(); setAgreed(next) }} onOpen={setLegalDoc} />
 
             <AuthNotice message={authMessage} error={authError} />
 
