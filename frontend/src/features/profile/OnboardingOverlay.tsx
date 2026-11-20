@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import type { DemoUser } from '../auth/types'
 import { updateProfile } from './api'
 import AgeRangeSlider, { AGE_FLOOR } from '../../shared/ui/AgeRangeSlider'
+import LocationPrimer from './LocationPrimer'
 import {
   AREA_OPTIONS,
   DATING_GOAL_OPTIONS,
@@ -18,7 +19,10 @@ import slide3 from '../../assets/3.webp'
 import slide4 from '../../assets/4.webp'
 import slide5 from '../../assets/5.webp'
 
-type Phase = 'slides' | 'setup' | 'intent'
+// 定位說明頁排在功能介紹之後、填資料之前：
+// 看完介紹才知道這個 App 在做什麼，這時候問定位才有理由；
+// 排在填資料之前，後面「你在哪個縣市」就能直接帶入，不用再選一次。
+type Phase = 'slides' | 'location' | 'setup' | 'intent'
 
 const SLIDES = [
   {
@@ -93,6 +97,8 @@ export default function OnboardingOverlay({ user, onComplete }: Props) {
   const [ageMin, setAgeMin] = useState(AGE_FLOOR)
   const [ageMax, setAgeMax] = useState(40)
   const [locationArea, setLocationArea] = useState('')
+  // 所在縣市是定位帶出來的、還是使用者自己選的。只影響那一格底下的說明文字。
+  const [areaFromLocation, setAreaFromLocation] = useState(false)
   const [distanceKm, setDistanceKm] = useState('')
   const [distanceMode, setDistanceMode] = useState<DistanceMode>('km')
   const [preferredArea, setPreferredArea] = useState('')
@@ -124,7 +130,15 @@ export default function OnboardingOverlay({ user, onComplete }: Props) {
 
   function goNext() {
     if (current < total - 1) setCurrent(c => c + 1)
-    else setPhase('setup')
+    else setPhase('location')
+  }
+
+  function handleLocationDone(area: string | null) {
+    if (area) {
+      setLocationArea(area)
+      setAreaFromLocation(true)
+    }
+    setPhase('setup')
   }
 
   function toggleTag(tag: string) {
@@ -165,6 +179,14 @@ export default function OnboardingOverlay({ user, onComplete }: Props) {
 
   const trackX = -current * 100 + (dragOffset / window.innerWidth) * 100
   const slide = SLIDES[current]
+
+  if (phase === 'location') {
+    return (
+      <div className="onboarding-overlay">
+        <LocationPrimer onDone={handleLocationDone} />
+      </div>
+    )
+  }
 
   if (phase === 'intent') {
     return (
@@ -222,13 +244,17 @@ export default function OnboardingOverlay({ user, onComplete }: Props) {
                 className="ob-select"
                 aria-label="所在縣市"
                 value={locationArea}
-                onChange={event => setLocationArea(event.target.value)}
+                onChange={event => { setLocationArea(event.target.value); setAreaFromLocation(false) }}
               >
                 <option value="">先不填</option>
                 {AREA_OPTIONS.map(area => (
                   <option key={area} value={area}>{area}</option>
                 ))}
               </select>
+              {/* 定位在縣市交界可能差一點，講明這是帶入的、可以改 */}
+              {areaFromLocation && locationArea && (
+                <span className="profile-hint profile-hint-block">依定位帶入，不對可以改</span>
+              )}
             </div>
 
             <div className="ob-field">
@@ -441,7 +467,8 @@ export default function OnboardingOverlay({ user, onComplete }: Props) {
         </div>
 
         <div className="ob-actions">
-          <button className="ob-skip-btn" type="button" onClick={() => setPhase('setup')}>
+          {/* 跳過的是功能介紹，不是定位說明頁——那一頁有自己的「先不用」 */}
+          <button className="ob-skip-btn" type="button" onClick={() => setPhase('location')}>
             跳過
           </button>
           <button

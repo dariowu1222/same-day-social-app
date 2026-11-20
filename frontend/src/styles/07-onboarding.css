@@ -336,6 +336,111 @@
   padding: 4px;
 }
 
+/* ── Onboarding 定位說明頁 ──────────────────────────── */
+/* 版面沿用功能介紹投影片（圖、標題、說明），底部沿用設定頁的按鈕列，
+   所以看起來是同一段流程的下一頁，而不是突然跳出來的權限牆。 */
+.ob-location {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.ob-location-body {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* safe center：內容比螢幕高時（小手機）從頂端排起、可以捲，不會被置中切掉上半截 */
+  justify-content: safe center;
+  gap: 20px;
+  padding: 36px 32px 20px;
+  text-align: center;
+  background: linear-gradient(170deg, #e8f5f0 0%, #dff1eb 45%, #fff9ef 100%);
+}
+
+.ob-location-visual {
+  width: 184px;
+  height: 184px;
+  flex-shrink: 0;
+  border-radius: 28px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 20px 60px rgba(78, 145, 136, 0.19);
+}
+
+.ob-location-ring {
+  fill: rgba(78, 145, 136, 0.1);
+  stroke: rgba(78, 145, 136, 0.45);
+  stroke-width: 1.5;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.ob-location-ring.ring-2 { fill: rgba(78, 145, 136, 0.08); stroke: rgba(78, 145, 136, 0.32); }
+.ob-location-ring.ring-3 { fill: rgba(78, 145, 136, 0.05); stroke: rgba(78, 145, 136, 0.2); }
+
+/* 定位中：範圍圈由內往外輪流亮一下 */
+.ob-location-visual.pulsing .ob-location-ring { animation: ob-location-pulse 1.5s ease-in-out infinite; }
+.ob-location-visual.pulsing .ring-2 { animation-delay: 0.25s; }
+.ob-location-visual.pulsing .ring-3 { animation-delay: 0.5s; }
+
+/* 定到了：圈的顏色加深，表示範圍確定了 */
+.ob-location-visual.found .ob-location-ring { stroke: rgba(78, 145, 136, 0.7); }
+
+@keyframes ob-location-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(1.06); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ob-location-visual.pulsing .ob-location-ring { animation: none; }
+}
+
+.ob-location-text {
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+}
+
+.ob-location-text .ob-slide-title { color: #3e1d0a; }
+/* 這一頁的說明文字會隨狀態換，長短不一；讓兩行盡量等長，免得第二行只掛一兩個字 */
+.ob-location-text .ob-slide-desc { text-wrap: balance; }
+
+.ob-location-promises {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+  width: 100%;
+  max-width: 300px;
+  text-align: left;
+}
+
+.ob-location-promises li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #6e594a;
+}
+
+.ob-location-promise-icon {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(78, 145, 136, 0.14);
+  color: #3d7a72;
+}
+
+.ob-location .ob-primary-btn:disabled { opacity: 0.7; }
+
 /* ── Card clickable area ── */
 .card-clickable {
   cursor: pointer;
