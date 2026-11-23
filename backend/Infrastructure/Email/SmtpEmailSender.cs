@@ -1,128 +1,23 @@
 using System.Net;
 using System.Net.Mail;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace SameDaySocialApp.Infrastructure.Email;
 
-public sealed class SmtpEmailSender(IOptions<SmtpOptions> options) : IEmailSender
+/// <summary>
+/// 走 SMTP 寄信。信件內容在 EmailSenderBase，這裡只管傳輸。
+///
+/// 注意：Render 的免費方案封鎖對外的 25／465／587 埠，所以這條路在線上是不通的
+/// （連 TCP 都連不出去，會卡到逾時）。線上請改用 BrevoEmailSender；這個實作留給
+/// 本機開發，本機沒有那層封鎖，用 Gmail 應用程式密碼最省事。
+/// 選哪一個由 Program.cs 依設定決定。
+/// </summary>
+public sealed class SmtpEmailSender(IOptions<SmtpOptions> options, ILogger<SmtpEmailSender> logger) : EmailSenderBase
 {
     private readonly SmtpOptions smtp = options.Value;
 
-    public async Task SendRegistrationVerificationCodeAsync(string toEmail, string code, CancellationToken cancellationToken)
-    {
-        await SendCodeAsync(
-            toEmail,
-            "同頻 Today 建立帳號驗證碼",
-            $"""
-            你好，
-
-            你的同頻 Today 建立帳號驗證碼是：{code}
-
-            驗證碼 10 分鐘內有效。若這不是你本人操作，請忽略這封信。
-            """,
-            cancellationToken);
-    }
-
-    public async Task SendPasswordResetCodeAsync(string toEmail, string code, CancellationToken cancellationToken)
-    {
-        await SendCodeAsync(
-            toEmail,
-            "同頻 Today 密碼重設驗證碼",
-            $"""
-            你好，
-
-            你的同頻 Today 密碼重設驗證碼是：{code}
-
-            驗證碼 10 分鐘內有效。若這不是你本人操作，請忽略這封信。
-            """,
-            cancellationToken);
-    }
-
-    public async Task SendAdminLoginCodeAsync(string toEmail, string code, CancellationToken cancellationToken)
-    {
-        await SendCodeAsync(
-            toEmail,
-            "同頻 Today 後台登入驗證碼",
-            $"""
-            你好，
-
-            有人正在用你的帳號進入同頻 Today 的審核後台，驗證碼是：{code}
-
-            驗證碼 5 分鐘內有效。
-            如果這不是你本人操作，代表你的密碼可能已經外洩——請立刻更改密碼。
-            """,
-            cancellationToken);
-    }
-
-    public async Task SendAdminReverifyCodeAsync(string toEmail, string code, CancellationToken cancellationToken)
-    {
-        await SendCodeAsync(
-            toEmail,
-            "同頻 Today 後台：確認不可逆的處置",
-            $"""
-            你好，
-
-            後台正在執行一個無法復原的動作（封鎖或註銷某個帳號），確認碼是：{code}
-
-            這組碼只能用來確認這類處置，不能用來登入。
-            驗證碼 5 分鐘內有效。
-            如果這不是你本人操作，請立刻更改密碼，並檢查後台的處置紀錄。
-            """,
-            cancellationToken);
-    }
-
-    public async Task SendReportOutcomeToReporterAsync(string toEmail, bool upheld, CancellationToken cancellationToken)
-    {
-        await SendCodeAsync(
-            toEmail,
-            upheld ? "同頻 Today：你的檢舉已處理" : "同頻 Today：你的檢舉處理結果",
-            upheld
-                ? """
-                  你好，
-
-                  你檢舉的內容我們看過了，判定違反社群規範，已經做出處置。
-                  謝謝你願意花時間讓這裡好一點。
-
-                  這封信不會透露對方是誰，對方也不會知道是誰檢舉的。
-                  """
-                : """
-                  你好，
-
-                  你檢舉的內容我們看過了，這一次判定沒有違反社群規範，所以不會有處置。
-
-                  這不代表你的感受不重要。如果你覺得判斷有誤，或情況又有新的變化，
-                  可以再檢舉一次並在補充說明裡寫下細節，我們會重新看過。
-                  如果是讓你不舒服的人，也可以直接在聊天室裡封鎖對方。
-                  """,
-            cancellationToken);
-    }
-
-    public async Task SendReportOutcomeToReportedAsync(string toEmail, bool upheld, bool contentHidden, CancellationToken cancellationToken)
-    {
-        await SendCodeAsync(
-            toEmail,
-            upheld ? "同頻 Today：你的一則內容已被處置" : "同頻 Today：關於一則對你的檢舉",
-            upheld
-                ? $"""
-                  你好，
-
-                  你在同頻 Today 的一則內容被檢舉，我們看過之後判定違反社群規範。
-                  {(contentHidden ? "該則內容已經隱藏，其他人看不到了。" : "我們已經做出對應的處置。")}
-
-                  如果你認為這是誤判，可以回信說明，我們會再看一次。
-                  """
-                : """
-                  你好，
-
-                  你在同頻 Today 的一則內容被檢舉，我們看過之後判定沒有問題。
-                  內容維持原狀，不會有任何處置，你的帳號也不受影響。
-
-                  會通知你，是因為我們不希望你哪天發現東西不見了卻不知道發生過什麼事。
-                  """,
-            cancellationToken);
-    }
-
-    private async Task SendCodeAsync(string toEmail, string subject, string body, CancellationToken cancellationToken)
+    protected override async Task SendAsync(string toEmail, string subject, string body, CancellationToken cancellationToken)
     {
         if (!smtp.IsConfigured)
         {
@@ -153,20 +48,45 @@ public sealed class SmtpEmailSender(IOptions<SmtpOptions> options) : IEmailSende
         };
 
         // 真正把非同步這條路夾住的是這裡：SendMailAsync 的 CancellationToken 多載
-        // 在 token 觸發時會去呼叫 SendAsyncCancel。
-        //
-        // 要和呼叫端的 token 連動（而不是只用逾時）：使用者關掉分頁、請求被中止時，
-        // 這封信也該停下來，不要讓一個沒人在等的請求佔著 SMTP 連線。
-        //
-        // 連動的另一個好處是上層的錯誤處理不用改：逾時取消的是這裡建立的來源，
-        // 呼叫端那個 `when (!cancellationToken.IsCancellationRequested)` 仍然成立，
-        // 所以逾時會落進既有的 catch、回 EMAIL_SEND_FAILED，而不是往外炸成 500。
+        // 在 token 觸發時會去呼叫 SendAsyncCancel。要和呼叫端的 token 連動：使用者
+        // 關掉分頁、請求被中止時這封信也該停下來，不要佔著 SMTP 連線。
         //
         // 夾不住的那一段：主機不通時 TCP 連線本身有自己的底（實測約 20 秒），
-        // 那一層沒有可設定的逾時。這裡擋的是「連得上但對方不回」的情況，那才是常見的那種。
+        // 那一層沒有可設定的逾時。這裡擋的是「連得上但對方不回」的情況。
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         deadline.CancelAfter(timeout);
 
-        await client.SendMailAsync(message, deadline.Token);
+        try
+        {
+            await client.SendMailAsync(message, deadline.Token);
+        }
+        catch (SmtpException ex)
+        {
+            // StatusCode 是這裡最有價值的一個值：535 是帳密被拒（應用程式密碼失效或被撤銷），
+            // 421/450 多半是額度或速率，ServiceNotAvailable 常見於連不上或被擋在 port 之外。
+            logger.LogError(ex,
+                "寄信失敗：{Host}:{Port} 回 StatusCode={StatusCode}，收件人網域 {Domain}，主旨「{Subject}」",
+                smtp.Host, smtp.Port, ex.StatusCode, DomainOf(toEmail), subject);
+            throw;
+        }
+        // 逾時會走到這裡（deadline 觸發、呼叫端 token 未取消）；真正的呼叫端取消
+        // （使用者中止請求）原樣往外傳、不記成錯誤，與 BrevoEmailSender 一致。
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+        {
+            logger.LogError(ex,
+                "寄信失敗：連線 {Host}:{Port} 時發生 {ExceptionType}，收件人網域 {Domain}",
+                smtp.Host, smtp.Port, ex.GetType().Name, DomainOf(toEmail));
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// 只取網域寫進日誌。要判斷的是「我們這端寄不寄得出去」，不是誰收信，
+    /// 完整信箱寫進日誌等於把使用者的 Email 複製一份到另一個地方。
+    /// </summary>
+    internal static string DomainOf(string email)
+    {
+        var at = email.LastIndexOf('@');
+        return at >= 0 && at < email.Length - 1 ? email[(at + 1)..] : "(無法解析)";
     }
 }

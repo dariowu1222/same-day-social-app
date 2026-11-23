@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using SameDaySocialApp.Infrastructure.Email;
 using Xunit;
@@ -87,7 +88,7 @@ public sealed class SmtpTimeoutTests
             Password = "secret",
             FromEmail = "noreply@example.com",
             TimeoutSeconds = timeoutSeconds
-        }));
+        }), NullLogger<SmtpEmailSender>.Instance);
 
     /// <summary>
     /// 收得下連線、但一個位元組都不回。SMTP 的客戶端會一直等那句 220 問候語。

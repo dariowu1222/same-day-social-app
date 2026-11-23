@@ -36,7 +36,25 @@ builder.Services.AddControllers()
     });
 // builder.Services.AddOpenApi(); // requires .NET 9+
 builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection("Smtp"));
-builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+builder.Services.Configure<BrevoOptions>(builder.Configuration.GetSection("Brevo"));
+
+// 寄信走哪條路：有 Brevo 設定就走它的 HTTP API，否則退回 SMTP。
+//
+// 不是偏好問題，是線上根本沒得選：Render 免費方案封鎖對外的 25／465／587 埠，
+// 而 Gmail 只開 465 與 587，兩邊沒有交集。症狀是 TCP 連不出去、十幾秒後逾時，
+// 使用者看到「驗證碼寄送失敗」——帳密完全正常也一樣寄不出去。
+//
+// 本機沒有那層封鎖，所以不填 Brevo 設定時仍然走 SMTP，開發照舊不必申請任何服務。
+var useBrevo = !string.IsNullOrWhiteSpace(builder.Configuration["Brevo:ApiKey"])
+               && !string.IsNullOrWhiteSpace(builder.Configuration["Brevo:FromEmail"]);
+if (useBrevo)
+{
+    builder.Services.AddScoped<IEmailSender, BrevoEmailSender>();
+}
+else
+{
+    builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+}
 // 媒體物件儲存（provider 無關；目前 adapter 為 Supabase Storage）
 builder.Services.Configure<MediaOptions>(builder.Configuration.GetSection("Media"));
 

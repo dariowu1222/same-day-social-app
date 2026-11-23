@@ -61,6 +61,22 @@ services:
       - key: Smtp__TimeoutSeconds
         value: "10"
 
+      # 線上實際用來寄信的是這組，不是上面的 SMTP。
+      #
+      # Render 免費方案封鎖對外的 25／465／587 埠，而 Gmail 只開 465 與 587，
+      # 兩邊沒有交集——SMTP 在這裡怎麼設都寄不出去，症狀是 TCP 連不上、十幾秒後
+      # 逾時，使用者看到「驗證碼寄送失敗」，而帳密其實完全正常。Brevo 的 API
+      # 走 HTTPS 443，不在封鎖範圍。
+      #
+      # 這兩個值有填就走 Brevo，沒填則退回 SMTP（本機開發用，本機沒有那層封鎖）。
+      # FromEmail 必須是 Brevo 後台已驗證過的寄件者，否則 API 會回 400。
+      - key: Brevo__ApiKey
+        sync: false
+      - key: Brevo__FromEmail
+        sync: false
+      - key: Brevo__FromName
+        value: "同頻 Today"
+
       # 媒體儲存（Supabase Storage）。service key 是機密，只放後端
       - key: Media__Provider
         value: supabase
