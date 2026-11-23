@@ -13,6 +13,22 @@
       "autoPort": true
     },
     {
+      "// frontend-prod": "服務 dist/ 的正式建置（vite build --mode production），後端指向 Render。用來重現使用者手上那包 App 的行為，dev 模式讀不到 .env.production 所以測不出同一件事。",
+      "name": "frontend-prod",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "preview",
+        "--",
+        "--port",
+        "5174",
+        "--strictPort"
+      ],
+      "cwd": "C:/Users/cq4dario/source/同頻Today App/frontend",
+      "port": 5174,
+      "autoPort": false
+    },
+    {
       "name": "admin",
       "runtimeExecutable": "npm",
       "runtimeArgs": [
