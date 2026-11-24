@@ -240,59 +240,6 @@ blockquote {
   gap: 8px;
 }
 
-/* ── Report button ──
-   貼文層與回應層共用這一條，所以檢舉在哪一頁、哪個主題都是同一個紅。
-   !important 要留著：.rant-page .post-action-btn（0,2,0）會蓋過這裡的 0,1,0，
-   而「檢舉是紅的」不該由頁面樣式去談判。日夜差異交給變數，!important 擋不住它。 */
-.report-btn {
-  color: var(--theme-report) !important;
-}
-
-/* ── Post card new layout ── */
-.post-author-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.avatar-circle {
-  flex-shrink: 0;
-  width: 38px;
-  height: 38px;
-  border-radius: 999px;
-  background: #244845;
-  color: #fffdf8;
-  font-size: 15px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.avatar-sm {
-  width: 30px;
-  height: 30px;
-  font-size: 12px;
-}
-
-.post-author-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.post-author-name {
-  font-size: 14px;
-  font-weight: 700;
-  color: #2d3f3e;
-}
-
-.post-time {
-  font-size: 11px;
-  color: #8a9e9c;
-}
-
 .post-content {
   margin: 0;
   font-size: 15px;
@@ -309,58 +256,6 @@ blockquote {
   gap: 20px;
   padding-top: 4px;
   border-top: 1px solid #f0ede5;
-}
-
-.post-action-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 13px;
-  color: #637271;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 0;
-  font-family: inherit;
-}
-
-.post-action-btn:hover {
-  color: #244845;
-}
-
-/* 展開中的 💬：填滿 + 加深，表示「再按一次會收起」 */
-.post-action-btn.is-active {
-  color: #244845;
-}
-
-/* ── Flat reply list ── */
-.flat-reply-list {
-  display: grid;
-  gap: 12px;
-  border-top: 1px solid #f0ede5;
-  padding-top: 12px;
-}
-
-.flat-reply-item {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-}
-
-.flat-reply-body {
-  flex: 1;
-  min-width: 0;
-  display: grid;
-  gap: 3px;
-}
-
-.flat-reply-content {
-  margin: 0;
-  font-size: 14px;
-  color: #3a4f4e;
-  line-height: 1.5;
-  overflow-wrap: anywhere;
-  word-break: break-word;
 }
 
 /* 每筆回覆底部的動作列 */
@@ -381,31 +276,7 @@ blockquote {
   cursor: pointer;
 }
 
-.reply-sub-btn {
-  background: none;
-  border: none;
-  padding: 0;
-  font-size: 12px;
-  color: #8a9e9c;
-  cursor: pointer;
-}
-
-.reply-like-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  background: none;
-  border: none;
-  padding: 0;
-  font-size: 12px;
-  color: #8a9e9c;
-  cursor: pointer;
-  min-width: 28px;
-}
-
-.reply-sub-btn:hover,
-.reply-sub-toggle:hover,
-.reply-like-btn:hover {
+.reply-sub-toggle:hover {
   color: #e05a7a;
 }
 
@@ -438,10 +309,6 @@ blockquote {
   border-left: 2px solid #e0ede9;
 }
 
-.sub-reply-item {
-  padding: 0;
-}
-
 /* ── Reply form ── */
 .reply-form {
   display: grid;
@@ -454,50 +321,6 @@ blockquote {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-}
-
-/* ── 打開留言框的展開動畫 ──
-   外面多包一層純粹為了動畫，.reply-form 自己不能用：它的 grid 已經拿去排
-   提示列、快捷鍵、輸入列了。
-
-   用 grid-template-rows 從 0fr 長到 1fr，而不是 max-height。max-height 要先
-   猜一個數字：猜小了，有提示列或附圖的時候會被切掉；猜大了，動畫前半段在
-   跑一段根本不存在的高度，看起來就是「先頓一下才動」。0fr→1fr 的終點就是
-   內容的實際高度，多高都對。
-
-   overflow 寫兩次不是手殘。clip 跟 hidden 一樣會把還沒長出來的部分切掉，
-   但 hidden 會生出一個可以被程式捲動的容器——輸入框 autoFocus 的瞬間框還是
-   0 高度，瀏覽器為了「把焦點捲進視野」會去捲它，而 hidden 的容器捲過去就
-   回不來了（使用者沒有捲軸可以捲回來），結果是留言框永遠偏移一截。
-   clip 不產生捲動容器，所以沒這個問題；前面那行 hidden 是給不支援 clip 的
-   舊瀏覽器墊底的。
-
-   只做「展開」不做「收合」：收合是在卡片外面點一下觸發的，那一下通常是為了
-   去做別的事（點另一篇、捲開），讓它立刻消失比較跟得上手。要收合動畫的話
-   .reply-form 得改成常駐掛載，另外談。 */
-.reply-reveal {
-  display: grid;
-  grid-template-rows: 1fr;
-  overflow: hidden;
-  overflow: clip;
-  animation: reply-reveal 200ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-/* grid item 預設 min-height: auto，內容會把 0fr 的那列頂開，動畫就等於沒做 */
-.reply-reveal > * {
-  min-height: 0;
-}
-
-/* 透明度不是從 0 開始。全透明會變成「淡入」，高度的變化反而看不出來；
-   從 0.35 起跳，主角還是那條往下拉開的邊。 */
-@keyframes reply-reveal {
-  from { grid-template-rows: 0fr; opacity: 0.35; }
-  to   { grid-template-rows: 1fr; opacity: 1; }
-}
-
-/* 展開會逐格重算版面，要求減少動態就直接到位 */
-@media (prefers-reduced-motion: reduce) {
-  .reply-reveal { animation: none; }
 }
 
 /* ── 樹洞列表的留言框：照片／錄音 icon、輸入框、送出排成一列 ──
@@ -1040,17 +863,5 @@ blockquote {
   color: #637271;
 }
 
-
 /* 回應的檢舉鈕：低調不搶戲，需要時才找得到 */
-/* 顏色交給 .report-btn（兩個層級共用同一個紅），這裡只負責排版。
-   padding 歸零才跟旁邊的愛心、回應對齊在同一條基線上。 */
-.reply-report-btn {
-  border: none;
-  background: none;
-  cursor: pointer;
-  padding: 0;
-  font-size: 12px;
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-}
+

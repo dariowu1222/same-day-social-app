@@ -1,52 +1,92 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Heart, MessageCircle, Flag, HeartHandshake, X, ArrowUp } from 'lucide-react'
+import { MessageCircle, HeartHandshake, X, ArrowUp, ChevronDown } from 'lucide-react'
 import ReportSheet from '../report/ReportSheet'
-import { likeReply } from './api'
 import type { RantPost } from './types'
 import { flattenReplies, postImages } from './types'
 import MediaInput, { type MediaState } from '../../shared/ui/MediaInput'
 import PostImageGallery from './PostImageGallery'
 import ReplyItem from './ReplyItem'
 import PostMenu from './PostMenu'
+import HeartButton from './HeartButton'
 import { COMPOSE_HINTS, QUICK_REPLIES, getHintSeenSet, markHintSeen, appendQuickReply, pickReplyPlaceholder } from './rantCompose'
 import { MODE_LABELS } from './rantModes'
+import { avatarLetter, avatarTone } from './rantAvatar'
+import { timeAgo } from '../../shared/lib/timeAgo'
 
-function avatarLetter(nickname: string) {
-  return nickname.trim()[0]?.toUpperCase() ?? '?'
+// 展開後先給幾則第一層回應，其餘就地「再看 N 則」。
+// 不一次全攤開：一篇熱門貼文有五十則的話，底下的人會被整個埋掉。
+const REPLIES_AT_FIRST = 3
+const REPLIES_PER_MORE = 5
+
+// 收合動畫的長度，要跟 15-rant-card.css 的 rc-close 一致
+const CLOSE_MS = 180
+
+// 把留言框捲進畫面。
+//
+// 游標進留言框時瀏覽器會自己捲一次，但它不知道底部導覽是 fixed 的 64px——
+// 實測 375×812：捲完輸入框下緣在 772，導覽從 748 開始，正好被壓掉一截。
+// 留言框排在回覆列表後面，貼文底下回覆一多就更容易落到畫面外。
+function revealField(el: HTMLElement | null) {
+  if (!el) return
+  // 已經看得見就不要亂動畫面——沒必要的捲動比沒捲更惱人
+  if (el.getBoundingClientRect().bottom <= window.innerHeight - 96) return
+  el.scrollIntoView({
+    block: 'center',
+    behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+  })
 }
 
 type Props = {
   post: RantPost
+  /**
+   * 這一則的回應區是不是開著。由列表頁管，不是卡片自己記——
+   * 因為「開另一則，前一則自動收起」這件事只有列表頁知道。
+   */
+  open: boolean
+  onToggle: (open: boolean) => void
   replyText: string
   replyMedia: MediaState
   onReplyTextChange: (value: string) => void
   onReplyMediaChange: (media: MediaState) => void
-  onUnderstand: () => void
-  onReply: (parentReplyId?: string) => void
+  // 下面四個都回傳 Promise、失敗要 reject：愛心靠它決定要不要退回空心，
+  // 留言框靠它決定要不要清空、要不要顯示錯誤
+  /** like = true 是按上去，false 是收回 */
+  onUnderstand: (like: boolean) => Promise<unknown> | void
+  onReply: (parentReplyId?: string) => Promise<unknown> | void
+  onLikeReply: (replyId: string, like: boolean) => Promise<unknown> | void
+  onDeleteReply: (replyId: string) => Promise<unknown> | void
   // 檢舉改由卡片內的 ReportSheet 處理，外層只負責顯示結果訊息
   onReported?: (message: string) => void
   onDelete: () => void
-  onLikedReply: () => void
   onHashtagClick?: (tag: string) => void
 }
 
 export default function RantPostCard({
-  post, replyText, replyMedia,
+  post, open, onToggle, replyText, replyMedia,
   onReplyTextChange, onReplyMediaChange,
-  onUnderstand, onReply, onReported, onDelete, onLikedReply, onHashtagClick,
+  onUnderstand, onReply, onLikeReply, onDeleteReply, onReported, onDelete, onHashtagClick,
 }: Props) {
   const navigate = useNavigate()
-  const [showReplies, setShowReplies] = useState(false)
-  const [showReplyForm, setShowReplyForm] = useState(false)
+  // 自己按「回應」收起來的時候，回應區多留 CLOSE_MS 播收合動畫。
+  // 被別則擠掉（列表頁把 open 改成 false）不走這裡，當場消失——見 RantBoardPage。
+  const [closing, setClosing] = useState(false)
+  const closeTimer = useRef<number | undefined>(undefined)
+  // 這次是按「回應」打開的（要把游標放進留言框），還是按頭像那列打開的（只是想看）
+  const [focusOnOpen, setFocusOnOpen] = useState(false)
+  const [visibleCount, setVisibleCount] = useState(REPLIES_AT_FIRST)
+  // 進場動畫從第幾則開始算順序：「再看 N 則」長出來的那幾則要從 0 起跳，
+  // 不然第八則會等前七則的延遲都過完才出現
+  const [enterBase, setEnterBase] = useState(0)
   const [replyTarget, setReplyTarget] = useState<{ id: string; nickname: string } | null>(null)
   const [showHint, setShowHint] = useState(false)
-  // 每次打開留言框抽一句當提示，打開之後就不再變（見 rantCompose）
+  // 每次打開回應區抽一句當提示，打開之後就不再變（見 rantCompose）
   const [placeholder, setPlaceholder] = useState(() => pickReplyPlaceholder(post.mode))
+  const [sending, setSending] = useState(false)
+  const [sendError, setSendError] = useState('')
   const [reportOpen, setReportOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
-  const cardRef = useRef<HTMLElement>(null)
-  const canReply = replyText.trim() || replyMedia.imageUrl || replyMedia.audioUrl
+  const canReply = !sending && Boolean(replyText.trim() || replyMedia.imageUrl || replyMedia.audioUrl)
 
   const hintText = COMPOSE_HINTS[post.mode]
   const quickReplies = QUICK_REPLIES[post.mode] ?? []
@@ -55,81 +95,65 @@ export default function RantPostCard({
   // post.replyCount；同一個人回很多則只出現一次，不然會變成三顆一樣的圈。
   const replyPeople = [...new Set(flattenReplies(post.replies).map((r) => r.nickname))]
 
-  // 手機版沒有「取消」按鈕，改成點卡片外面就收起來。
-  //
-  // 聽 click 而不是 pointerdown。pointerdown 試過，壞在兩件事：
-  // 一、它在 click 之前。留言框一關，底下的卡片整串往上跳，手指放開時命中的
-  //     已經是別的元素——實測點另一篇的「留下回應…」完全打不開（最糟是點到
-  //     內文，直接跳去那篇的詳情頁）。改聽 click，是先讓該開的開、再關這邊，
-  //     兩個 setState 落在同一輪，看不到中間狀態。
-  // 二、手指按著往下滑也算 pointerdown，捲動看別篇會把打到一半的字收掉。
-  //
-  // 比對範圍是整張卡片而不是留言框：回覆底下那顆「回應」在留言框外面，
-  // 以留言框為界的話，點它等於先關再開，白閃一下。
-  //
-  // 桌面維持明確的「取消」：滑鼠點旁邊的機率比手指高太多，誤觸代價不對等。
-  // 判斷寫在 handler 裡而不是 effect 開頭，中途改變視窗寬度也還是對的。
-  //
-  // 草稿不會掉：replyText / replyMedia 由列表頁以 postId 存著，重開就在。
-  //
-  // 已知限制：iOS Safari 對非互動元素的 click 不一定會冒泡到 document。
-  // 真要上 iOS，給外層容器加 cursor: pointer 就會補上，這裡先不預先加。
-  useEffect(() => {
-    if (!showReplyForm) return
+  const shownReplies = post.replies.slice(0, visibleCount)
+  const hiddenReplies = post.replies.length - shownReplies.length
 
-    function handleOutsideClick(e: MouseEvent) {
-      if (window.matchMedia('(min-width: 1024px)').matches) return
-      if (cardRef.current?.contains(e.target as Node)) return
-      setShowReplyForm(false)
-      setReplyTarget(null)
+  useEffect(() => () => window.clearTimeout(closeTimer.current), [])
+
+  /**
+   * 開合都在「回應」這一顆上：按一下展開，再按一下收起。
+   *
+   * 以前展開後另外有一列「收起回應」（只給桌面，手機刻意不給）。現在不分裝置，
+   * 在哪裡打開就在哪裡關——同一顆按鈕、同一個位置，而且比一行小字好按。
+   * 開著的時候按鈕變深色、箭頭翻上去，表示「再按一次會收起」。
+   *
+   * focus：按「回應」是想回話，游標直接進留言框；按頭像那列是想看，不要跳鍵盤。
+   */
+  function toggle(focus: boolean) {
+    window.clearTimeout(closeTimer.current)
+    if (open) {
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      if (!reduce) {
+        setClosing(true)
+        closeTimer.current = window.setTimeout(() => setClosing(false), CLOSE_MS)
+      }
+      onToggle(false)
+      return
     }
+    // 每次打開都從乾淨的狀態開始：上一次「正在回誰」、提示、錯誤訊息都不帶過來
+    // （上一次可能是被別則擠掉的，那時候來不及清）。收到一半又按開的話，
+    // 上面已經把收合的計時器取消了，這裡要把「正在收」一起放掉，不然回應區會
+    // 一直卡在收合的樣子。打到一半的字不會掉：那是列表頁以 postId 存著的。
+    setClosing(false)
+    setReplyTarget(null)
+    setSendError('')
+    setShowHint(false)
+    setFocusOnOpen(focus)
+    setVisibleCount(REPLIES_AT_FIRST)
+    setEnterBase(0)
+    setPlaceholder((prev) => pickReplyPlaceholder(post.mode, prev))
+    // 按「回應」是要開口了，情境提示這時候給；按頭像那列只是想看，不給
+    if (focus) armHint()
+    onToggle(true)
+  }
 
-    // 隔一個 setTimeout 才掛，不是在裝可愛。
-    //
-    // 打開留言框的那一下 click 還在往上冒泡的時候，React 已經把更新沖出去、
-    // 連帶把這個 effect 跑完了（discrete event 之後的 microtask checkpoint）。
-    // 直接掛的話，同一個 click 接著就打到自己身上——而且必中：被點的
-    // 「留下回應…」已經被留言框換掉，那個節點脫離 DOM，contains() 一定是 false。
-    // 結果就是點一下開、同一下關，畫面上看起來像沒反應。
-    //
-    // setTimeout 是 macrotask，排在整個事件派發之後，這一輪就碰不到它了。
-    const timer = setTimeout(() => document.addEventListener('click', handleOutsideClick), 0)
-    return () => {
-      clearTimeout(timer)
-      document.removeEventListener('click', handleOutsideClick)
-    }
-  }, [showReplyForm])
+  const revealInput = () => revealField(inputRef.current)
 
-  // 打開留言框時把輸入框捲進畫面。
-  //
-  // autoFocus 會讓瀏覽器自己捲一次，但它不知道底部導覽是 fixed 的 64px——
-  // 實測 375×812：捲完輸入框下緣在 772，導覽從 748 開始，正好被壓掉一截。
-  // 留言框現在排在回覆列表後面（見下方），貼文底下回覆一多就更容易落到畫面外。
-  //
-  // 等 220ms 再量：展開動畫是 200ms 的 grid-template-rows 0fr→1fr，
-  // 中途量到的是還沒長完的高度。
-  useEffect(() => {
-    if (!showReplyForm) return
-    const timer = setTimeout(() => {
-      const el = inputRef.current
-      if (!el) return
-      // 已經看得見就不要亂動畫面——沒必要的捲動比沒捲更惱人
-      if (el.getBoundingClientRect().bottom <= window.innerHeight - 96) return
-      el.scrollIntoView({
-        block: 'center',
-        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
-      })
-    }, 220)
-    return () => clearTimeout(timer)
-  }, [showReplyForm])
-
-  // 首次點開留言框 → 淡入情境提示，並標記該貼文已顯示（與詳情頁共用同一份 postId 記憶）
-  useEffect(() => {
-    if (!showReplyForm || !hintText) return
-    if (getHintSeenSet().has(post.id)) return
+  // 首次要回這篇 → 淡入情境提示，並標記該貼文已顯示（與詳情頁共用同一份 postId 記憶）。
+  // 只是展開來看不算：提示是寫給「正要開口」的人看的。
+  function armHint() {
+    if (!hintText || getHintSeenSet().has(post.id)) return
     setShowHint(true)
     markHintSeen(post.id)
-  }, [showReplyForm, hintText, post.id])
+  }
+
+  // 按「回應」打開：等展開動畫跑完（280ms 的 grid-template-rows 0fr→1fr）再量位置，
+  // 中途量到的是還沒長完的高度。
+  useEffect(() => {
+    if (!open || !focusOnOpen) return
+    const timer = window.setTimeout(() => revealField(inputRef.current), 300)
+    return () => window.clearTimeout(timer)
+  }, [open, focusOnOpen])
 
   function applyQuickReply(text: string) {
     onReplyTextChange(appendQuickReply(replyText, text))
@@ -139,221 +163,212 @@ export default function RantPostCard({
     }, 0)
   }
 
-  function handleReply() {
-    onReply(replyTarget?.id)
-    setShowReplyForm(false)
-    setReplyTarget(null)
-    setShowHint(false)
-  }
-
-  function openReplyToPost() {
-    setReplyTarget(null)
-    setPlaceholder((prev) => pickReplyPlaceholder(post.mode, prev))
-    setShowReplyForm(true)
-    // 原本無條件展開。一則回覆都沒有的貼文也會開出一塊空的回覆區——
-    // 一條分隔線加一顆「收起回應」，底下什麼都沒有。那就是兩條線的來源。
-    if (post.replies.length > 0) setShowReplies(true)
+  async function handleReply() {
+    if (!canReply) return
+    setSending(true)
+    setSendError('')
+    try {
+      await onReply(replyTarget?.id)
+      setReplyTarget(null)
+      setShowHint(false)
+      // 自己剛送出的那一則要看得到。它排在最後面，還沒展開的那幾則如果繼續收著，
+      // 送出之後畫面上什麼都沒多，會以為沒送成功。
+      setEnterBase(shownReplies.length)
+      setVisibleCount(Number.MAX_SAFE_INTEGER)
+      // 鍵盤收下去，讓出畫面給剛送出的那一則。回應區維持開著。
+      inputRef.current?.blur()
+    } catch (e) {
+      setSendError(e instanceof Error ? e.message : '送出失敗，請稍後再試')
+    } finally {
+      setSending(false)
+    }
   }
 
   function openReplyToReply(replyId: string, nickname: string) {
     setReplyTarget({ id: replyId, nickname })
-    setPlaceholder((prev) => pickReplyPlaceholder(post.mode, prev))
-    setShowReplyForm(true)
-    setShowReplies(true)
+    armHint()
+    inputRef.current?.focus({ preventScroll: true })
+    window.setTimeout(revealInput, 0)
   }
 
+  function showMore() {
+    setEnterBase(shownReplies.length)
+    setVisibleCount((n) => n + REPLIES_PER_MORE)
+  }
+
+  const goDetail = () => navigate(`/rant/${post.id}`)
+  const threadMounted = open || closing
+
   return (
-    <article ref={cardRef} className="card" style={{ gap: 0, padding: '14px 14px 8px' }}>
-      {/* Thread row: 頭像(左) + 內容(右) */}
-      <div className="thread-row">
-        {/* 左：頭像 + 串文線 */}
-        <div className="thread-left">
-          <div className="avatar-circle" style={{ cursor: 'pointer', flexShrink: 0 }} onClick={() => navigate(`/rant/${post.id}`)}>
-            {avatarLetter(post.nickname)}
-          </div>
-          {showReplies && post.replies.length > 0 && <div className="thread-line" />}
+    <article id={`rant-${post.id}`} className={`card rc${open ? ' is-open' : ''}`}>
+      {/* 標題列（點擊進詳細頁）*/}
+      <header className="rc-head">
+        <button type="button" className={`rc-avatar tone-${avatarTone(post.nickname)}`} onClick={goDetail} aria-label="看這篇貼文">
+          {avatarLetter(post.nickname)}
+        </button>
+        <div className="rc-who" onClick={goDetail}>
+          <span className="rc-name">{post.nickname}</span>
+          <span className="rc-time">{timeAgo(post.createdAt)}</span>
         </div>
+        <span className="tag rc-mode" data-mode={post.mode}>{MODE_LABELS[post.mode] ?? post.mode}</span>
+        <PostMenu postId={post.id} isOwner={post.isMine} onDelete={onDelete} onReport={() => setReportOpen(true)} />
+      </header>
 
-        {/* 右：所有內容 */}
-        <div className="thread-right">
-          {/* 標題列（點擊進詳細頁）*/}
-          <div
-            className="thread-post-header"
-            onClick={() => navigate(`/rant/${post.id}`)}
-          >
-            <div className="thread-post-header-info">
-              <span className="post-author-name">{post.nickname}</span>
-              <span className="post-time">
-                {new Date(post.createdAt).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-              </span>
-              <span className="tag" data-mode={post.mode}>{MODE_LABELS[post.mode] ?? post.mode}</span>
-            </div>
-            <div onClick={(e) => e.stopPropagation()}>
-              <PostMenu postId={post.id} isOwner={post.isMine} onDelete={onDelete} />
-            </div>
-          </div>
-
-          {/* 內文（點擊進詳細頁）*/}
-          <div onClick={() => navigate(`/rant/${post.id}`)} style={{ cursor: 'pointer' }}>
-            <p className="post-content" style={{ marginBottom: 8 }}>{post.content}</p>
-            <PostImageGallery images={postImages(post)} />
-            {post.audioUrl && <audio controls src={post.audioUrl} className="post-media-audio" />}
-          </div>
-
-          {/* Tags */}
-          {post.hashtags?.length > 0 && (
-            <div className="hashtag-row" onClick={(e) => e.stopPropagation()}>
-              {post.hashtags.map((tag) => (
-                <span
-                  key={tag}
-                  className={`hashtag-tag${onHashtagClick ? ' hashtag-tag-clickable' : ''}`}
-                  onClick={onHashtagClick ? () => onHashtagClick(tag) : undefined}
-                >
-                  #{tag}
-                </span>
-              ))}
-            </div>
-          )}
-          {/* 動作列 */}
-          <div className="thread-action-bar">
-            <button className="post-action-btn" onClick={onUnderstand}>
-              <Heart size={16} /> {post.likeCount > 0 ? post.likeCount : ''}
-            </button>
-            {/* 💬 現在一律是「留言」。
-                底下那顆假輸入框「留下回應…」拿掉了——它和下面的「查看 N 則回應」
-                是兩列長得很像的次要列疊在一起，中間還夾一條分隔線。
-                留言的入口收回這顆 icon，展開交給那一列，一件事一個控制項。
-
-                收合只給桌面（.thread-replies-collapse，見 17-desktop.css）：
-                手機以滑動為主，展開之後再冒出一顆收合鈕只是多一列要跨過的東西。
-                代價是手機上展開了就一直開著，直到重新載入列表——可以接受，
-                真要細讀本來就會點進詳情頁。 */}
-            <button
-              className={`post-action-btn${showReplyForm ? ' is-active' : ''}`}
-              aria-label="留下回應"
-              onClick={(e) => { e.stopPropagation(); openReplyToPost() }}
-            >
-              <MessageCircle size={16} fill={showReplyForm ? 'currentColor' : 'none'} /> {post.replyCount > 0 ? post.replyCount : ''}
-            </button>
-            <button className="post-action-btn report-btn" onClick={() => setReportOpen(true)}>
-              <Flag size={14} /> 檢舉
-            </button>
-          </div>
-
-          {/* 有人回應了，但還沒展開。
-              原本這件事只靠 💬 旁邊一個數字表示，於是整面牆上「有人回應的貼文」
-              和「沒人理的貼文」長得幾乎一樣——而「有人懂你」正是這個功能的全部重點。
-              數字是抽象的，幾張臉不是。
-
-              樣式直接用子回覆那一層的 thread-sub-indicator：同一件事在這個 App 裡
-              本來就長這樣（ReplyItem 的「查看 N 則回應」），往上搬一層只是讓它一致。
-
-              刻意不預覽內容：樹洞的內容是重的，一面牆連續攤開十幾段別人的心事
-              會讓人很快過載，而且一篇熱門貼文會把下面的人整個埋掉。
-              「可以掃過去、想進去才進去」這個梯度要留著。 */}
-          {post.replies.length > 0 && (
-            <button
-              type="button"
-              className={`thread-sub-indicator${showReplies ? ' thread-replies-collapse' : ''}`}
-              aria-expanded={showReplies}
-              onClick={(e) => { e.stopPropagation(); setShowReplies((v) => !v) }}
-            >
-              {/* 展開後頭像就收起來——底下每一則自己都帶著臉，再堆一次是多的 */}
-              {!showReplies && (
-                <span className="thread-sub-avatars">
-                  {replyPeople.slice(0, 3).map((nickname) => (
-                    <span key={nickname} className="thread-sub-avatar-xs">{avatarLetter(nickname)}</span>
-                  ))}
-                </span>
-              )}
-              <span className="thread-sub-count">
-                {showReplies ? '收起回應' : `查看 ${post.replyCount} 則回應`}
-              </span>
-            </button>
-          )}
-        </div>
+      {/* 內文（點擊進詳細頁）*/}
+      <div className="rc-body" onClick={goDetail}>
+        <p className="post-content">{post.content}</p>
+        <PostImageGallery images={postImages(post)} />
+        {post.audioUrl && <audio controls src={post.audioUrl} className="post-media-audio" />}
       </div>
 
-      {/* 回覆列表。開合交給動作列底下那一列（手機只有展開，收合是桌面限定）。 */}
-      {showReplies && post.replies.length > 0 && (
-        <div className="thread-reply-section">
-          {post.replies.map((reply) => (
-            <ReplyItem
-              key={reply.id}
-              reply={reply}
-              onReply={openReplyToReply}
-              onLike={(replyId) => likeReply(post.id, replyId).then(onLikedReply)}
-            />
+      {/* Tags */}
+      {post.hashtags?.length > 0 && (
+        <div className="hashtag-row">
+          {post.hashtags.map((tag) => (
+            <span
+              key={tag}
+              className={`hashtag-tag${onHashtagClick ? ' hashtag-tag-clickable' : ''}`}
+              onClick={onHashtagClick ? () => onHashtagClick(tag) : undefined}
+            >
+              #{tag}
+            </span>
           ))}
         </div>
       )}
 
-      {/* 回覆輸入區，排在回覆列表「後面」。
-          入口是動作列的 💬（沒有回覆的貼文也一樣），收合態不畫任何東西——
-          以前那顆假輸入框「留下回應…」拿掉了。
+      {/* 動作列：愛心、回應。檢舉收進右上角的 ⋮（見 PostMenu）。 */}
+      <div className="rc-actions">
+        <HeartButton
+          className="rc-pill"
+          liked={!!post.isLiked}
+          count={post.likeCount}
+          onToggle={onUnderstand}
+          label="我懂"
+        />
+        <button
+          type="button"
+          className="rc-pill rc-reply-toggle"
+          aria-expanded={open}
+          onClick={() => toggle(true)}
+        >
+          <MessageCircle size={16} fill={open ? 'currentColor' : 'none'} />
+          <span>回應{post.replyCount > 0 ? ` ${post.replyCount}` : ''}</span>
+          <ChevronDown size={14} strokeWidth={2.6} className="rc-chev" />
+        </button>
+      </div>
 
-          為什麼在後面：這個位置本來是給常駐假輸入框的，所以 composer 一直卡在
-          貼文和回覆中間。結果是點最底下那則的「回應」，輸入框卻跳到最上面——
-          手指在下面、框在上面，手機上鍵盤一彈還可能把它推出畫面。
-          對話由上往下讀，自己的那一則接在最後才對（IG 留言區就是這樣，
-          靠上面那條「↩ 回覆 @某人」說明對象）。 */}
-      {showReplyForm && (
-        <div className="reply-reveal">
-          <div className="reply-form" style={{ marginTop: 6 }}>
-            {replyTarget && (
-              <div className="reply-target-hint">↩ 回覆 @{replyTarget.nickname}
-                <button className="reply-target-clear" onClick={() => setReplyTarget(null)}>×</button>
+      {/* 有人回應了，但還沒展開。
+          這件事不能只靠「回應」旁邊一個數字表示：整面牆上「有人回應的貼文」和
+          「沒人理的貼文」會長得幾乎一樣——而「有人懂你」正是這個功能的全部重點。
+          數字是抽象的，幾張臉不是。
+
+          點它一樣是展開，只是不把游標放進留言框（想看，不是想回）。
+          展開之後這一列就消失：底下每一則自己都帶著臉，收合也改在「回應」那顆上。
+
+          刻意不預覽內容：樹洞的內容是重的，一面牆連續攤開十幾段別人的心事會讓人
+          很快過載。「可以掃過去、想進去才進去」這個梯度要留著。 */}
+      {!threadMounted && post.replies.length > 0 && (
+        <button type="button" className="rc-faces" onClick={() => toggle(false)}>
+          <span className="rc-faces-stack">
+            {replyPeople.slice(0, 3).map((nickname) => (
+              <span key={nickname} className={`rc-face tone-${avatarTone(nickname)}`}>{avatarLetter(nickname)}</span>
+            ))}
+          </span>
+          <span>查看 {post.replyCount} 則回應</span>
+        </button>
+      )}
+
+      {/* 回應區：回覆列表 + 留言框，一起開、一起收。 */}
+      {threadMounted && (
+        <div className={`rc-thread${open ? '' : ' is-closing'}`}>
+          <div className="rc-thread-inner">
+            {shownReplies.length > 0 && (
+              <div className="rc-replies">
+                {shownReplies.map((reply, i) => (
+                  <ReplyItem
+                    key={reply.id}
+                    reply={reply}
+                    enterIndex={Math.max(0, i - enterBase)}
+                    onReply={openReplyToReply}
+                    onLike={onLikeReply}
+                    onDelete={onDeleteReply}
+                  />
+                ))}
               </div>
             )}
 
-            {/* 情境提示（一次性，可收合） */}
-            {showHint && hintText && (
-              <div className="reply-nudge">
-                <HeartHandshake size={15} strokeWidth={1.8} className="reply-nudge-icon" />
-                <span className="reply-nudge-text">{hintText}</span>
-                <button className="reply-nudge-close" onClick={() => setShowHint(false)} aria-label="收合提示">
-                  <X size={14} strokeWidth={2} />
-                </button>
-              </div>
-            )}
-
-            {/* 快捷回覆橫條（常駐，橫滑） */}
-            {quickReplies.length > 0 && (
-              <div className="quick-reply-bar">
-                <div className="quick-reply-scroll">
-                  {quickReplies.map((q) => (
-                    <button key={q} type="button" className="quick-reply-chip" onClick={() => applyQuickReply(q)}>{q}</button>
-                  ))}
-                </div>
-                <span className="quick-reply-fade" />
-              </div>
-            )}
-
-            {/* 照片／錄音 icon、輸入框、送出排成一列。手機只留一顆送出 icon
-                （取消＝點卡片外面），桌面維持文字按鈕。兩種都畫出來，用 CSS 切，
-                不必在 JS 裡量視窗寬度。 */}
-            <div className="reply-form-bar">
-              <MediaInput value={replyMedia} onChange={onReplyMediaChange} />
-              <input
-                ref={inputRef}
-                className="reply-field"
-                value={replyText}
-                onChange={(e) => onReplyTextChange(e.target.value)}
-                placeholder={replyTarget ? `回覆 @${replyTarget.nickname}…` : placeholder}
-                autoFocus
-              />
-              <button
-                className="reply-send-btn reply-form-send"
-                onClick={handleReply}
-                disabled={!canReply}
-                aria-label="送出"
-              >
-                <ArrowUp size={18} strokeWidth={2.2} />
+            {/* 剩下的就地往下長，不跳去詳情頁。 */}
+            {hiddenReplies > 0 && (
+              <button type="button" className="rc-more" onClick={showMore}>
+                {hiddenReplies > REPLIES_PER_MORE
+                  ? `再看 ${REPLIES_PER_MORE} 則（還有 ${hiddenReplies} 則）`
+                  : `再看 ${hiddenReplies} 則`}
               </button>
-              <div className="reply-form-actions">
-                <button className="ghost" onClick={() => { setShowReplyForm(false); setReplyTarget(null) }}>取消</button>
-                <button className="secondary" onClick={handleReply} disabled={!canReply}>送出</button>
+            )}
+
+            {/* 留言框，排在回覆列表「後面」。
+                對話由上往下讀，自己的那一則接在最後才對（IG 留言區就是這樣，
+                靠上面那條「↩ 回覆 @某人」說明對象）。放在貼文和回覆中間的話，
+                點最底下那則的「回應」，輸入框卻跳到最上面——手指在下面、框在上面，
+                手機上鍵盤一彈還可能把它推出畫面。 */}
+            <div className="reply-form rc-compose">
+              {replyTarget && (
+                <div className="reply-target-hint">↩ 回覆 @{replyTarget.nickname}
+                  <button className="reply-target-clear" onClick={() => setReplyTarget(null)}>×</button>
+                </div>
+              )}
+
+              {/* 情境提示（一次性，可收合） */}
+              {showHint && hintText && (
+                <div className="reply-nudge">
+                  <HeartHandshake size={15} strokeWidth={1.8} className="reply-nudge-icon" />
+                  <span className="reply-nudge-text">{hintText}</span>
+                  <button className="reply-nudge-close" onClick={() => setShowHint(false)} aria-label="收合提示">
+                    <X size={14} strokeWidth={2} />
+                  </button>
+                </div>
+              )}
+
+              {/* 快捷回覆橫條（常駐，橫滑） */}
+              {quickReplies.length > 0 && (
+                <div className="quick-reply-bar">
+                  <div className="quick-reply-scroll">
+                    {quickReplies.map((q) => (
+                      <button key={q} type="button" className="quick-reply-chip" onClick={() => applyQuickReply(q)}>{q}</button>
+                    ))}
+                  </div>
+                  <span className="quick-reply-fade" />
+                </div>
+              )}
+
+              {/* 照片／錄音 icon、輸入框、送出排成一列。手機只留一顆送出 icon，
+                  桌面是文字按鈕。兩種都畫出來，用 CSS 切，不必在 JS 裡量視窗寬度。
+                  以前桌面還有一顆「取消」——現在收起來是按「回應」，不需要了。 */}
+              <div className="reply-form-bar">
+                <MediaInput value={replyMedia} onChange={onReplyMediaChange} />
+                <input
+                  ref={inputRef}
+                  className="reply-field"
+                  value={replyText}
+                  onChange={(e) => onReplyTextChange(e.target.value)}
+                  onFocus={armHint}
+                  placeholder={replyTarget ? `回覆 @${replyTarget.nickname}…` : placeholder}
+                  autoFocus={focusOnOpen}
+                />
+                <button
+                  className="reply-send-btn reply-form-send"
+                  onClick={handleReply}
+                  disabled={!canReply}
+                  aria-label="送出"
+                >
+                  <ArrowUp size={18} strokeWidth={2.2} />
+                </button>
+                <div className="reply-form-actions">
+                  <button className="secondary" onClick={handleReply} disabled={!canReply}>送出</button>
+                </div>
               </div>
+
+              {sendError && <p className="rc-send-error" role="alert">{sendError}</p>}
             </div>
           </div>
         </div>

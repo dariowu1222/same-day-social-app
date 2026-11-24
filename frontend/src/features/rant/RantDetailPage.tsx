@@ -1,22 +1,22 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Heart, MessageCircle, ChevronLeft, Flag, HeartHandshake, ArrowUp, X } from 'lucide-react'
+import { MessageCircle, ChevronLeft, HeartHandshake, ArrowUp, X } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
-import { deleteRant, getRant, likeReply, replyRant, understandRant } from './api'
+import { deleteRant, deleteReply, getRant, likeReply, replyRant, understandRant, unlikeRant, unlikeReply } from './api'
 import ReportSheet from '../report/ReportSheet'
 import type { RantPost } from './types'
 import { postImages } from './types'
 import MediaInput, { EMPTY_MEDIA, type MediaState } from '../../shared/ui/MediaInput'
 import PostImageGallery from './PostImageGallery'
 import ReplyItem from './ReplyItem'
+import HeartButton from './HeartButton'
+import { avatarLetter, avatarTone } from './rantAvatar'
+import { timeAgo } from '../../shared/lib/timeAgo'
 import PostMenu from './PostMenu'
 import { COMPOSE_HINTS, QUICK_REPLIES, getHintSeenSet, markHintSeen, appendQuickReply, pickReplyPlaceholder, DEFAULT_REPLY_PLACEHOLDER } from './rantCompose'
 import { MODE_LABELS } from './rantModes'
 
-function avatarLetter(nickname: string) {
-  return nickname.trim()[0]?.toUpperCase() ?? '?'
-}
-
+// 完整的日期時間。畫面上寫的是「18 分鐘前」，這個放在 title 裡，想知道確切時間的人看得到。
 function formatTime(iso: string) {
   return new Date(iso).toLocaleDateString('zh-TW', {
     month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit',
@@ -84,9 +84,9 @@ export default function RantDetailPage() {
     }
   }
 
-  async function handleUnderstand() {
+  async function handleUnderstand(like: boolean) {
     if (!rantId) return
-    await understandRant(rantId)
+    await (like ? understandRant(rantId) : unlikeRant(rantId))
     await loadPost()
   }
 
@@ -143,54 +143,53 @@ export default function RantDetailPage() {
           postId={post.id}
           isOwner={post.isMine}
           onDelete={async () => { await deleteRant(post.id); navigate(-1) }}
+          onReport={() => setReportOpen(true)}
         />
       </div>
 
       <div className="detail-scroll">
         <div className="detail-card">
-        {/* ── 主貼文（Thread 風格）── */}
+        {/* ── 主貼文 ──
+            跟樹洞列表的卡片同一套：頭像＋名字時間、愛心和回應兩顆膠囊。
+            檢舉在右上角的 ⋮ 裡（以前是動作列上一顆紅字按鈕）。 */}
         <div className="detail-thread-post">
-          <div className="thread-row">
-            {/* 左：頭像 + 串文線（有回覆時）*/}
-            <div className="thread-left">
-              <div className="avatar-circle" style={{ flexShrink: 0 }}>{avatarLetter(post.nickname)}</div>
-              {post.replies.length > 0 && <div className="thread-line" />}
+          <header className="rc-head">
+            <span className={`rc-avatar rc-static tone-${avatarTone(post.nickname)}`} aria-hidden="true">
+              {avatarLetter(post.nickname)}
+            </span>
+            <div className="rc-who rc-static">
+              <span className="rc-name">{post.nickname}</span>
+              <span className="rc-time" title={formatTime(post.createdAt)}>{timeAgo(post.createdAt)}</span>
             </div>
+            <span className="tag rc-mode" data-mode={post.mode}>{MODE_LABELS[post.mode] ?? post.mode}</span>
+          </header>
 
-            {/* 右：貼文內容 */}
-            <div className="thread-right">
-              <div className="thread-post-header" style={{ cursor: 'default' }}>
-                <div className="thread-post-header-info">
-                  <span className="post-author-name">{post.nickname}</span>
-                  <span className="post-time">{formatTime(post.createdAt)}</span>
-                  <span className="tag">{MODE_LABELS[post.mode] ?? post.mode}</span>
-                </div>
-              </div>
+          <p className="detail-post-content">{post.content}</p>
+          <PostImageGallery images={postImages(post)} />
+          {post.audioUrl && <audio controls src={post.audioUrl} className="post-media-audio" />}
 
-              <p className="detail-post-content">{post.content}</p>
-              <PostImageGallery images={postImages(post)} />
-              {post.audioUrl && <audio controls src={post.audioUrl} className="post-media-audio" />}
-
-              {post.hashtags?.length > 0 && (
-                <div className="hashtag-row">
-                  {post.hashtags.map((tag) => <span key={tag} className="hashtag-tag">#{tag}</span>)}
-                </div>
-              )}
-
-
-              {/* 動作列 */}
-              <div className="thread-action-bar">
-                <button className="post-action-btn" onClick={handleUnderstand}>
-                  <Heart size={16} /> {post.likeCount > 0 ? post.likeCount : ''}
-                </button>
-                <button className="post-action-btn" onClick={() => { setComposeFocused(true); setTimeout(() => inputRef.current?.focus(), 50) }}>
-                  <MessageCircle size={16} /> {post.replies.length > 0 ? post.replies.length : ''}
-                </button>
-                <button className="post-action-btn report-btn" onClick={() => setReportOpen(true)}>
-                  <Flag size={14} /> 檢舉
-                </button>
-              </div>
+          {post.hashtags?.length > 0 && (
+            <div className="hashtag-row">
+              {post.hashtags.map((tag) => <span key={tag} className="hashtag-tag">#{tag}</span>)}
             </div>
+          )}
+
+          <div className="rc-actions">
+            <HeartButton
+              className="rc-pill"
+              liked={!!post.isLiked}
+              count={post.likeCount}
+              onToggle={handleUnderstand}
+              label="我懂"
+            />
+            <button
+              type="button"
+              className="rc-pill"
+              onClick={() => { setComposeFocused(true); setTimeout(() => inputRef.current?.focus(), 50) }}
+            >
+              <MessageCircle size={16} />
+              <span>回應{post.replyCount > 0 ? ` ${post.replyCount}` : ''}</span>
+            </button>
           </div>
         </div>
 
@@ -258,7 +257,10 @@ export default function RantDetailPage() {
                 <ReplyItem
                   reply={reply}
                   onReply={handleReplyToReply}
-                  onLike={(replyId) => rantId && likeReply(rantId, replyId).then(loadPost)}
+                  onLike={(replyId, like) => (rantId
+                    ? (like ? likeReply(rantId, replyId) : unlikeReply(rantId, replyId)).then(loadPost)
+                    : undefined)}
+                  onDelete={(replyId) => (rantId ? deleteReply(rantId, replyId).then(loadPost) : undefined)}
                 />
               </div>
             ))}

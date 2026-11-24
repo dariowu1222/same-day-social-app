@@ -1306,26 +1306,30 @@
   z-index: 2;
   width: 42px;
   height: 42px;
-  padding: 0;
+  padding: 0 0 3px;
   border-radius: 999px;
-  background: transparent;
-  color: #4a260f;
-  font-size: 36px;
+  background: #f1e8dc;
+  color: #33241b;
+  font-size: 24px;
   font-weight: 400;
   line-height: 1;
+  transition: transform 0.1s;
 }
 
+.back-button:active { transform: scale(0.92); }
+
+/* 登入流程上方的圖標方塊。裡面是 BrandMark（互看的兩顆圓），跟歡迎頁同一個。
+   以前這裡用十幾條規則拿 span 疊出「兩個人加一顆愛心」，已經整段拿掉。 */
 .login-logo {
-  position: relative;
   display: grid;
   place-items: center;
   width: 92px;
   height: 92px;
   margin-top: 10px;
-  border: 1px solid rgba(232, 178, 120, 0.4);
   border-radius: 26px;
-  background: linear-gradient(145deg, #fff3d8 0%, #ffe3bb 100%);
-  box-shadow: 0 16px 32px rgba(118, 63, 29, 0.16);
+  background: #fbf6ef;
+  /* 只有一圈細邊，沒有底下那道厚度——厚度在這個 App 裡的意思是「按得下去」，這塊不是按鈕 */
+  box-shadow: inset 0 0 0 1.5px #ecdfd0;
 }
 
 .login-logo.compact {
@@ -1334,121 +1338,31 @@
   border-radius: 20px;
 }
 
-.login-logo.compact .person-one,
-.login-logo.compact .person-two {
-  bottom: 20px;
-  width: 28px;
-  height: 34px;
-}
+.login-logo-mark { width: 74%; }
 
-.login-logo.compact .person-one {
-  left: 21px;
-}
-
-.login-logo.compact .person-two {
-  right: 17px;
-}
-
-.login-logo.compact .person-one::before,
-.login-logo.compact .person-two::before {
-  top: -14px;
-  left: 7px;
-  width: 14px;
-  height: 14px;
-}
-
-.login-logo.compact .logo-heart {
-  bottom: 20px;
-  left: 30px;
-  width: 21px;
-  height: 21px;
-}
-
-.login-logo.compact .logo-heart::before,
-.login-logo.compact .logo-heart::after {
-  width: 21px;
-  height: 21px;
-}
-
-.login-logo.compact .logo-heart::before {
-  left: -10px;
-}
-
-.login-logo.compact .logo-heart::after {
-  top: -10px;
-}
-
-.person-one,
-.person-two {
-  position: absolute;
-  bottom: 25px;
-  width: 34px;
-  height: 44px;
-  border-radius: 22px 22px 28px 28px;
-}
-
-.person-one {
-  left: 26px;
-  background: linear-gradient(180deg, #df793b, #c95c26);
-}
-
-.person-two {
-  right: 21px;
-  background: linear-gradient(180deg, #f09a91, #e37772);
-}
-
-.person-one::before,
-.person-two::before {
-  position: absolute;
-  top: -18px;
-  left: 8px;
-  width: 18px;
-  height: 18px;
-  content: "";
-  border-radius: 999px;
-  background: inherit;
-}
-
-.logo-heart {
-  position: absolute;
-  bottom: 24px;
-  left: 38px;
-  width: 26px;
-  height: 26px;
-  background: #fff8df;
-  transform: rotate(45deg);
-}
-
-.logo-heart::before,
-.logo-heart::after {
-  position: absolute;
-  width: 26px;
-  height: 26px;
-  content: "";
-  border-radius: 999px;
-  background: #fff8df;
-}
-
-.logo-heart::before {
-  left: -13px;
-}
-
-.logo-heart::after {
-  top: -13px;
-}
-
+/* 名稱的兩個字級與顏色跟歡迎頁左上角同一套（.wm-name / .wm-today，在 15-welcome.css），
+   這裡只決定在這一塊裡的大小。 */
 .login-brand {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 7px;
   margin-bottom: 8px;
-  color: #512709;
-  font-size: 34px;
-  font-weight: 900;
-  letter-spacing: 0.02em;
-  text-shadow: 0 2px 10px rgba(118, 63, 29, 0.12);
+  color: #3e1d0a;
+  line-height: 1.2;
 }
 
-.login-logo.compact + .login-brand {
-  margin-bottom: 2px;
+.login-brand .wm-name,
+.login-brand .wm-today {
+  margin: 0;
   font-size: 30px;
+}
+
+.login-logo.compact + .login-brand { margin-bottom: 2px; }
+
+.login-logo.compact + .login-brand .wm-name,
+.login-logo.compact + .login-brand .wm-today {
+  font-size: 26px;
 }
 
 .login-content h1 {
@@ -1540,8 +1454,13 @@
   color: #fff8f1;
 }
 
-.step-connector {
+/* 選擇器前面要帶 .forgot-steps。連接線本身也是 span，上面那條 .forgot-steps span
+   比單獨一個 .step-connector 具體，寬高會被它蓋成 24×24 的圓——
+   三個步驟之間於是多出兩顆圓，看起來像五個步驟。 */
+.forgot-steps .step-connector {
   flex: 1;
+  width: auto;
+  min-width: 16px;
   max-width: 28px;
   height: 2px;
   border-radius: 999px;
@@ -1549,7 +1468,7 @@
   transition: background 0.25s;
 }
 
-.step-connector.done {
+.forgot-steps .step-connector.done {
   background: #4e9188;
 }
 
@@ -1567,30 +1486,20 @@
   align-items: stretch;
 }
 
+/* 「重新寄送」是白底那一種、旁邊的「下一步／完成註冊」是主色那一種，
+   外觀都在 15-welcome.css。兩顆並排，字要比單獨一顆時小一點才放得下。 */
 .resend-button {
-  height: 56px;
-  border: 1.5px solid #d27452;
-  border-radius: 18px;
-  background: rgba(255, 253, 248, 0.72);
-  color: #c76649;
-  font-size: 17px;
-  font-weight: 800;
+  padding: 0 8px;
+  font-size: 14px;
 }
 
 .compact-button {
-  height: 56px;
   margin-top: 0;
-  font-size: 20px;
-  letter-spacing: 0.08em;
 }
 
 .forgot-action-row .resend-button,
 .forgot-action-row .compact-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 60px;
-  margin: 0;
+  margin: 0 0 4px;
   line-height: 1;
 }
 
@@ -1681,23 +1590,10 @@
   right: 56px;
 }
 
+/* 主要按鈕（登入、發送驗證碼、重設密碼…）的外觀搬到 15-welcome.css，
+   跟歡迎頁的「開始」是同一種有厚度的按鈕。這裡只留它在表單裡的上距。 */
 .primary-login-button {
-  width: 100%;
-  height: 56px;
   margin-top: 10px;
-  border-radius: 28px;
-  background: linear-gradient(135deg, #f0856a, #d4654a);
-  color: #fff8f1;
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  box-shadow: 0 8px 20px rgba(188, 86, 54, 0.26);
-  transition: opacity 0.15s, transform 0.15s;
-}
-
-.primary-login-button:not(:disabled):active {
-  opacity: 0.88;
-  transform: scale(0.98);
 }
 
 .forgot-button {
@@ -1710,20 +1606,9 @@
   text-underline-offset: 6px;
 }
 
+/* 外觀同上，在 15-welcome.css（白底的那一種） */
 .outline-login-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   gap: 16px;
-  width: 100%;
-  height: 52px;
-  border: 1.5px solid #d27452;
-  border-radius: 28px;
-  background: rgba(255, 253, 248, 0.58);
-  color: #bb5f41;
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
 }
 
 .outline-login-button span {
@@ -1752,39 +1637,6 @@
 .login-content--center {
   min-height: calc(100dvh - 44px);
   align-content: center;
-}
-
-.welcome-hero {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 100%;
-  padding: 0;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-}
-
-.welcome-cta {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 30px;
-  padding: 12px 22px;
-  border-radius: 24px;
-  border: 1.5px solid #e8c8b0;
-  background: rgba(255, 253, 248, 0.7);
-  color: #bb5f41;
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  box-shadow: 0 6px 18px rgba(188, 86, 54, 0.12);
-  animation: welcome-cta-pulse 2.2s ease-in-out infinite;
-}
-.welcome-cta-arrow { font-size: 17px; }
-@keyframes welcome-cta-pulse {
-  0%, 100% { transform: translateY(0); opacity: 0.92; }
-  50% { transform: translateY(-4px); opacity: 1; }
 }
 
 .auth-options-mask {
@@ -1835,39 +1687,7 @@
   font-weight: 700;
 }
 
-.social-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  width: 100%;
-  height: 54px;
-  border-radius: 27px;
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  transition: opacity 0.15s, transform 0.15s;
-}
-.social-button:active { opacity: 0.9; transform: scale(0.99); }
 .social-icon { display: inline-flex; align-items: center; }
-
-.social-button.google {
-  background: #ffffff;
-  color: #3c4043;
-  border: 1.5px solid #e2dccf;
-  box-shadow: 0 3px 10px rgba(60, 40, 25, 0.08);
-}
-.social-button.facebook {
-  background: #1877f2;
-  color: #ffffff;
-  border: none;
-}
-.social-button.email {
-  background: linear-gradient(135deg, #f0856a, #d4654a);
-  color: #fff8f1;
-  border: none;
-  box-shadow: 0 8px 20px rgba(188, 86, 54, 0.24);
-}
 
 .auth-options-foot {
   display: flex;
@@ -1887,51 +1707,6 @@
 }
 .auth-options-foot button:disabled { opacity: 0.55; }
 .auth-options-foot .dot { color: #cdbcac; }
-
-.login-decoration {
-  position: absolute;
-  z-index: -1;
-  display: grid;
-  place-items: center;
-  color: #df8b6d;
-  pointer-events: none;
-}
-
-.chat-left {
-  top: 118px;
-  left: 18px;
-  width: 54px;
-  height: 42px;
-  border-radius: 18px;
-  background: rgba(250, 209, 153, 0.55);
-  font-size: 26px;
-}
-
-.chat-right {
-  top: 86px;
-  right: 25px;
-  width: 58px;
-  height: 42px;
-  border-radius: 22px;
-  background: rgba(224, 111, 103, 0.6);
-  color: #fff8f1;
-  font-size: 18px;
-  letter-spacing: 0.14em;
-}
-
-.sparkle-one {
-  top: 45px;
-  right: 116px;
-  color: #e5a258;
-  font-size: 28px;
-}
-
-.sparkle-two {
-  top: 318px;
-  left: -3px;
-  color: #e5a258;
-  font-size: 24px;
-}
 
 .auth-switch {
   margin: 14px 0 0;
@@ -2157,13 +1932,9 @@
   text-underline-offset: 4px;
 }
 
+/* 外觀在 15-welcome.css（主色那一種） */
 .register-submit {
-  height: 60px;
-  border-radius: 12px;
-  background: linear-gradient(90deg, #f5aa74, #f4a06f);
-  color: #fff8f1;
-  font-size: 22px;
-  font-weight: 900;
+  margin-top: 10px;
 }
 
 .legal-modal-backdrop {
@@ -2329,8 +2100,7 @@
     margin-bottom: 10px;
   }
 
-  .login-field input,
-  .primary-login-button {
+  .login-field input {
     height: 54px;
   }
 }
@@ -2505,7 +2275,6 @@
   height: 18px;
   accent-color: #e8754e;
 }
-
 
 /* 測試期間的版本標示：低調但看得到，方便測試者回報 */
 .welcome-version {

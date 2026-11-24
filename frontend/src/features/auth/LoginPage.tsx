@@ -16,6 +16,7 @@ import {
 } from './api'
 import ConsentScreen, { TermsRow } from './ConsentScreen'
 import BirthdayField from './BirthdayField'
+import SyncHero from './SyncHero'
 import { isAdultBirthday } from '../profile/profileUtils'
 import type { DemoUser } from './types'
 import type { LegalDoc } from './legalDocuments'
@@ -23,6 +24,7 @@ import { APP_VERSION_LABEL } from '../../shared/lib/appVersion'
 import {
   AuthFrame,
   LogoBlock,
+  BrandLockup,
   AuthField,
   AuthNotice,
   FloatingField,
@@ -173,10 +175,12 @@ function GoogleIcon() {
   )
 }
 
+// 圖示本身就是 Facebook 的藍。以前整顆按鈕是藍底，所以圖示畫成白的；
+// 現在兩個社群登入長得一樣（白底），圖示換回品牌色才看得到。
 function FacebookIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
-      <path fill="#fff" d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07c0 6.02 4.39 11.01 10.13 11.93v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.24 2.68.24v2.97h-1.51c-1.49 0-1.95.93-1.95 1.88v2.26h3.32l-.53 3.49h-2.79V24C19.61 23.08 24 18.09 24 12.07z" />
+      <path fill="#1877f2" d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07c0 6.02 4.39 11.01 10.13 11.93v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.24 2.68.24v2.97h-1.51c-1.49 0-1.95.93-1.95 1.88v2.26h3.32l-.53 3.49h-2.79V24C19.61 23.08 24 18.09 24 12.07z" />
     </svg>
   )
 }
@@ -184,6 +188,9 @@ function FacebookIcon() {
 export default function LoginPage({ onAuthenticated }: Props) {
   const [mode, setModeState] = useState<AuthMode>('welcome')
   const [optionsOpen, setOptionsOpen] = useState(false)
+  // 歡迎頁那兩顆圓是不是已經合成愛心。比選單早一步變 true（先合，選單才升起來）。
+  const [heroMerged, setHeroMerged] = useState(false)
+  const sheetTimer = useRef<number | undefined>(undefined)
   const [forgotStep, setForgotStep] = useState<ForgotStep>('account')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -225,12 +232,36 @@ export default function LoginPage({ onAuthenticated }: Props) {
    */
   function setMode(next: AuthMode) {
     setModeState(next)
+    // 離開歡迎頁再回來，兩顆圓要回到分開的樣子
+    window.clearTimeout(sheetTimer.current)
+    setHeroMerged(false)
     setPassword('')
     setConfirmPassword('')
     setNewPassword('')
     setPasswordError('')
     setConfirmPasswordError('')
     setNewPasswordError('')
+  }
+
+  /**
+   * 歡迎頁按「開始」或「登入」：兩顆圓先合成愛心，選單才升上來。
+   *
+   * 中間隔 650ms：圓在 550ms 靠到一起，選單接著往上，愛心那一下跳動剛好落在
+   * 選單升起的途中。再長就是讓人等動畫——這一頁每次登入都會經過。
+   * 要求減少動態的人不等，直接開。
+   */
+  function startWelcome() {
+    resetStatus()
+    if (optionsOpen || heroMerged) return
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    setHeroMerged(true)
+    sheetTimer.current = window.setTimeout(() => setOptionsOpen(true), reduce ? 0 : 650)
+  }
+
+  function closeOptions() {
+    window.clearTimeout(sheetTimer.current)
+    setOptionsOpen(false)
+    setHeroMerged(false)
   }
 
   function resetStatus() {
@@ -536,51 +567,61 @@ export default function LoginPage({ onAuthenticated }: Props) {
   if (mode === 'welcome') {
     return (
       <AuthFrame variant="warm" center>
-        {/* 點任意處 → 跳出登入選項 sheet */}
-        <button
-          className="welcome-hero"
-          type="button"
-          onClick={() => { resetStatus(); setOptionsOpen(true) }}
-          aria-label="開始登入"
-        >
-          <LogoBlock />
-          <h1 className="login-main-title">今天，也找個懂你的人</h1>
-          <p className="login-subtitle">從日常共鳴開始，慢慢認識彼此</p>
-          <span className="welcome-cta">
-            輕觸畫面，開始同頻
-            <span className="welcome-cta-arrow" aria-hidden="true">↑</span>
-          </span>
+        {/* 以前整個畫面是一顆隱形的大按鈕（「輕觸畫面，開始同頻」）。看起來沒有按鈕，
+            第一次來的人不知道要點哪裡；而且「開始」和「我已經有帳號」是兩件事，
+            擠在同一下裡分不出來。現在是兩顆看得見的按鈕，開的是同一張選單。 */}
+        <div className="welcome-v2">
+          <BrandLockup />
+          <SyncHero merged={heroMerged} />
+          <h1 className="login-main-title welcome-title">今天，<br />也找個懂你的人</h1>
+          <p className="login-subtitle welcome-sub">從日常共鳴開始，慢慢認識彼此</p>
+          <button className="keycap-btn" type="button" onClick={startWelcome}>
+            開始
+            <span className="keycap-arrow" aria-hidden="true" />
+          </button>
+          <button className="welcome-have" type="button" onClick={startWelcome}>
+            已經有帳號？<u>登入</u>
+          </button>
           {/* 測試期間顯示版本：回報問題時能直接對上是哪一版，不必先登入進設定頁 */}
           <span className="welcome-version">{APP_VERSION_LABEL}</span>
-        </button>
+        </div>
 
         {/* 登入方式 Bottom Sheet */}
         <div
           className={`auth-options-mask${optionsOpen ? ' open' : ''}`}
-          onClick={() => setOptionsOpen(false)}
+          onClick={closeOptions}
         />
         <div className={`auth-options-sheet${optionsOpen ? ' open' : ''}`} role="dialog" aria-label="選擇登入方式">
           <div className="auth-options-handle" />
-          <p className="auth-options-title">登入 / 註冊同頻 Today</p>
+          <p className="auth-options-title">加入同頻 Today</p>
 
-          <button className="social-button google" type="button" onClick={() => handleSocialLogin('google')}>
+          {/* 主色只給一顆。以前三顆各一個顏色（白、藍、珊瑚漸層），最小的那行字
+              才是「建立帳號」——第一次來的人最需要的入口反而最不顯眼。 */}
+          <button
+            className="keycap-btn"
+            type="button"
+            onClick={() => { resetStatus(); closeOptions(); setMode('register') }}
+          >
+            <Mail size={20} strokeWidth={2} aria-hidden="true" />
+            用 Email 建立帳號
+          </button>
+
+          <div className="auth-options-or">或</div>
+
+          <button className="keycap-btn is-plain" type="button" onClick={() => handleSocialLogin('google')}>
             <span className="social-icon" aria-hidden="true"><GoogleIcon /></span>
             使用 Google 繼續
           </button>
-          <button className="social-button facebook" type="button" onClick={() => handleSocialLogin('facebook')}>
+          <button className="keycap-btn is-plain" type="button" onClick={() => handleSocialLogin('facebook')}>
             <span className="social-icon" aria-hidden="true"><FacebookIcon /></span>
             使用 Facebook 繼續
-          </button>
-          <button className="social-button email" type="button" onClick={openEmailLogin}>
-            <span className="social-icon" aria-hidden="true"><Mail size={22} strokeWidth={1.9} /></span>
-            使用 Email 登入
           </button>
 
           <AuthNotice message={authMessage} error={authError} />
 
           <div className="auth-options-foot">
-            <button type="button" onClick={() => { resetStatus(); setOptionsOpen(false); setMode('register') }}>
-              建立帳號
+            <button type="button" onClick={openEmailLogin}>
+              已經有帳號？<u>用 Email 登入</u>
             </button>
           </div>
         </div>

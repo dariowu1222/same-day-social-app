@@ -1,0 +1,370 @@
+/* ── 歡迎頁與登入流程的按鈕（2026-11 改版）──
+   對應 LoginPage 的 welcome 模式、SyncHero，以及登入／註冊／忘記密碼／
+   條款確認這幾頁的主要按鈕。 */
+
+/* ── 有厚度的按鈕 ──
+   底下那道實心的邊是「這顆按得下去」：按下去往下沉 4px、邊同時收掉。
+   厚度是一道不模糊的陰影，只在按下的那一瞬間重畫一次。 */
+/* 後面那幾個是登入流程原本的 class：登入、發送驗證碼、重設密碼、建立帳號。
+   沿用舊名字而不是把每一顆都改成 keycap-btn，是因為它們各自還帶著在表單裡的
+   上距、並排時的寬度（在 06-chat-avatar.css），改名要連那些一起搬。 */
+.keycap-btn,
+.primary-login-button,
+.register-submit {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  height: 54px;
+  margin-bottom: 4px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 16px;
+  background: #c9502f;
+  color: #ffffff;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.3), 0 4px 0 #983a1e;
+  transition: transform 0.08s, box-shadow 0.08s;
+}
+
+.keycap-btn:not(:disabled):active,
+.primary-login-button:not(:disabled):active,
+.register-submit:not(:disabled):active {
+  transform: translateY(4px);
+  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.3), 0 0 0 #983a1e;
+}
+
+/* 白底的那一種：次要動作（Google／Facebook、建立帳號、重新寄送） */
+.keycap-btn.is-plain,
+.outline-login-button,
+.resend-button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  height: 54px;
+  margin-bottom: 4px;
+  border: 0;
+  border-radius: 16px;
+  background: #ffffff;
+  color: #33241b;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1.5px #e6d9ca, 0 4px 0 #dfd0be;
+  transition: transform 0.08s, box-shadow 0.08s;
+}
+
+.keycap-btn.is-plain:not(:disabled):active,
+.outline-login-button:not(:disabled):active,
+.resend-button:not(:disabled):active {
+  transform: translateY(4px);
+  box-shadow: inset 0 0 0 1.5px #e6d9ca, 0 0 0 #dfd0be;
+}
+
+.outline-login-button { font-size: 16px; }
+
+/* 不能按的時候：換成看得清楚字的淺底深字，不是把整顆調淡。
+   全站 button:disabled 是 opacity 0.55——套在主色按鈕上，白字和底色的對比
+   只剩 1.5 比 1 左右，「還不能按」和「壞掉了」看起來一樣。 */
+.keycap-btn:disabled,
+.primary-login-button:disabled,
+.register-submit:disabled {
+  background: #efe6db;
+  color: #705c4e;
+  box-shadow: 0 4px 0 #dfd0be;
+  opacity: 1;
+  cursor: not-allowed;
+}
+
+.keycap-btn.is-plain:disabled,
+.outline-login-button:disabled,
+.resend-button:disabled {
+  color: #9a8778;
+  opacity: 1;
+  cursor: not-allowed;
+}
+
+/* 送出中的轉圈：按鈕這時候是淺底，白色的圈看不到 */
+.primary-login-button:disabled .btn-spinner,
+.register-submit:disabled .btn-spinner {
+  border-color: rgba(112, 92, 78, 0.3);
+  border-top-color: #705c4e;
+}
+
+.keycap-arrow {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  width: 26px;
+  height: 26px;
+  margin-top: -13px;
+  border-radius: 50%;
+  background: #ffffff;
+  transition: transform 0.15s;
+}
+
+.keycap-arrow::after {
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 8px;
+  width: 8px;
+  height: 8px;
+  border: solid #c9502f;
+  border-width: 2.5px 2.5px 0 0;
+  transform: rotate(45deg);
+}
+
+.keycap-btn:active .keycap-arrow { transform: translateX(3px); }
+
+/* ── 版面 ── */
+.welcome-v2 {
+  justify-self: stretch;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 380px;
+  margin: 0 auto;
+  padding: 0 6px;
+  text-align: left;
+}
+
+/* 產品名稱（BrandLockup）：標誌 + 「同頻」粗體 + 「Today」主色。
+   以前這裡是一行 15px 的字，跟頁面上其他說明文字一樣大——產品名稱看起來像註解。 */
+.wm {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 30px;
+  color: #3e1d0a;
+  line-height: 1;
+}
+
+.wm-mark {
+  flex: none;
+  width: 40px;
+  height: 23px;
+}
+
+.wm-name {
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+/* 中文字自帶右側的字距（上面那個 letter-spacing），所以往回收一點，
+   「同頻」和「Today」才像同一個名字，不是兩個詞 */
+.wm-today {
+  margin-left: -5px;
+  font-size: 21px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: #c9502f;
+}
+
+/* 標題自己斷行（今天，／也找個懂你的人）。交給瀏覽器斷的話，窄一點的手機會把
+   最後一個「人」字單獨掉到第三行。 */
+.login-content .welcome-title {
+  margin: 30px 0 0;
+  font-size: 30px;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+}
+
+.welcome-sub.login-subtitle {
+  margin: 10px 0 40px;
+  font-size: 16px;
+  letter-spacing: 0.02em;
+}
+
+.welcome-have {
+  height: 48px;
+  margin-top: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #3e1d0a;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.welcome-have u,
+.auth-options-foot u {
+  text-decoration-color: #c9502f;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+
+.welcome-v2 .welcome-version {
+  margin-top: 10px;
+  text-align: center;
+}
+
+/* 登入選單：一顆主色（用 Email 建立帳號），兩個社群登入長得一樣 */
+.auth-options-sheet .keycap-btn { margin-bottom: 4px; }
+
+.auth-options-or {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #9a7c66;
+  font-size: 12px;
+}
+
+.auth-options-or::before,
+.auth-options-or::after {
+  content: "";
+  flex: 1;
+  height: 1.5px;
+  background: #ecdfd0;
+}
+
+.auth-options-foot button { font-weight: 500; color: #3e1d0a; }
+
+/* ── 兩顆圓 → 一顆愛心（SyncHero）──
+   --d 是一顆圓的直徑，其他尺寸全部照它算。
+   愛心的幾何：兩顆圓的圓心各往中間靠到 ±0.3536d（= d / 2√2），
+   底下一個邊長 d、轉 45 度的方塊，中心在圓心下方 0.3536d。 */
+.sync-hero {
+  --d: 84px;
+  --sync-me: #c9502f;
+  --sync-you: #3f7d5e;
+  position: relative;
+  width: calc(var(--d) * 2.6);
+  height: calc(var(--d) * 1.7);
+  margin: 0 auto;
+  transform-origin: 50% 62%;
+}
+
+/* 選單升起來的時候背景會變暗，愛心留在亮的那一層 */
+.sync-hero.is-merged { z-index: 75; }
+
+.sync-dot,
+.sync-diamond {
+  position: absolute;
+  left: calc(50% - var(--d) / 2);
+  width: var(--d);
+  height: var(--d);
+}
+
+.sync-dot {
+  top: calc(var(--d) * 0.05);
+  transition: transform 0.3s ease-out;
+}
+
+.sync-dot-me { transform: translateX(calc(var(--d) * -0.74)); }
+.sync-dot-you { transform: translateX(calc(var(--d) * 0.74)); }
+
+.sync-bob {
+  display: block;
+  width: 100%;
+  height: 100%;
+  animation: sync-bob 3s ease-in-out infinite;
+}
+
+.sync-dot-you .sync-bob { animation-delay: -1.5s; }
+
+@keyframes sync-bob {
+  0%, 100% { transform: translateY(-4px); }
+  50% { transform: translateY(4px); }
+}
+
+.sync-ball {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--sync-me);
+}
+
+.sync-dot-you .sync-ball { background: var(--sync-you); }
+
+/* 綠的那顆變成珊瑚色：疊一層同色的圓淡入，不直接改底色（改底色要重畫） */
+.sync-dot-you .sync-ball::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--sync-me);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+/* 眼睛：兩顆互相看著 */
+.sync-ball i {
+  position: absolute;
+  top: 36%;
+  width: 11%;
+  height: 15%;
+  border-radius: 50%;
+  background: #33241b;
+  transition: opacity 0.15s;
+}
+
+.sync-dot-me .sync-ball i { left: 54%; }
+.sync-dot-me .sync-ball i + i { left: 74%; }
+.sync-dot-you .sync-ball i { left: 15%; }
+.sync-dot-you .sync-ball i + i { left: 35%; }
+
+/* 菱形蓋在兩顆圓上面：綠的那顆淡成珊瑚色時邊緣會留一圈雜色，蓋住就看不到接縫 */
+.sync-diamond {
+  z-index: 1;
+  top: calc(var(--d) * 0.4036);
+  background: var(--sync-me);
+  transform: rotate(45deg) scale(0);
+  transition: transform 0.12s;
+}
+
+.sync-hero.is-merged .sync-dot { transition: transform 0.55s cubic-bezier(0.5, 0, 0.2, 1.3); }
+.sync-hero.is-merged .sync-dot-me { transform: translateX(calc(var(--d) * -0.3536)); }
+.sync-hero.is-merged .sync-dot-you { transform: translateX(calc(var(--d) * 0.3536)); }
+.sync-hero.is-merged .sync-dot-you .sync-ball::after { opacity: 1; transition: opacity 0.25s 0.22s; }
+.sync-hero.is-merged .sync-ball i { opacity: 0; }
+.sync-hero.is-merged .sync-diamond { transform: rotate(45deg) scale(1); transition: transform 0.25s ease-out 0.3s; }
+.sync-hero.is-merged { animation: sync-beat 0.45s 0.62s; }
+
+@keyframes sync-beat {
+  40% { transform: scale(1.12); }
+}
+
+.sync-spark {
+  position: absolute;
+  z-index: 2;
+  left: calc(50% - 4px);
+  top: calc(var(--d) * 0.78 - 4px);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f2b84b;
+  opacity: 0;
+}
+
+.sync-spark:nth-of-type(2n) { background: var(--sync-you); }
+.sync-hero.is-merged .sync-spark { animation: sync-spark 0.6s 0.62s ease-out; }
+
+@keyframes sync-spark {
+  0%   { opacity: 1; transform: rotate(var(--deg)) translateY(calc(var(--d) * -0.7)) scale(0.4); }
+  100% { opacity: 0; transform: rotate(var(--deg)) translateY(calc(var(--d) * -1.3)) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sync-hero,
+  .sync-hero *,
+  .keycap-btn,
+  .keycap-arrow {
+    animation: none !important;
+    transition: none !important;
+  }
+}

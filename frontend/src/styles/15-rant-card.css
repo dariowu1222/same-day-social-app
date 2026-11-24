@@ -1,0 +1,522 @@
+/* ── 樹洞卡片與回應列（2026-11 改版） ──
+   對應 RantPostCard / ReplyItem / HeartButton，詳情頁的主貼文也用同一套。
+   舊的 .thread-* 那一套已經整組拿掉。
+
+   顏色全部走這一組變數，日夜各給一份。這個功能區以前的顏色是直接寫死在每條
+   規則裡的，夜間主題再一條一條蓋回去——漏一條就是白底黑字的一塊補丁。 */
+.rant-page,
+.detail-page {
+  --rc-card: #ffffff;
+  --rc-ink: #4a3f35;
+  --rc-muted: #8a7a6a;
+  --rc-strong-muted: #6b5445;
+  --rc-soft: #f6efe6;
+  --rc-soft-2: #f1e8dc;
+  --rc-bubble: #fbf6ef;
+  --rc-accent: #c9502f;
+  --rc-accent-edge: #983a1e;
+  --rc-accent-soft: #fce3d8;
+  --rc-accent-ink: #a8401f;
+  --rc-spark: #f2b84b;
+  --rc-strong: #33241b;
+  --rc-on-strong: #ffffff;
+  --rc-tone-a-bg: #fbe3d8;
+  --rc-tone-a-fg: #a8401f;
+  --rc-tone-b-bg: #e3f1e9;
+  --rc-tone-b-fg: #2a5c44;
+  --rc-tone-c-bg: #fbebc8;
+  --rc-tone-c-fg: #7a5510;
+}
+
+[data-theme="dark"] .rant-page,
+[data-theme="dark"] .detail-page {
+  --rc-card: var(--theme-card-bg, #16241f);
+  --rc-ink: #d4ede8;
+  --rc-muted: rgba(168, 212, 204, 0.62);
+  --rc-strong-muted: rgba(212, 237, 232, 0.82);
+  --rc-soft: rgba(255, 255, 255, 0.08);
+  --rc-soft-2: rgba(255, 255, 255, 0.11);
+  --rc-bubble: rgba(255, 255, 255, 0.05);
+  --rc-accent: #e0704c;
+  --rc-accent-edge: #9c4426;
+  --rc-accent-soft: rgba(224, 112, 76, 0.22);
+  --rc-accent-ink: #f0a184;
+  --rc-spark: #e9cf8a;
+  --rc-strong: #d4ede8;
+  --rc-on-strong: #0f1916;
+  --rc-tone-a-bg: rgba(224, 112, 76, 0.26);
+  --rc-tone-a-fg: #f0a184;
+  --rc-tone-b-bg: rgba(120, 200, 170, 0.22);
+  --rc-tone-b-fg: #9fdcc4;
+  --rc-tone-c-bg: rgba(230, 190, 90, 0.22);
+  --rc-tone-c-fg: #e9cf8a;
+}
+
+/* 頭像的三種色調（見 rantAvatar.ts） */
+.tone-a { background: var(--rc-tone-a-bg); color: var(--rc-tone-a-fg); }
+.tone-b { background: var(--rc-tone-b-bg); color: var(--rc-tone-b-fg); }
+.tone-c { background: var(--rc-tone-c-bg); color: var(--rc-tone-c-fg); }
+
+/* ── 卡片 ── */
+.rant-page .card.rc {
+  display: block;
+  padding: 14px 14px 12px;
+}
+
+.rc-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.rc-avatar {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.rc-who {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+  cursor: pointer;
+}
+
+.rc-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--rc-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rc-time {
+  font-size: 11px;
+  color: var(--rc-muted);
+}
+
+.rc-mode { flex: none; }
+
+/* 詳情頁的主貼文用同一組標題列，但頭像和名字不是連結 */
+.rc-static { cursor: default; }
+
+.rc-body { cursor: pointer; }
+
+.rant-page .rc .post-content {
+  margin: 0 0 8px;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* ── 動作列：愛心、回應 ──
+   38px 高。以前是 16px 的圖示加一個數字，沒有底，手機上要瞄準才按得到。 */
+.rc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.rc-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 14px 0 11px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--rc-soft);
+  color: var(--rc-strong-muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.1s, background 0.2s, color 0.2s;
+}
+
+.rc-pill:active { transform: scale(0.94); }
+
+.rc-pill.heart-btn.is-on {
+  background: var(--rc-accent-soft);
+  color: var(--rc-accent-ink);
+}
+
+/* 開著的時候變深色、箭頭翻上去：再按一次會收起 */
+.rc.is-open .rc-reply-toggle {
+  background: var(--rc-strong);
+  color: var(--rc-on-strong);
+}
+
+.rc-chev { transition: transform 0.25s; }
+.rc.is-open .rc-chev { transform: rotate(180deg); }
+
+/* ── 收起時的那一列：疊頭像 + 查看 N 則回應 ──
+   整列都能點，40px 高。 */
+.rc-faces {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 40px;
+  margin-top: 6px;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--rc-strong-muted);
+  text-align: left;
+  cursor: pointer;
+}
+
+.rc-faces-stack { display: flex; }
+
+.rc-face {
+  width: 26px;
+  height: 26px;
+  margin-left: -8px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--rc-card);
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rc-face:first-child { margin-left: 0; }
+
+/* ── 回應區的開合 ──
+   用 grid-template-rows 從 0fr 長到 1fr，而不是 max-height：max-height 要先猜
+   一個數字，猜小了內容被切掉，猜大了動畫前半段在跑一段不存在的高度，看起來
+   就是「先頓一下才動」。0fr→1fr 的終點就是內容的實際高度，多高都對。
+   （這一招原本用在留言框上，見 05-rant.css 的 .reply-reveal。）
+
+   展開會逐格重算版面，所以只在點的那一下發生、時間壓在 0.3 秒內。 */
+.rc-thread {
+  display: grid;
+  grid-template-rows: 1fr;
+  animation: rc-open 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* 長度要跟 RantPostCard 的 CLOSE_MS 一致 */
+.rc-thread.is-closing {
+  animation: rc-close 180ms ease-in forwards;
+}
+
+/* min-width: 0 不能少。grid item 的 min-width 預設是 auto，會被裡面那排快捷句的
+   寬度頂開——整個回應區變得比卡片寬，送出鈕被推到卡片外面。
+   overflow 寫兩次不是手殘：clip 不產生可捲動的容器（hidden 會，而輸入框聚焦時
+   瀏覽器會去捲它，捲過去就回不來），前面那行 hidden 是給不支援 clip 的瀏覽器墊底。 */
+.rc-thread-inner {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  overflow: clip;
+}
+
+@keyframes rc-open {
+  from { grid-template-rows: 0fr; opacity: 0.4; }
+  to   { grid-template-rows: 1fr; opacity: 1; }
+}
+
+@keyframes rc-close {
+  from { grid-template-rows: 1fr; opacity: 1; }
+  to   { grid-template-rows: 0fr; opacity: 0; }
+}
+
+.rc-replies { padding-top: 14px; }
+
+.rc-more,
+.rr-more {
+  height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 18px;
+  background: var(--rc-soft-2);
+  color: var(--rc-strong-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* 34px = 回應頭像 26px + 間距 8px，跟回應的文字對齊 */
+.rc-more { margin: 0 0 12px 34px; }
+
+/* ── 回應列 ── */
+.rr {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+/* 展開時一則接一則滑出來。只動 transform 和 opacity。
+   --enter 是順序（0 起算），由 ReplyItem 給，最多錯開到第六則。 */
+.rr-enter {
+  animation: rr-in 350ms cubic-bezier(0.3, 1.4, 0.5, 1) both;
+  animation-delay: calc(var(--enter, 0) * 70ms + 60ms);
+}
+
+@keyframes rr-in {
+  from { opacity: 0; transform: translateY(-10px); }
+}
+
+.rr-avatar {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rr-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.rr-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.rr-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--rc-ink);
+  overflow-wrap: anywhere;
+}
+
+.rr-time {
+  flex: none;
+  font-size: 11px;
+  color: var(--rc-muted);
+}
+
+.rr-text {
+  margin: 2px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--rc-ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* 回應底下那排小字：愛心、回應、收回／檢舉。每顆 32px 高，字小但按得到。 */
+.rr-acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 2px 0 0 -8px;
+  min-height: 32px;
+}
+
+.rr-act {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 16px;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--rc-muted);
+  cursor: pointer;
+}
+
+.rr-act:active { background: var(--rc-soft); }
+.rr-act:disabled { opacity: 0.5; cursor: default; }
+
+.rr-like.is-on { color: var(--rc-accent-ink); }
+
+.rr-takeback {
+  color: var(--rc-accent-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.rr-confirm {
+  display: inline-flex;
+  align-items: center;
+  padding-left: 8px;
+  font-size: 12px;
+  color: var(--rc-muted);
+}
+
+.rr-note {
+  padding: 0 8px;
+  font-size: 12px;
+  color: var(--rc-accent-ink);
+}
+
+/* 回應裡的回應：縮排在那一則底下，淡底色框起來。 */
+.rr-subs {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.rr-sub {
+  margin: 0;
+  padding: 8px 10px 2px;
+  border-radius: 14px;
+  background: var(--rc-bubble);
+}
+
+.rr-more { align-self: flex-start; }
+
+.rr .quote-box { margin: 4px 0 2px; }
+
+/* ── 愛心（貼文與回應共用，見 HeartButton）── */
+.heart-btn-icon {
+  position: relative;
+  display: inline-flex;
+}
+
+.heart-btn.is-on .heart-btn-icon svg { color: var(--rc-accent); }
+
+.heart-btn-icon.is-pop { animation: heart-pop 450ms cubic-bezier(0.3, 1.9, 0.5, 1); }
+.heart-btn-icon.is-nudge { animation: heart-nudge 300ms ease; }
+
+@keyframes heart-pop {
+  from { transform: scale(0.3); }
+}
+
+@keyframes heart-nudge {
+  30% { transform: scale(0.85); }
+  60% { transform: scale(1.1); }
+}
+
+.heart-btn-icon i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: var(--rc-accent);
+  opacity: 0;
+  pointer-events: none;
+  animation: heart-spark 500ms ease-out;
+}
+
+.heart-btn-icon i:nth-of-type(2n) { background: var(--rc-spark); }
+
+@keyframes heart-spark {
+  0%   { opacity: 1; transform: rotate(var(--deg)) translateY(-9px) scale(0.5); }
+  100% { opacity: 0; transform: rotate(var(--deg)) translateY(-24px) scale(1); }
+}
+
+/* ── 留言框（接在回覆列表後面）── */
+.rc-compose {
+  margin-top: 2px;
+  padding-bottom: 4px;
+}
+
+/* 沒有任何回應的貼文，留言框上面那條分隔線是多的 */
+.rc-thread-inner > .rc-compose:first-child {
+  border-top: 0;
+  margin-top: 10px;
+}
+
+/* 詳情頁的留言框是另一組版面（.detail-thread-compose），送出鈕是同一顆，一起換 */
+.rant-page .rc-compose .reply-send-btn,
+.detail-page .reply-send-btn {
+  background: var(--rc-accent);
+  box-shadow: 0 3px 0 var(--rc-accent-edge);
+  transition: transform 0.08s, box-shadow 0.08s;
+}
+
+.rant-page .rc-compose .reply-send-btn:not(:disabled):active,
+.detail-page .reply-send-btn:not(:disabled):active {
+  transform: translateY(3px);
+  box-shadow: 0 0 0 var(--rc-accent-edge);
+}
+
+/* 聚焦框跟著這張卡片的主色走（原本是青綠色，跟旁邊珊瑚色的送出鈕對不上）。
+   夜間那條要寫得跟 08-rant-detail.css 的一樣具體，不然蓋不過去。 */
+.rant-page .rc-compose .reply-field:focus-visible,
+[data-theme="dark"] .rant-page .rc-compose .reply-field:focus-visible {
+  border-color: var(--rc-accent);
+  box-shadow: inset 0 0 0 1.5px var(--rc-accent);
+}
+
+/* 那顆 3px 的厚度畫在按鈕外面，上層 overflow: clip 會把它切掉 */
+.rc-compose .reply-form-bar { padding-bottom: 4px; }
+
+.rc-send-error {
+  margin: 4px 2px 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--theme-report, #b3402a);
+}
+
+/* ── 發文鈕 ──
+   顏色跟送出鈕、愛心同一個珊瑚；底下那道實心的邊是「這顆按得下去」。
+   is-away：畫面上有留言框的時候先讓開（什麼時候讓，見 RantBoardPage）。 */
+.rant-page .rant-fab,
+[data-theme="dark"] .rant-page .rant-fab {
+  background: var(--rc-accent);
+  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.3), 0 4px 0 var(--rc-accent-edge);
+  transition: transform 0.15s, box-shadow 0.08s, opacity 0.15s;
+}
+
+.rant-page .rant-fab:hover,
+[data-theme="dark"] .rant-page .rant-fab:hover {
+  background: var(--rc-accent);
+  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.3), 0 4px 0 var(--rc-accent-edge);
+}
+
+.rant-page .rant-fab:active {
+  transform: translateY(4px);
+  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.3), 0 0 0 var(--rc-accent-edge);
+}
+
+.rant-page .rant-fab.is-away {
+  transform: scale(0);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 要求減少動態：開合、進場、愛心都直接到位 */
+@media (prefers-reduced-motion: reduce) {
+  .rc-thread,
+  .rc-thread.is-closing,
+  .rr-enter,
+  .heart-btn-icon.is-pop,
+  .heart-btn-icon.is-nudge {
+    animation: none;
+  }
+  .heart-btn-icon i { display: none; }
+  .rc-pill,
+  .rc-chev,
+  .rant-page .rant-fab {
+    transition: none;
+  }
+}

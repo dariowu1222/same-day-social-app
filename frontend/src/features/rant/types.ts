@@ -2,6 +2,8 @@ export type RantReply = {
   id: string
   /** 這則是不是我回的。未登入時一律 false。 */
   isMine: boolean
+  /** 我按過這則的愛心了沒。舊版後端不會送，當成沒按過。 */
+  isLiked?: boolean
   nickname: string
   content: string
   imageUrl?: string | null
@@ -9,6 +11,8 @@ export type RantReply = {
   audioUrl?: string | null
   likeCount: number
   parentReplyId?: string | null
+  /** 後端一直都有送，前端以前沒拿來用。 */
+  createdAt?: string
   replies?: RantReply[]
 }
 
@@ -22,6 +26,8 @@ export type RantPost = {
    * 查出這個人是誰。前端要的其實只有「要不要顯示刪除選單」。
    */
   isMine: boolean
+  /** 我按過這篇的愛心了沒。舊版後端不會送，當成沒按過。 */
+  isLiked?: boolean
   nickname: string
   content: string
   mode: string
