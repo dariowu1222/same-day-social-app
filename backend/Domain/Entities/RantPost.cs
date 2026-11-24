@@ -24,6 +24,9 @@ public sealed class RantPost
     /// <summary>這篇是不是呼叫者自己發的。未登入時一律 false。</summary>
     public bool IsMine { get; set; }
 
+    /// <summary>呼叫者按過這篇的愛心了沒。未登入時一律 false。只說「我」，不說「誰」。</summary>
+    public bool IsLiked { get; set; }
+
     public string Nickname { get; set; } = "";
     public string Content { get; set; } = "";
     public RantMode Mode { get; set; } = RantMode.JUST_SAYING;
@@ -63,6 +66,9 @@ public sealed class RantReply
 
     /// <summary>這則是不是呼叫者自己回的。未登入時一律 false。</summary>
     public bool IsMine { get; set; }
+
+    /// <summary>呼叫者按過這則的愛心了沒。未登入時一律 false。</summary>
+    public bool IsLiked { get; set; }
 
     public string Nickname { get; set; } = "";
     public string Content { get; set; } = "";
