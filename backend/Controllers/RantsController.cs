@@ -23,7 +23,7 @@ public sealed class RantsController(RantService rantService, MediaUrlPolicy medi
     public ActionResult<ApiResponse<List<RantPost>>> Get([FromQuery] string? cursor, [FromQuery] int limit = 20)
     {
         DateTimeOffset? c = DateTimeOffset.TryParse(cursor, out var parsed) ? parsed : null;
-        return ApiResponse<List<RantPost>>.Ok([.. rantService.GetPublicPosts(c, limit).Select(Mine)]);
+        return ApiResponse<List<RantPost>>.Ok(Mine(rantService.GetPublicPosts(c, limit)));
     }
 
     [HttpGet("{rantId}")]
@@ -81,6 +81,24 @@ public sealed class RantsController(RantService rantService, MediaUrlPolicy medi
             : ApiResponse<RantPost>.Ok(Mine(post));
     }
 
+    /// <summary>
+    /// 收回按在這篇上的愛心。跟 POST 那支成對：POST 是按、DELETE 是收，兩支都冪等。
+    /// 不做成「同一支 POST 來回切換」：已經上架的 App 只會送 POST，它以為那是「按」，
+    /// 切換的話舊版連點兩下就會把自己的愛心收掉。
+    /// </summary>
+    [Authorize]
+    [EnableRateLimiting("write")]
+    [HttpDelete("{rantId}/understand")]
+    public ActionResult<ApiResponse<RantPost>> Unlike(string rantId)
+    {
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                     ?? User.FindFirst("sub")?.Value!;
+        var post = rantService.Unlike(rantId, userId);
+        return post == null
+            ? NotFound(ApiResponse<RantPost>.Fail("RANT_NOT_FOUND", "找不到這篇樹洞文章"))
+            : ApiResponse<RantPost>.Ok(Mine(post));
+    }
+
     [Authorize]
     [EnableRateLimiting("write")]
     [HttpPost("{rantId}/replies")]
@@ -118,6 +136,28 @@ public sealed class RantsController(RantService rantService, MediaUrlPolicy medi
             : NotFound(ApiResponse<bool>.Fail("RANT_NOT_FOUND", "找不到貼文，或你沒有權限刪除"));
     }
 
+    /// <summary>
+    /// 收回自己的一則回應。回傳更新後的整篇，前端就地換掉，不必重抓列表。
+    /// 規則（只有自己的、底下還沒有人接話的才能收）寫在 RantService.DeleteReply。
+    /// </summary>
+    [Authorize]
+    [EnableRateLimiting("write")]
+    [HttpDelete("{rantId}/replies/{replyId}")]
+    public ActionResult<ApiResponse<RantPost>> DeleteReply(string rantId, string replyId)
+    {
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                     ?? User.FindFirst("sub")?.Value!;
+        var (post, error) = rantService.DeleteReply(rantId, replyId, userId);
+        if (error == RantService.ReplyHasChildren)
+        {
+            return Conflict(ApiResponse<RantPost>.Fail(error, "已經有人回應這一則了，沒辦法收回"));
+        }
+
+        return post == null
+            ? NotFound(ApiResponse<RantPost>.Fail(RantService.ReplyNotFound, "找不到這則回應，或不是你發的"))
+            : ApiResponse<RantPost>.Ok(Mine(post));
+    }
+
     [Authorize]
     [EnableRateLimiting("write")]
     [HttpPost("{rantId}/replies/{replyId}/understand")]
@@ -126,6 +166,20 @@ public sealed class RantsController(RantService rantService, MediaUrlPolicy medi
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
                      ?? User.FindFirst("sub")?.Value!;
         var post = rantService.LikeReply(rantId, replyId, userId);
+        return post == null
+            ? NotFound(ApiResponse<RantPost>.Fail("REPLY_NOT_FOUND", "找不到這則回應"))
+            : ApiResponse<RantPost>.Ok(Mine(post));
+    }
+
+    /// <summary>收回按在某一則回應上的愛心。</summary>
+    [Authorize]
+    [EnableRateLimiting("write")]
+    [HttpDelete("{rantId}/replies/{replyId}/understand")]
+    public ActionResult<ApiResponse<RantPost>> UnlikeReply(string rantId, string replyId)
+    {
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                     ?? User.FindFirst("sub")?.Value!;
+        var post = rantService.UnlikeReply(rantId, replyId, userId);
         return post == null
             ? NotFound(ApiResponse<RantPost>.Fail("REPLY_NOT_FOUND", "找不到這則回應"))
             : ApiResponse<RantPost>.Ok(Mine(post));
@@ -156,16 +210,30 @@ public sealed class RantsController(RantService rantService, MediaUrlPolicy medi
     /// </summary>
     private RantPost Mine(RantPost post)
     {
+        Mine([post]);
+        return post;
+    }
+
+    /// <summary>
+    /// 一整批一起標。除了「是不是我發的」，也標「我按過愛心了沒」——後者要查表，
+    /// 一批貼文只查一趟，所以列表走這個多載，不要一篇一篇呼叫。
+    /// </summary>
+    private List<RantPost> Mine(List<RantPost> posts)
+    {
         var callerId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
                        ?? User.FindFirst("sub")?.Value;
         if (string.IsNullOrEmpty(callerId))
         {
-            return post;
+            return posts;
         }
 
-        post.IsMine = post.UserId == callerId;
-        MarkReplies(post.Replies);
-        return post;
+        foreach (var post in posts)
+        {
+            post.IsMine = post.UserId == callerId;
+            MarkReplies(post.Replies);
+        }
+        rantService.MarkLiked(posts, callerId);
+        return posts;
 
         void MarkReplies(List<RantReply> replies)
         {

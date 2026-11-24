@@ -91,6 +91,7 @@ public sealed class RantService
                     Post = x,
                     LikeCount = db.RantReactions.Count(reaction =>
                         reaction.RantPostId == x.Id &&
+                        reaction.RantReplyId == null &&
                         reaction.ReactionType == "UNDERSTAND")
                 })
                 .ToList();
@@ -141,7 +142,7 @@ public sealed class RantService
             var active = ActiveNamesAmong(replies.Select(x => x.UserId).Append(post.UserId));
             if (!active.ContainsKey(post.UserId)) return null;
             var likeCount = db.RantReactions.AsNoTracking()
-                .Count(x => x.RantPostId == rantId && x.ReactionType == "UNDERSTAND");
+                .Count(x => x.RantPostId == rantId && x.RantReplyId == null && x.ReactionType == "UNDERSTAND");
             return WithCurrentNames(
                 post.ToDomain(replies.Where(x => active.ContainsKey(x.UserId)), likeCount), active);
         }
@@ -177,8 +178,13 @@ public sealed class RantService
             }
 
             var reactionUserId = userId.Trim();
+            // rant_reply_id is null 這個條件以前不在。回覆的愛心也記在這張表、也帶著
+            // rant_post_id，所以「這個人在這篇底下按過任何一則回覆」就會被當成
+            // 「已經按過這篇」——貼文的愛心再也按不上去。下面三處算貼文愛心數的地方
+            // 是同一個漏洞的另一面：回覆的愛心全被加進貼文的數字裡。
             var existingReaction = db.RantReactions.Any(x =>
                 x.RantPostId == rantId &&
+                x.RantReplyId == null &&
                 x.UserId == reactionUserId &&
                 x.ReactionType == "UNDERSTAND");
             if (!existingReaction)
@@ -196,6 +202,41 @@ public sealed class RantService
         }
 
         return WithCurrentNames(storage.UpdateOne<RantPost>("rantPosts", rantId, post => post.LikeCount += 1));
+    }
+
+    /// <summary>
+    /// 把自己按在這篇上的愛心收回去。
+    ///
+    /// 沒按過就什麼都不做、照樣回傳貼文——跟 Understand 一樣是冪等的，連按兩下、
+    /// 或畫面是舊的，都不該變成錯誤。只動貼文層級的那一列（rant_reply_id is null），
+    /// 不會把同一個人按在底下回覆上的愛心一起拿掉。
+    /// </summary>
+    public RantPost? Unlike(string rantId, string userId)
+    {
+        if (string.IsNullOrWhiteSpace(userId)) return null;
+        if (!PostIsVisible(rantId)) return null;
+
+        if (db != null)
+        {
+            var reactionUserId = userId.Trim();
+            var mine = db.RantReactions
+                .Where(x =>
+                    x.RantPostId == rantId &&
+                    x.RantReplyId == null &&
+                    x.UserId == reactionUserId &&
+                    x.ReactionType == "UNDERSTAND")
+                .ToList();
+            if (mine.Count > 0)
+            {
+                db.RantReactions.RemoveRange(mine);
+                db.SaveChanges();
+            }
+            return BuildPost(rantId);
+        }
+
+        // JSON 模式不記「誰按的」，只有一個數字，所以只能往回扣一，而且不能扣成負的
+        return WithCurrentNames(storage.UpdateOne<RantPost>("rantPosts", rantId,
+            post => post.LikeCount = Math.Max(0, post.LikeCount - 1)));
     }
 
     public RantPost? Reply(string rantId, string userId, string content, string? imageUrl = null, string? audioUrl = null, string? parentReplyId = null, string? thumbUrl = null)
@@ -307,6 +348,154 @@ public sealed class RantService
             }
             IncrementReply(post.Replies);
         }));
+    }
+
+    /// <summary>
+    /// 把自己按在某一則回覆上的愛心收回去。
+    ///
+    /// 回覆的愛心數存在 rant_replies.like_count 這個計數欄位（理由見 LikeReply），
+    /// 所以刪掉反應列的同時要把數字扣回來，而且只有「真的刪到一列」才扣——
+    /// 沒按過的人戳這支不能把別人按的愛心扣掉。兩件事放在同一次 SaveChanges。
+    /// </summary>
+    public RantPost? UnlikeReply(string rantId, string replyId, string userId)
+    {
+        if (string.IsNullOrWhiteSpace(userId)) return null;
+        if (!PostIsVisible(rantId)) return null;
+
+        if (db != null)
+        {
+            var reply = db.RantReplies.FirstOrDefault(x => x.Id == replyId && x.RantPostId == rantId);
+            if (reply == null) return null;
+
+            var reactionUserId = userId.Trim();
+            var mine = db.RantReactions
+                .Where(x =>
+                    x.RantReplyId == replyId &&
+                    x.UserId == reactionUserId &&
+                    x.ReactionType == "UNDERSTAND")
+                .ToList();
+            if (mine.Count > 0)
+            {
+                db.RantReactions.RemoveRange(mine);
+                reply.LikeCount = Math.Max(0, reply.LikeCount - 1);
+                db.SaveChanges();
+            }
+
+            return BuildPost(rantId);
+        }
+
+        return WithCurrentNames(storage.UpdateOne<RantPost>("rantPosts", rantId, post =>
+        {
+            void DecrementReply(List<RantReply> list)
+            {
+                var target = list.FirstOrDefault(x => x.Id == replyId);
+                if (target != null) { target.LikeCount = Math.Max(0, target.LikeCount - 1); return; }
+                foreach (var r in list) DecrementReply(r.Replies);
+            }
+            DecrementReply(post.Replies);
+        }));
+    }
+
+    /// <summary>
+    /// 標上「這篇／這則我按過愛心了沒」。
+    ///
+    /// 以前沒有這個欄位，所以前端的愛心永遠是空心的：按了數字會動，但離開再回來
+    /// 看不出自己按過沒有，再按一次也沒有任何反應。這裡一次把這一批貼文裡
+    /// 呼叫者按過的列撈回來（一趟查詢），貼文層級與回覆層級用 rant_reply_id
+    /// 是否為 null 分開。
+    ///
+    /// 只回「我自己按過沒有」，不回「誰按過」——那會把匿名牆上的人對回帳號。
+    /// </summary>
+    public void MarkLiked(IReadOnlyCollection<RantPost> posts, string userId)
+    {
+        if (db == null || posts.Count == 0 || string.IsNullOrWhiteSpace(userId)) return;
+
+        var postIds = posts.Select(x => x.Id).ToList();
+        var mine = db.RantReactions.AsNoTracking()
+            .Where(x => x.UserId == userId && x.ReactionType == "UNDERSTAND" && postIds.Contains(x.RantPostId))
+            .Select(x => new { x.RantPostId, x.RantReplyId })
+            .ToList();
+        if (mine.Count == 0) return;
+
+        var likedPosts = mine.Where(x => x.RantReplyId == null).Select(x => x.RantPostId).ToHashSet();
+        var likedReplies = mine.Where(x => x.RantReplyId != null).Select(x => x.RantReplyId!).ToHashSet();
+        foreach (var post in posts)
+        {
+            post.IsLiked = likedPosts.Contains(post.Id);
+            Mark(post.Replies);
+        }
+
+        void Mark(List<RantReply> replies)
+        {
+            foreach (var reply in replies)
+            {
+                reply.IsLiked = likedReplies.Contains(reply.Id);
+                Mark(reply.Replies);
+            }
+        }
+    }
+
+    public const string ReplyNotFound = "REPLY_NOT_FOUND";
+    public const string ReplyHasChildren = "REPLY_HAS_CHILDREN";
+
+    /// <summary>
+    /// 收回自己的一則回應。
+    ///
+    /// 只能收回「還沒有人接話」的回應。底下已經有別人的回覆時不給收：連帶刪掉
+    /// 等於替別人把話也收回去；只刪這一則，底下那幾則的 parent_reply_id 會指向
+    /// 不存在的列，引用框就畫不出來。要做到「留一個已收回的佔位」得多一個欄位，
+    /// 那是之後的事——這一版要解的是「剛送出就發現送錯」。
+    ///
+    /// 這則回應身上的愛心（rant_reactions.rant_reply_id）一起刪，不然會留下指向
+    /// 不存在回應的孤兒列。兩種刪除放在同一次 SaveChanges，要嘛都成、要嘛都不動。
+    ///
+    /// 「不是你的」和「不存在」回同一個錯：分開回等於告訴呼叫者某個 replyId 存不存在。
+    /// </summary>
+    public (RantPost? Post, string? Error) DeleteReply(string rantId, string replyId, string userId)
+    {
+        if (string.IsNullOrWhiteSpace(userId)) return (null, ReplyNotFound);
+        if (!PostIsVisible(rantId)) return (null, ReplyNotFound);
+
+        if (db != null)
+        {
+            var reply = db.RantReplies.FirstOrDefault(x =>
+                x.Id == replyId && x.RantPostId == rantId && x.UserId == userId);
+            if (reply == null) return (null, ReplyNotFound);
+            if (db.RantReplies.Any(x => x.ParentReplyId == replyId)) return (null, ReplyHasChildren);
+
+            db.RantReactions.RemoveRange(db.RantReactions.Where(x => x.RantReplyId == replyId));
+            db.RantReplies.Remove(reply);
+            db.SaveChanges();
+            return (BuildPost(rantId), null);
+        }
+
+        var error = ReplyNotFound;
+        var updated = storage.UpdateOne<RantPost>("rantPosts", rantId, post =>
+        {
+            error = RemoveOwnReply(post.Replies, replyId, userId) ?? "";
+            post.ReplyCount = post.Replies.Count;
+        });
+        return error.Length == 0 ? (WithCurrentNames(updated), null) : (null, error);
+    }
+
+    /// <summary>JSON 模式的回覆是巢狀的，要往下找。成功回 null，否則回錯誤代碼。</summary>
+    private static string? RemoveOwnReply(List<RantReply> replies, string replyId, string userId)
+    {
+        var target = replies.FirstOrDefault(x => x.Id == replyId);
+        if (target != null)
+        {
+            if (target.UserId != userId) return ReplyNotFound;
+            if (target.Replies.Count > 0) return ReplyHasChildren;
+            replies.Remove(target);
+            return null;
+        }
+
+        foreach (var reply in replies)
+        {
+            var result = RemoveOwnReply(reply.Replies, replyId, userId);
+            if (result != ReplyNotFound) return result;
+        }
+        return ReplyNotFound;
     }
 
     public bool Delete(string rantId, string userId)
@@ -562,7 +751,7 @@ public sealed class RantService
         }
 
         var likeCount = db.RantReactions.AsNoTracking()
-            .Count(x => x.RantPostId == rantId && x.ReactionType == "UNDERSTAND");
+            .Count(x => x.RantPostId == rantId && x.RantReplyId == null && x.ReactionType == "UNDERSTAND");
         return WithCurrentNames(
             post.ToDomain(replies.Where(x => active.ContainsKey(x.UserId)), likeCount), active);
     }
