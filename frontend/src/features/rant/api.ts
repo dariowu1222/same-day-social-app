@@ -26,12 +26,27 @@ export async function understandRant(rantId: string) {
   return request<RantPost>(apiPath`/api/rants/${rantId}/understand`, { method: 'POST' })
 }
 
+// 收回按在貼文上的愛心。跟 understandRant 成對：一支按、一支收，兩支都可以重複呼叫。
+export async function unlikeRant(rantId: string) {
+  return request<RantPost>(apiPath`/api/rants/${rantId}/understand`, { method: 'DELETE' })
+}
+
 export async function replyRant(rantId: string, payload: { content: string; imageUrl?: string | null; thumbUrl?: string | null; audioUrl?: string | null; parentReplyId?: string | null }) {
   return request<RantPost>(apiPath`/api/rants/${rantId}/replies`, { method: 'POST', body: JSON.stringify(payload) })
 }
 
 export async function likeReply(rantId: string, replyId: string) {
   return request<RantPost>(apiPath`/api/rants/${rantId}/replies/${replyId}/understand`, { method: 'POST' })
+}
+
+export async function unlikeReply(rantId: string, replyId: string) {
+  return request<RantPost>(apiPath`/api/rants/${rantId}/replies/${replyId}/understand`, { method: 'DELETE' })
+}
+
+// 收回自己的一則回應。只有底下還沒有人接話的才收得回來，否則後端回
+// REPLY_HAS_CHILDREN（訊息已經是給人看的中文）。回傳更新後的整篇。
+export async function deleteReply(rantId: string, replyId: string) {
+  return request<RantPost>(apiPath`/api/rants/${rantId}/replies/${replyId}`, { method: 'DELETE' })
 }
 
 export async function reportRant(rantId: string) {

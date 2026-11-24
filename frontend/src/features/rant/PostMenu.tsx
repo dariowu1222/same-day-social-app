@@ -1,13 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
-import { MoreVertical, Trash2, Link } from 'lucide-react'
+import { MoreVertical, Trash2, Link, Flag } from 'lucide-react'
 
 type Props = {
   postId: string
   isOwner: boolean
   onDelete: () => void
+  /**
+   * 有給就在選單裡多一項「檢舉這則」。
+   *
+   * 檢舉原本是卡片動作列上一顆紅字按鈕，跟愛心、回應排在一起——每一張卡片都有，
+   * 整面牆於是到處是紅字，而那是一年按不到幾次的功能。收進選單之後它還在，
+   * 只是不再搶在「我懂」和「回應」前面。自己的貼文不顯示（自己檢舉自己沒有意義）。
+   */
+  onReport?: () => void
 }
 
-export default function PostMenu({ postId, isOwner, onDelete }: Props) {
+export default function PostMenu({ postId, isOwner, onDelete, onReport }: Props) {
   const [open, setOpen] = useState(false)
   const [toast, setToast] = useState('')
   const menuRef = useRef<HTMLDivElement>(null)
@@ -51,6 +59,11 @@ export default function PostMenu({ postId, isOwner, onDelete }: Props) {
           <button className="post-menu-item" onClick={copyLink}>
             <Link size={15} /> 複製連結
           </button>
+          {onReport && !isOwner && (
+            <button className="post-menu-item" onClick={() => { setOpen(false); onReport() }}>
+              <Flag size={15} /> 檢舉這則
+            </button>
+          )}
           {isOwner && (
             <button className="post-menu-item danger" onClick={handleDelete}>
               <Trash2 size={15} /> 刪除貼文

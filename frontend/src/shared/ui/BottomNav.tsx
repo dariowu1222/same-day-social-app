@@ -1,6 +1,7 @@
 import { LogOut, MessageSquare, Settings, Sun, Trees, User } from 'lucide-react'
 import { useAuth } from '../../features/auth/AuthContext'
 import { useIsDesktop } from '../hooks/useIsDesktop'
+import BrandMark from './BrandMark'
 
 export type PageKey = 'today' | 'rant' | 'chat' | 'profile' | 'settings'
 
@@ -30,8 +31,8 @@ export default function BottomNav({ activePage, onChange, chatUnread = 0 }: Prop
     <nav className="bottom-nav" aria-label="主要導覽">
       {isDesktop && (
         <div className="nav-brand">
-          <span className="nav-brand-mark" aria-hidden="true">同</span>
-          <span className="nav-brand-text">同頻 Today</span>
+          <span className="nav-brand-mark" aria-hidden="true"><BrandMark /></span>
+          <span className="nav-brand-text">同頻 <span className="nav-brand-today">Today</span></span>
         </div>
       )}
 

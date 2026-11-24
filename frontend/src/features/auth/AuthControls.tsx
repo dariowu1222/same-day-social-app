@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { CalendarDays, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, UserRound } from 'lucide-react'
 import { getLegalContent, type LegalDoc } from './legalDocuments'
+import BrandMark from '../../shared/ui/BrandMark'
 
 // 登入 / 註冊 / 忘記密碼三個畫面共用的展示元件，與 LoginPage 的狀態邏輯分離。
 
@@ -25,29 +26,45 @@ export function AuthFrame({ children, variant, onBack, center = false }: { child
         </button>
       )}
       <section className={`login-content${center ? ' login-content--center' : ''}`}>
-        {variant === 'warm' && (
-          <>
-            <div className="login-decoration chat-left">♡</div>
-            <div className="login-decoration chat-right">•••</div>
-            <div className="login-decoration sparkle-one">✦</div>
-            <div className="login-decoration sparkle-two">✦</div>
-          </>
-        )}
         {children}
       </section>
     </main>
   )
 }
 
+/**
+ * 產品名稱的標準寫法：圖標 + 「同頻」+「Today」，橫排。用在歡迎頁左上角。
+ *
+ * 字不另外載字型：「同頻」用最粗的字重、「Today」用一般字重加主色，
+ * 靠粗細和顏色的對比分出主從，換到哪支手機的系統字都成立。
+ */
+export function BrandLockup() {
+  return (
+    <p className="wm">
+      <BrandMark className="wm-mark" />
+      <span className="wm-name">同頻</span>
+      <span className="wm-today">Today</span>
+    </p>
+  )
+}
+
+/**
+ * 登入、註冊、忘記密碼、條款確認頁上方那一塊：圖標放在圓角方塊裡，名稱在下面。
+ *
+ * 以前方塊裡是另一張圖（兩個人加一顆愛心），跟歡迎頁、跟產品名稱都對不起來，
+ * 同一個產品等於有兩個標誌。現在跟歡迎頁是同一個圖標、同一種名稱寫法。
+ * compact 留著是因為呼叫端都還在傳，兩種尺寸的差別在 CSS。
+ */
 export function LogoBlock({ compact = false }: { compact?: boolean }) {
   return (
     <>
       <div className={`login-logo ${compact ? 'compact' : ''}`} aria-hidden="true">
-        <span className="person-one"></span>
-        <span className="person-two"></span>
-        <span className="logo-heart"></span>
+        <BrandMark className="login-logo-mark" />
       </div>
-      <p className="login-brand">同頻 Today</p>
+      <p className="login-brand">
+        <span className="wm-name">同頻</span>
+        <span className="wm-today">Today</span>
+      </p>
     </>
   )
 }

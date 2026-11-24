@@ -112,194 +112,6 @@
   border-bottom: 1px solid #f7f3ea;
 }
 
-.detail-reply-item .flat-reply-body {
-  flex: 1;
-  min-width: 0;
-}
-
-.detail-reply-item .flat-reply-content {
-  font-size: 14px;
-  color: #3d4f4d;
-  margin: 2px 0 0;
-  line-height: 1.5;
-  white-space: pre-wrap;
-}
-
-/* ════════════════════════════════════
-   Thread 風格佈局
-════════════════════════════════════ */
-
-/* 核心 thread row: 左側(頭像+線) + 右側(內容) */
-.thread-row {
-  display: flex;
-  gap: 10px;
-}
-
-.thread-left {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  flex-shrink: 0;
-  width: 40px;
-}
-
-.thread-left-sm {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  flex-shrink: 0;
-  width: 32px;
-}
-
-/* 串文連接線 */
-.thread-line {
-  width: 2px;
-  flex: 1;
-  min-height: 12px;
-  background: #dde8e6;
-  border-radius: 1px;
-  margin: 4px 0 0;
-}
-
-.thread-right {
-  flex: 1;
-  min-width: 0;
-}
-
-/* 貼文標題列（作者+時間+tag+menu） */
-.thread-post-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  margin-bottom: 3px;
-}
-
-.thread-post-header-info {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: 1;
-  min-width: 0;
-}
-
-/* 動作列（無框）*/
-.thread-action-bar {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  padding: 4px 0 2px;
-}
-
-/* 無框 action 按鈕（覆蓋舊版有框版本） */
-.thread-action-bar .post-action-btn {
-  padding: 4px 0;
-}
-
-/* 回覆列表。
-   不畫 border-top：上面展開的留言框（.reply-form）本身已經有一條，
-   兩條距離很近地疊在一起，就是「兩條線不知道我要看哪個部分」。
-   留一點上緣空白代替分隔。 */
-.thread-reply-section {
-  display: flex;
-  flex-direction: column;
-  margin-top: 6px;
-}
-
-/* 每一筆 reply item 的右側 wrapper */
-.thread-reply-right {
-  flex: 1;
-  min-width: 0;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #f5f2ec;
-}
-
-.thread-reply-section > .thread-row:last-of-type .thread-reply-right {
-  border-bottom: none;
-}
-
-/* 收合按鈕 */
-.thread-collapse-btn {
-  background: none;
-  border: none;
-  padding: 8px 0 4px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #5b8f8a;
-  cursor: pointer;
-  font-family: inherit;
-  text-align: left;
-}
-
-.thread-collapse-btn:hover { color: #244845; }
-
-/* Reply header (作者+時間) */
-.thread-reply-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 2px;
-}
-
-/* 回覆收合態：堆疊小頭像 + 查看N則。
-   兩個地方用：子回覆（ReplyItem，div）與貼文卡（RantPostCard，button）。
-   下面那幾行 reset 是給 button 用的，對 div 沒有影響。 */
-.thread-sub-indicator {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  margin-top: 6px;
-  background: none;
-  border: 0;
-  padding: 0;
-  font: inherit;
-  text-align: left;
-}
-
-.thread-sub-indicator:hover .thread-sub-count { color: #244845; }
-
-.thread-sub-avatars {
-  display: flex;
-  align-items: center;
-}
-
-.thread-sub-avatar-xs {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #7ab5af;
-  color: #fff;
-  font-size: 9px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-left: -4px;
-  border: 1.5px solid #fffdf8;
-  flex-shrink: 0;
-}
-
-.thread-sub-avatars .thread-sub-avatar-xs:first-child { margin-left: 0; }
-
-/* 展開後那顆「收起回應」只給桌面。手機以滑動為主，展開之後再冒出一顆
-   收合鈕只是多一列要跨過的東西；桌面有滑鼠，收合才划算。
-   顯示規則在 17-desktop.css，跟留言框的「取消／送出」同一個 1024px 斷點。 */
-.thread-sub-indicator.thread-replies-collapse { display: none; }
-
-.thread-sub-count {
-  font-size: 12px;
-  color: #5b8f8a;
-  font-weight: 600;
-}
-
-/* 子回覆展開後的列表 */
-.thread-sub-list {
-  display: flex;
-  flex-direction: column;
-  margin-top: 4px;
-}
-
 /* Detail page thread 主貼文 */
 .detail-thread-post {
   padding: 16px 16px 0;
@@ -455,7 +267,6 @@
   border-bottom: 1px solid #f5f2ec;
 }
 
-
 /* ── 樹洞頁 日間主題 ── */
 .rant-page {
   background: var(--theme-bg, #faf7f2);
@@ -472,24 +283,14 @@
 .rant-page .rant-search-clear { color: #b0a090; }
 .rant-page .card { background: #ffffff; border: 0.5px solid #e8e0d4; border-radius: 14px; backdrop-filter: none; }
 .rant-page .list { gap: 10px; }
-.rant-page .post-author-name { color: #4a3f35; font-size: 13px; font-weight: 500; }
+
 .rant-page .post-content { color: #4a3f35; font-size: 14px; line-height: 1.6; }
-.rant-page .post-time { color: #b0a090; font-size: 11px; }
+
 .rant-page .tag { background: #f0ebe3; color: #8a7a6a; border: 0.5px solid #ddd5c8; border-radius: 20px; font-size: 11px; }
 .rant-page .tag[data-mode="GIVE_ADVICE"] { background: #eaf4ee; color: #4a8a62; border-color: #c0dfc8; }
-.rant-page .post-action-btn,
-.rant-page .reply-like-btn,
-.rant-page .reply-sub-btn { color: #b0a090; font-size: 12px; }
-.rant-page .post-action-btn:hover,
-.rant-page .reply-like-btn:hover,
-.rant-page .reply-sub-btn:hover { color: #8a7a6a; background: #f0ebe3; }
-.rant-page .thread-collapse-btn { color: #b0a090; font-size: 12px; border-top: 0.5px solid #f0ebe3; }
+
 .rant-page .reply-form { border-top-color: #f0ebe3; }
-/* 不寫 :hover、也不碰 background：hover 的底色是展開中唯一剩下的游標回饋，
-   蓋掉的話滑鼠移上去就完全沒反應了 */
-.rant-page .post-action-btn.is-active { color: #8a7a6a; }
-.rant-page .thread-line { background: #e8e0d4; }
-.rant-page .avatar-circle { width: 32px; height: 32px; font-size: 13px; background: #e8d5c0; color: #8a6a4a; }
+
 .rant-page .hashtag-tag { color: #8a7a6a; background: #f0ebe3; border-color: #ddd5c8; }
 
 /* ── 樹洞頁 夜間主題 ── */
@@ -520,38 +321,24 @@
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
 }
-[data-theme="dark"] .rant-page .post-author-name { color: #c8e8e0; }
+
 [data-theme="dark"] .rant-page .post-content { color: #d4ede8; }
-[data-theme="dark"] .rant-page .post-time { color: rgba(168,212,204,0.55); }
 
 /* 夜間：樹洞詳情頁（.detail-page）+ 回覆文字。原本只覆寫了 .rant-page，詳情頁的字仍是深色看不到 */
 [data-theme="dark"] .detail-post-content { color: #e3f2ee; }
-[data-theme="dark"] .detail-page .post-author-name { color: #c8e8e0; }
-[data-theme="dark"] .detail-page .post-time { color: rgba(168,212,204,0.55); }
-[data-theme="dark"] .flat-reply-content { color: #d4ede8; }
-[data-theme="dark"] .thread-sub-count { color: #8fd4c8; }
 
 /* 疊在一起的小頭像靠一圈「與卡片同色」的邊分開，淺色模式是 #fffdf8。
    夜間一直沒有覆蓋過，所以那圈奶油白在深色卡片上變成一條亮邊。
    卡片實際混出來是 rgb(15, 25, 22)（rgba(22,40,32,.6) 疊在頁面底色上）。
    以前只有展開子回覆時才看得到，現在每張有回應的卡片都會出現，顯眼得多。 */
-[data-theme="dark"] .thread-sub-avatar-xs { border-color: #0f1916; }
+
 [data-theme="dark"] .quote-author { color: #8fd4c8; }
 [data-theme="dark"] .quote-text { color: rgba(212,237,232,0.72); }
 /* 詳情頁 mode 標籤：套用與列表頁相同的暗色系 */
 [data-theme="dark"] .detail-page .tag { background: rgba(45,110,101,0.4); color: #a8d4cc; border-color: rgba(168,212,204,0.2); }
 [data-theme="dark"] .rant-page .tag { background: rgba(45,110,101,0.4); color: #a8d4cc; border-color: rgba(168,212,204,0.2); }
 [data-theme="dark"] .rant-page .tag[data-mode="GIVE_ADVICE"] { background: rgba(45,110,101,0.4); color: #a8d4cc; border-color: rgba(168,212,204,0.2); }
-[data-theme="dark"] .rant-page .post-action-btn,
-[data-theme="dark"] .rant-page .reply-like-btn,
-[data-theme="dark"] .rant-page .reply-sub-btn { color: rgba(168,212,204,0.7); }
-[data-theme="dark"] .rant-page .post-action-btn:hover,
-[data-theme="dark"] .rant-page .reply-like-btn:hover,
-[data-theme="dark"] .rant-page .reply-sub-btn:hover { color: #a8d4cc; background: rgba(255,255,255,0.06); }
-[data-theme="dark"] .rant-page .thread-collapse-btn { color: rgba(168,212,204,0.5); border-top-color: rgba(168,212,204,0.1); }
-[data-theme="dark"] .rant-page .post-action-btn.is-active { color: #a8d4cc; }
-[data-theme="dark"] .rant-page .thread-line { background: rgba(168,212,204,0.18); }
-[data-theme="dark"] .rant-page .avatar-circle { background: #2d5e58; color: #a8d4cc; }
+
 [data-theme="dark"] .rant-page .hashtag-tag { background: rgba(45,110,101,0.3); color: #7ec8bc; border-color: rgba(126,200,188,0.25); }
 
 /* 貼文詳細頁（夜間）*/
