@@ -300,6 +300,26 @@
   gap: 6px;
 }
 
+/* 每一則右上角的「⋯」。推到最右邊；自己對齊中線（那一列是 baseline 對齊，
+   圖示沒有基線，不另外指定會整顆往上飄） */
+.rr-head .rr-menu {
+  align-self: center;
+  margin: -6px -6px -6px auto;
+}
+
+/* 回應列表上方的排序鈕，靠右 */
+.rc-sort-row {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 10px;
+  margin-bottom: -6px;
+}
+
+.rc-sort-row.detail-sort-row {
+  padding: 10px 14px 0;
+  margin-bottom: 0;
+}
+
 .rr-name {
   font-size: 13px;
   font-weight: 700;
@@ -370,6 +390,97 @@
   padding: 0 8px;
   font-size: 12px;
   color: var(--rc-accent-ink);
+}
+
+/* 回應區裡的一句狀態：回應還在抓、或沒抓到 */
+.rc-thread-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px 34px;
+  font-size: 12px;
+  color: var(--rc-muted);
+}
+
+.rc-thread-retry {
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--rc-soft-2);
+  color: var(--rc-strong-muted);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* 「回應載入中」晚一點才出現：多數時候回應在那之前就到了 */
+.rc-thread-note.is-pending {
+  opacity: 0;
+  animation: rc-note-in 0.2s ease-out 0.35s forwards;
+}
+
+@keyframes rc-note-in {
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rc-thread-note.is-pending { opacity: 1; animation: none; }
+}
+
+/* 詳情頁的同一句（隱藏沒有成功之類）：沒有卡片的縮排可以對齊，自己留邊 */
+.rc-thread-note.detail-action-error {
+  margin: 10px 16px 0;
+}
+
+/* 自動載入下一頁用的哨兵：不佔版面，只是給 IntersectionObserver 看 */
+.rant-load-sentinel {
+  height: 1px;
+  margin-top: -1px;
+}
+
+/* ── 我（貼文作者）藏起來的回應 ──
+   只有貼文作者會看到這個樣子。預設收成一列：藏它就是不想再讀到那句話。 */
+.rr-hidden-label,
+.rr-hidden-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--rc-muted);
+}
+
+.rr-hidden-label {
+  display: flex;
+  margin: 0;
+}
+
+/* 「已隱藏」那句和「看內容」同一列。取消隱藏、檢舉在右上角的「⋯」裡 */
+.rr-hidden-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 4px;
+  min-height: 32px;
+}
+
+/* 跟動作列上的按鈕排在一起，左邊要跟它們一樣讓出 8px */
+.rr-hidden-tag {
+  padding: 0 8px;
+}
+
+/* 展開來看的內容、以及跟著一起被藏的那幾則：淡一點，跟沒被藏的分得出來 */
+.rr-hidden-body > .rr-text,
+.rr-hidden-body > .quote-box,
+.rr-hidden-body > .reply-media-btn,
+.rr.is-hidden > .rr-main > .rr-text,
+.rr.is-hidden > .rr-main > .quote-box,
+.rr.is-hidden > .rr-main > .reply-media-btn {
+  opacity: 0.6;
+}
+
+.rr.is-hidden > .rr-avatar,
+.rr.is-hidden > .rr-main > .rr-head {
+  opacity: 0.6;
 }
 
 /* 回應裡的回應：縮排在那一則底下，淡底色框起來。 */

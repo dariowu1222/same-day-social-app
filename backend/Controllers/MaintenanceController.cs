@@ -24,6 +24,12 @@ public sealed record ChatExpiryResult(int Notified, int Expired, int Scanned, bo
 public sealed record PurgeReportContentResult(int Redacted, bool Ran);
 
 /// <summary>
+/// Replies = 刪掉幾則收回的回應、Posts = 刪掉幾篇貼文、Redacted = 清空幾篇底下還有回應的貼文。
+/// Ran = false 代表沒有資料庫，什麼都沒做。
+/// </summary>
+public sealed record PurgeDeletedRantsResult(int Replies, int Posts, int Redacted, bool Ran);
+
+/// <summary>
 /// 由排程打的維護端點。
 ///
 /// 為什麼不是後端自己跑 BackgroundService：
@@ -39,6 +45,7 @@ public sealed class MaintenanceController(
     AdminUserService users,
     ChatExpiryService chatExpiry,
     ReportService reports,
+    RantService rants,
     IOptions<MaintenanceOptions> options,
     ILogger<MaintenanceController> logger) : ControllerBase
 {
@@ -150,6 +157,44 @@ public sealed class MaintenanceController(
 
         return ApiResponse<PurgeReportContentResult>.Ok(
             new PurgeReportContentResult(outcome.Redacted, outcome.Ran));
+    }
+
+    /// <summary>
+    /// 把刪除／收回超過 30 天的樹洞內容真的清掉。
+    ///
+    /// 使用者按下刪除貼文、收回回應的當下，內容只是對所有人隱形，列還留著——
+    /// 那 30 天是留給檢舉與後台查證用的（隱私權政策上寫的就是這個數字）。
+    /// 這支不跑的話，「刪除」就永遠只是隱藏，政策上的承諾會落空。
+    ///
+    /// 可以重複打：清過的不會再被掃到。細節見 RantService.PurgeDeleted。
+    /// </summary>
+    [AllowAnonymous]
+    [HttpPost("purge-deleted-rants")]
+    public ActionResult<ApiResponse<PurgeDeletedRantsResult>> PurgeDeletedRants(
+        [FromHeader(Name = "X-Maintenance-Trigger")] string? secret)
+    {
+        var expected = options.Value.TriggerSecret;
+        if (string.IsNullOrWhiteSpace(expected))
+        {
+            return NotFound(ApiResponse<PurgeDeletedRantsResult>.Fail("MAINTENANCE_DISABLED", "維護端點未啟用"));
+        }
+
+        if (!FixedTimeEquals(secret, expected))
+        {
+            logger.LogWarning("樹洞刪除內容清理端點收到錯誤的密鑰");
+            return Unauthorized(ApiResponse<PurgeDeletedRantsResult>.Fail("UNAUTHORIZED", "密鑰不符"));
+        }
+
+        var outcome = rants.PurgeDeleted();
+        if (outcome.Replies + outcome.Posts + outcome.Redacted > 0)
+        {
+            logger.LogInformation(
+                "樹洞保留期滿：刪掉 {Replies} 則回應、{Posts} 篇貼文，清空 {Redacted} 篇貼文的內容",
+                outcome.Replies, outcome.Posts, outcome.Redacted);
+        }
+
+        return ApiResponse<PurgeDeletedRantsResult>.Ok(
+            new PurgeDeletedRantsResult(outcome.Replies, outcome.Posts, outcome.Redacted, outcome.Ran));
     }
 
     private static bool FixedTimeEquals(string? provided, string expected)

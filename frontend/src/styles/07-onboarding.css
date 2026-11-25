@@ -16,89 +16,105 @@
   overflow: hidden;
 }
 
-.ob-slides-viewport {
+/* ── 功能介紹（2026-11 改版）──
+   三頁共用同一個舞台：兩顆圓各自一邊 → 靠近 → 合成愛心，文字跟著換。
+   以前是五張插圖左右滑。 */
+.onboarding-overlay.ob-intro {
+  background: #fbf6ef;
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.ob-intro-main {
   flex: 1;
-  overflow: hidden;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 18px;
+  padding: 0 28px;
   user-select: none;
 }
 
-.ob-track {
-  display: flex;
-  height: 100%;
-  transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  will-change: transform;
+.ob-intro-stage {
+  position: relative;
+  padding-top: 46px;
 }
 
-.ob-track.dragging {
-  transition: none;
+.ob-intro-stage .sync-hero {
+  --d: 92px;
 }
 
-.ob-slide {
-  flex-shrink: 0;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 22px;
-  padding: 40px 32px 16px;
-  text-align: center;
+/* 第一頁那句「今天寫下的話」，從珊瑚色那顆圓的頭上冒出來 */
+.ob-intro-note {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 190px;
+  margin: 0 0 0 -112px;
+  padding: 8px 12px;
+  border-radius: 16px 16px 16px 4px;
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1.5px #e6d9ca;
+  color: #33241b;
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: left;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.3s, transform 0.3s;
 }
 
-.ob-slide-visual {
-  width: 200px;
-  height: 200px;
-  border-radius: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.65);
-  flex-shrink: 0;
+.ob-intro-note.is-on {
+  opacity: 1;
+  transform: none;
 }
 
-.ob-slide-visual img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  pointer-events: none;
+.ob-intro-text {
+  animation: ob-intro-in 0.3s ease-out;
+}
+
+@keyframes ob-intro-in {
+  from { opacity: 0; transform: translateY(8px); }
 }
 
 .ob-slide-title {
   font-size: 26px;
-  font-weight: 900;
+  font-weight: 800;
   line-height: 1.3;
-  margin: 0;
-  letter-spacing: 0.02em;
+  margin: 0 0 10px;
+  color: #3e1d0a;
 }
 
 .ob-slide-desc {
-  font-size: 16px;
-  color: #8a705f;
-  line-height: 1.75;
-  max-width: 280px;
+  font-size: 15px;
+  color: #6b5445;
+  line-height: 1.65;
   margin: 0;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .ob-intro-text { animation: none; }
+  .ob-intro-note { transition: none; }
+}
+
 .ob-controls {
-  padding: 18px 28px 36px;
+  padding: 8px 28px calc(28px + env(safe-area-inset-bottom));
   display: grid;
-  gap: 16px;
-  background: #fff9ef;
+  gap: 20px;
 }
 
 .ob-dots {
   display: flex;
-  justify-content: center;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .ob-dot {
   width: 8px;
   height: 8px;
+  border: 0;
   border-radius: 999px;
-  background: #eaded4;
+  background: #e6d9ca;
   padding: 0;
   transition: width 0.25s, background 0.25s;
   cursor: pointer;
@@ -106,31 +122,18 @@
 
 .ob-dot.active {
   width: 24px;
+  background: #c9502f;
 }
 
-.ob-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
+/* 跳過：右上角，不跟主要按鈕搶位置 */
 .ob-skip-btn {
+  align-self: flex-end;
+  margin: 10px 14px 0 0;
+  padding: 10px;
+  border: 0;
   background: transparent;
-  color: #9a8574;
-  font-size: 16px;
-  font-weight: 700;
-  padding: 10px 14px;
-}
-
-.ob-next-btn {
-  height: 52px;
-  padding: 0 28px;
-  border-radius: 16px;
-  color: #fff8f1;
-  font-size: 18px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  transition: background 0.25s;
+  color: #7d6858;
+  font-size: 14px;
 }
 
 /* ── Onboarding Setup ───────────────────────────────── */
@@ -511,6 +514,7 @@
 .post-menu-item.danger:hover {
   background: #fff5f4;
 }
+
 
 .post-menu-toast {
   position: fixed;

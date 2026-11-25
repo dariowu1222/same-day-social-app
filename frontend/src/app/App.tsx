@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { Capacitor } from '@capacitor/core'
 import BottomNav, { type PageKey } from '../shared/ui/BottomNav'
@@ -10,25 +10,53 @@ import { useChatRealtime } from '../features/chat/ChatRealtimeContext'
 import { ensureSocialInit } from '../features/auth/googleAuth'
 import { syncPushRegistration, onPushOpened } from '../shared/push/push'
 import type { DemoUser } from '../features/auth/types'
+import { lazyPage } from '../shared/lib/lazyPage'
+import RouteFallback from '../shared/ui/RouteFallback'
 import LoginPage from '../features/auth/LoginPage'
 import ConsentGate from '../features/auth/ConsentGate'
-import OnboardingOverlay from '../features/profile/OnboardingOverlay'
 import TodayPage from '../features/today/TodayPage'
-import MatchResultPage from '../features/match/MatchResultPage'
-import RantBoardPage from '../features/rant/RantBoardPage'
-import RantSearchPage from '../features/rant/RantSearchPage'
-import RantDetailPage from '../features/rant/RantDetailPage'
-import RantNewPostPage from '../features/rant/RantNewPostPage'
-// import TasksPage from '../features/tasks/TasksPage' // 任務功能暫時下架（後端保留）
-import ChatPage from '../features/chat/ChatPage'
-import ProfilePage from '../features/profile/ProfilePage'
-import SettingsPage from '../features/profile/SettingsPage'
-import AccountCenterPage from '../features/profile/AccountCenterPage'
-import SecurityCenterPage from '../features/profile/SecurityCenterPage'
-import PrivacySettingsPage from '../features/profile/PrivacySettingsPage'
-import NotificationSettingsPage from '../features/profile/NotificationSettingsPage'
-import FeedbackPage from '../features/profile/FeedbackPage'
-import NotificationCenterPage from '../features/notifications/NotificationCenterPage'
+
+// ── 分頁各自一包，用到才抓 ──
+//
+// 直接 import 的只剩「第一眼」：沒登入看到的 LoginPage、登入後看到的 TodayPage。
+// 其餘每一頁各自打包（見 lazyPage）。以前 17 支頁面全部靜態 import，登入畫面
+// 出現之前就要先下載、解析整個 App。
+//
+// 切分頁不會因此變慢：下面有一個 effect 會在第一個畫面畫完之後，趁空檔把這些包
+// 先抓好（PAGES 就是那份清單）。
+// 任務功能暫時下架（後端保留），TasksPage 不在這裡。
+const pages = {
+  onboarding: lazyPage(() => import('../features/profile/OnboardingOverlay')),
+  match: lazyPage(() => import('../features/match/MatchResultPage')),
+  rantBoard: lazyPage(() => import('../features/rant/RantBoardPage')),
+  rantSearch: lazyPage(() => import('../features/rant/RantSearchPage')),
+  rantDetail: lazyPage(() => import('../features/rant/RantDetailPage')),
+  rantNew: lazyPage(() => import('../features/rant/RantNewPostPage')),
+  chat: lazyPage(() => import('../features/chat/ChatPage')),
+  profile: lazyPage(() => import('../features/profile/ProfilePage')),
+  settings: lazyPage(() => import('../features/profile/SettingsPage')),
+  account: lazyPage(() => import('../features/profile/AccountCenterPage')),
+  security: lazyPage(() => import('../features/profile/SecurityCenterPage')),
+  privacy: lazyPage(() => import('../features/profile/PrivacySettingsPage')),
+  notifySettings: lazyPage(() => import('../features/profile/NotificationSettingsPage')),
+  feedback: lazyPage(() => import('../features/profile/FeedbackPage')),
+  notifications: lazyPage(() => import('../features/notifications/NotificationCenterPage')),
+}
+const OnboardingOverlay = pages.onboarding.Page
+const MatchResultPage = pages.match.Page
+const RantBoardPage = pages.rantBoard.Page
+const RantSearchPage = pages.rantSearch.Page
+const RantDetailPage = pages.rantDetail.Page
+const RantNewPostPage = pages.rantNew.Page
+const ChatPage = pages.chat.Page
+const ProfilePage = pages.profile.Page
+const SettingsPage = pages.settings.Page
+const AccountCenterPage = pages.account.Page
+const SecurityCenterPage = pages.security.Page
+const PrivacySettingsPage = pages.privacy.Page
+const NotificationSettingsPage = pages.notifySettings.Page
+const FeedbackPage = pages.feedback.Page
+const NotificationCenterPage = pages.notifications.Page
 
 function App() {
   const navigate = useNavigate()
@@ -74,25 +102,52 @@ function App() {
     navigate(roomId ? `/chat?room=${encodeURIComponent(roomId)}` : '/chat')
   }), [navigate])
 
+  // 第一個畫面畫完之後，趁空檔把其他分頁的程式碼先抓好——等使用者真的去點
+  // 底部導覽的時候已經在手上了，不會看到「載入中」。
+  // 只在登入後做：沒登入的人只會看到 LoginPage，替他抓整個 App 是浪費流量。
+  // 新手引導那一包只有還沒看過的人需要，看過的人不抓。
+  const userId = user?.userId
+  useEffect(() => {
+    if (!userId) return
+    const run = () => {
+      const seenOnboarding = !!localStorage.getItem(onboardingKey(userId))
+      for (const [name, page] of Object.entries(pages)) {
+        if (name === 'onboarding' && seenOnboarding) continue
+        page.preload()
+      }
+    }
+    // 先等一秒多再說：第一個畫面自己要打的那幾支 API（今日、配對額度、未讀）
+    // 這時候才剛送出去，不要讓十幾包程式碼跟它們搶連線。之後再挑主執行緒有空的時候抓。
+    let idle: number | undefined
+    const timer = window.setTimeout(() => {
+      if ('requestIdleCallback' in window) idle = window.requestIdleCallback(run, { timeout: 3000 })
+      else run()
+    }, 1200)
+    return () => {
+      window.clearTimeout(timer)
+      if (idle !== undefined) window.cancelIdleCallback(idle)
+    }
+  }, [userId])
+
   // 啟動即初始化社群登入：網頁版 Google popup 回到本站時，外掛建構子會自動把結果回傳給主視窗。
   useEffect(() => {
     void ensureSocialInit()
   }, [])
 
   const pathToPage: Record<string, PageKey> = {
-    '/': 'today', '/rant': 'rant', '/chat': 'chat', '/profile': 'profile', '/settings': 'settings',
+    '/': 'today', '/rant': 'rant', '/chat': 'chat', '/profile': 'profile', '/settings': 'profile',
   }
   const activePage: PageKey = pathToPage[location.pathname]
     ?? (location.pathname.startsWith('/rant') ? 'rant'
-      : location.pathname.startsWith('/account') ? 'settings'
-      : location.pathname.startsWith('/security') ? 'settings'
-      : location.pathname.startsWith('/settings') ? 'settings'
-      : location.pathname.startsWith('/notifications') ? 'settings'
+      : location.pathname.startsWith('/account') ? 'profile'
+      : location.pathname.startsWith('/security') ? 'profile'
+      : location.pathname.startsWith('/settings') ? 'profile'
+      : location.pathname.startsWith('/notifications') ? 'profile'
       : 'today')
 
   function setActivePage(page: PageKey) {
     const pageToPath: Record<PageKey, string> = {
-      today: '/', rant: '/rant', chat: '/chat', profile: '/profile', settings: '/settings',
+      today: '/', rant: '/rant', chat: '/chat', profile: '/profile',
     }
     // 重選目前所在的 tab：發事件讓該頁自行處理（例如關閉「我的」的預覽覆蓋層）
     if (page === activePage) {
@@ -122,6 +177,8 @@ function App() {
   return (
     <>
       <main className="app-shell">
+        {/* 底部導覽在 Suspense 外面：某一頁的程式碼還在路上時，導覽列照樣在、照樣能按 */}
+        <Suspense fallback={<RouteFallback />}>
         <Routes>
           <Route path="/" element={
             !showMatchResult
@@ -143,12 +200,15 @@ function App() {
           <Route path="/settings/feedback" element={<FeedbackPage />} />
           <Route path="/notifications" element={<NotificationCenterPage />} />
         </Routes>
+        </Suspense>
         {!isDetail && <BottomNav activePage={activePage} onChange={setActivePage} chatUnread={totalUnread} />}
       </main>
       {mode === 'night' && <GlobalNightEffects />}
       <ThemeTransitionOverlay />
       {!onboardingDone && (
-        <OnboardingOverlay user={user} onComplete={handleOnboardingComplete} />
+        <Suspense fallback={null}>
+          <OnboardingOverlay user={user} onComplete={handleOnboardingComplete} />
+        </Suspense>
       )}
       {/* 以前用社群登入建的帳號沒問過條款與年齡，登入後補問一次。
           key 綁使用者：換一個帳號登入要重新問後端，不能沿用上一個人的答案。

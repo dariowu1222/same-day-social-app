@@ -1,18 +1,18 @@
-import { LogOut, MessageSquare, Settings, Sun, Trees, User } from 'lucide-react'
+import { LogOut, MessageSquare, Sun, Trees, User } from 'lucide-react'
 import { useAuth } from '../../features/auth/AuthContext'
 import { useIsDesktop } from '../hooks/useIsDesktop'
 import BrandMark from './BrandMark'
 
-export type PageKey = 'today' | 'rant' | 'chat' | 'profile' | 'settings'
+export type PageKey = 'today' | 'rant' | 'chat' | 'profile'
 
-// 五分頁：今日/樹洞/聊天/我的/設定。任務未來回歸時插在「樹洞」與「聊天」之間。
+// 四分頁：今日/樹洞/聊天/我的。設定不是每天會去的地方，收進「我的」右上角的齒輪；
+// 通知中心也從那裡進去。任務未來回歸時插在「樹洞」與「聊天」之間。
 const items: { key: PageKey; label: string; Icon: typeof Sun }[] = [
   { key: 'today', label: '今日', Icon: Sun },
   { key: 'rant', label: '樹洞', Icon: Trees },
   // { key: 'tasks', label: '任務', Icon: Flag }, // 任務功能暫時下架（後端保留）
   { key: 'chat', label: '聊天', Icon: MessageSquare },
   { key: 'profile', label: '我的', Icon: User },
-  { key: 'settings', label: '設定', Icon: Settings },
 ]
 
 type Props = {

@@ -2,13 +2,15 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { MessageCircle, ChevronLeft, HeartHandshake, ArrowUp, X } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
-import { deleteRant, deleteReply, getRant, likeReply, replyRant, understandRant, unlikeRant, unlikeReply } from './api'
+import { deleteRant, deleteReply, getRant, hideReply, likeReply, replyRant, understandRant, unhideReply, unlikeRant, unlikeReply } from './api'
 import ReportSheet from '../report/ReportSheet'
 import type { RantPost } from './types'
-import { postImages } from './types'
+import { postImages, withReplyHidden } from './types'
 import MediaInput, { EMPTY_MEDIA, type MediaState } from '../../shared/ui/MediaInput'
 import PostImageGallery from './PostImageGallery'
 import ReplyItem from './ReplyItem'
+import ReplySortMenu from './ReplySortMenu'
+import { sortReplies, useReplySort } from './replySort'
 import HeartButton from './HeartButton'
 import { avatarLetter, avatarTone } from './rantAvatar'
 import { timeAgo } from '../../shared/lib/timeAgo'
@@ -37,10 +39,13 @@ export default function RantDetailPage() {
   const [composeFocused, setComposeFocused] = useState(false)
   const [showHint, setShowHint] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
+  // 隱藏／取消隱藏失敗時的說明
+  const [actionError, setActionError] = useState('')
   // 留言框的預設提示：進到這篇貼文時抽一次，之後就不動。
   // 列表頁是每次打開留言框抽，詳情頁的留言框一直開著，所以改成每篇抽一次。
   const [placeholder, setPlaceholder] = useState(DEFAULT_REPLY_PLACEHOLDER)
   const inputRef = useRef<HTMLInputElement>(null)
+  const replySort = useReplySort()
 
   const hintText = post ? COMPOSE_HINTS[post.mode] : undefined
   const quickReplies = post ? (QUICK_REPLIES[post.mode] ?? []) : []
@@ -109,6 +114,21 @@ export default function RantDetailPage() {
     }
   }
 
+  // 隱藏／取消隱藏：畫面先變，再等後端；失敗就還原並說一聲（理由同 RantBoardPage）
+  async function handleHideReply(replyId: string, hide: boolean) {
+    if (!rantId || !post) return
+    const before = post
+    setActionError('')
+    setPost(withReplyHidden(post, replyId, hide))
+    try {
+      await (hide ? hideReply(rantId, replyId) : unhideReply(rantId, replyId))
+      await loadPost()
+    } catch {
+      setPost(before)
+      setActionError(hide ? '沒有隱藏成功，請再試一次' : '沒有取消成功，請再試一次')
+    }
+  }
+
   function handleReplyToReply(replyId: string, nickname: string) {
     setReplyTarget({ id: replyId, nickname })
     setComposeFocused(true)
@@ -139,12 +159,15 @@ export default function RantDetailPage() {
       <div className="detail-topbar">
         <button className="detail-back-btn" onClick={() => navigate(-1)}><ChevronLeft size={22} /></button>
         <span className="detail-topbar-title">貼文</span>
-        <PostMenu
-          postId={post.id}
-          isOwner={post.isMine}
-          onDelete={async () => { await deleteRant(post.id); navigate(-1) }}
-          onReport={() => setReportOpen(true)}
-        />
+        {/* 作者刪掉的貼文沒有東西可以複製連結、檢舉或再刪一次 */}
+        {!post.isDeleted && (
+          <PostMenu
+            postId={post.id}
+            isOwner={post.isMine}
+            onDelete={async () => { await deleteRant(post.id); navigate(-1) }}
+            onReport={() => setReportOpen(true)}
+          />
+        )}
       </div>
 
       <div className="detail-scroll">
@@ -152,6 +175,16 @@ export default function RantDetailPage() {
         {/* ── 主貼文 ──
             跟樹洞列表的卡片同一套：頭像＋名字時間、愛心和回應兩顆膠囊。
             檢舉在右上角的 ⋮ 裡（以前是動作列上一顆紅字按鈕）。 */}
+        {post.isDeleted ? (
+          /* 作者刪掉了這篇，但底下別人的回應留著（照 Threads 的做法）。
+             原本貼文的位置只說一件事：這裡原本有一篇，現在沒有了。
+             不留作者的名字、不留內容——後端送來的本來就是空的。 */
+          <div className="detail-thread-post detail-deleted">
+            <p className="detail-deleted-title">這則貼文已被作者刪除</p>
+            <p className="detail-deleted-sub">底下的回應還留著</p>
+          </div>
+        ) : (
+        <>
         <div className="detail-thread-post">
           <header className="rc-head">
             <span className={`rc-avatar rc-static tone-${avatarTone(post.nickname)}`} aria-hidden="true">
@@ -248,19 +281,27 @@ export default function RantDetailPage() {
             </div>
           )}
         </div>
+        </>
+        )}
 
         {/* ── 回覆列表 ── */}
+        {actionError && <p className="rc-thread-note detail-action-error" role="alert">{actionError}</p>}
+        {post.replies.length > 1 && (
+          <div className="rc-sort-row detail-sort-row"><ReplySortMenu /></div>
+        )}
         {post.replies.length > 0 && (
           <div className="detail-thread-reply-list">
-            {post.replies.map((reply) => (
+            {sortReplies(post.replies, replySort).map((reply) => (
               <div key={reply.id} className="detail-thread-reply-item">
                 <ReplyItem
                   reply={reply}
-                  onReply={handleReplyToReply}
+                  // 貼文刪掉之後不能再接話；既有的回應還能按愛心、還能收回自己的
+                  onReply={post.isDeleted ? undefined : handleReplyToReply}
                   onLike={(replyId, like) => (rantId
                     ? (like ? likeReply(rantId, replyId) : unlikeReply(rantId, replyId)).then(loadPost)
                     : undefined)}
                   onDelete={(replyId) => (rantId ? deleteReply(rantId, replyId).then(loadPost) : undefined)}
+                  onHide={post.isMine ? handleHideReply : undefined}
                 />
               </div>
             ))}

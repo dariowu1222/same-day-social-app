@@ -168,7 +168,7 @@ export default function TodayPage({ onGoToMatches }: Props) {
   }
 
   return (
-    <div className={`page today-page today-tone-${todayTone}`} style={{ display: 'flex', flexDirection: 'column', gap: '44px' }}>
+    <div className={`page today-page today-tone-${todayTone}`}>
 
       {/* 首次進場動畫 overlay */}
       {introPhase !== 'done' && (
@@ -187,7 +187,8 @@ export default function TodayPage({ onGoToMatches }: Props) {
       )}
 
       <header className={`today-header${introPhase === 'center' ? ' today-header-hidden' : ''}`}>
-        <h1>今天的你，想被怎麼理解？</h1>
+        {/* 自己斷行：交給瀏覽器斷的話，窄螢幕會斷成「今天的你，想被怎／麼理解？」 */}
+        <h1>今天的你，<br className="today-title-br" />想被怎麼理解？</h1>
         <label className="today-ai-toggle">
           <input
             type="checkbox"

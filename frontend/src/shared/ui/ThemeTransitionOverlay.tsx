@@ -92,7 +92,17 @@ function DawnTransition({ onCommit, onFinish }: { onCommit: () => void; onFinish
 
 /* ── Entry point ── */
 export default function ThemeTransitionOverlay() {
-  const { pendingMode, commitMode, finishAnimation } = useTheme()
+  const { pendingMode, arriving, commitMode, finishAnimation } = useTheme()
+  // 清晨：光漫開的同時，一顆柔和的太陽從畫面底下升起、淡掉。
+  // 它是新畫面的一部分，所以只在已經亮起來的那一塊裡看得到。
+  if (arriving === 'day') {
+    return (
+      <div className="dawn-sky" aria-hidden="true">
+        <span className="dawn-haze" />
+        <span className="dawn-sun" />
+      </div>
+    )
+  }
   if (!pendingMode) return null
   return pendingMode === 'night'
     ? <NightTransition onDone={commitMode} onFinish={finishAnimation} />
@@ -101,6 +111,8 @@ export default function ThemeTransitionOverlay() {
 
 /* ── 全域螢火蟲（夜間模式）── */
 export function GlobalNightEffects() {
+  // 剛入夜的那幾秒：螢火蟲不是一次全亮，而是一隻一隻亮起來
+  const { arriving } = useTheme()
   const fireflies = useMemo(() =>
     Array.from({ length: 45 }, (_, i) => {
       const size = 2 + Math.random() * 3
@@ -121,12 +133,12 @@ export function GlobalNightEffects() {
   )
 
   return (
-    <div className="global-night-effects" aria-hidden="true">
+    <div className={`global-night-effects${arriving === 'night' ? ' is-arriving' : ''}`} aria-hidden="true">
       {fireflies.map(f => (
         <div key={f.id} className="global-firefly" style={{
           top: f.top, left: f.left, width: f.size, height: f.size,
           background: f.color, boxShadow: f.glow,
-          '--fx': f.fx, '--fy': f.fy, '--fd': f.dur, '--delay': f.delay,
+          '--fx': f.fx, '--fy': f.fy, '--fd': f.dur, '--delay': f.delay, '--i': f.id,
         } as React.CSSProperties} />
       ))}
     </div>

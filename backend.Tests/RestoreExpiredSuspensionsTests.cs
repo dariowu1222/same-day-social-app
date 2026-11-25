@@ -153,8 +153,11 @@ public sealed class RestoreExpiredSuspensionsTests
             new NotificationService(TestWorld.Storage(), provider),
             NullLogger<ChatExpiryService>.Instance);
 
+        var rants = new RantService(
+            TestWorld.Storage(), new TodayAnalyzerService(), new ModerationService(), provider);
+
         return new MaintenanceController(
-            Service(db), chatExpiry, new ReportService(provider),
+            Service(db), chatExpiry, new ReportService(provider), rants,
             Options.Create(new MaintenanceOptions { TriggerSecret = secret }),
             NullLogger<MaintenanceController>.Instance);
     }

@@ -80,83 +80,276 @@
   pointer-events: none;
 }
 
-.profile-section-header {
+/* ── 我的（2026-11-25 改版）──
+   一進來是總覽：別人眼中的你那張卡、再往下三區各自點進去改。
+   以前整頁是一長串表單，要先按「編輯」才能動。 */
+.me-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 2px 0;
+}
+
+.me-header h1 {
+  flex: 1;
+  margin: 0;
+  color: #3e1d0a;
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.me-header.is-sub h1 {
+  font-size: 20px;
+}
+
+.me-icon-btn,
+.me-back {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #f1e8dc;
+  color: #33241b;
+  cursor: pointer;
+}
+
+.me-back {
+  margin-left: -4px;
+  padding-bottom: 3px;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.me-icon-btn:active,
+.me-back:active {
+  background: #e9dccc;
+}
+
+.me-label {
+  margin: 0 4px -8px;
+  color: #7d6858;
+  font-size: 12px;
+}
+
+.me-card {
+  border-radius: 20px;
+  padding: 14px;
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1.5px #e6d9ca;
+}
+
+/* 卡片上半：頭像、暱稱、年齡星座縣市；整塊可以點，點了看完整的配對卡 */
+.me-card-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.me-avatar {
+  flex: none;
+  width: 60px;
+  height: 60px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #fbe3d8;
+}
+
+.me-avatar img,
+.me-avatar svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.me-card-id {
+  flex: 1;
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.me-card-id b {
+  overflow: hidden;
+  color: #33241b;
+  font-size: 18px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.me-card-id small {
+  color: #7d6858;
+  font-size: 13px;
+}
+
+.me-card-peek {
+  flex: none;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 15px;
+  background: #f1e8dc;
+  color: #6b5445;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 30px;
+}
+
+.me-bio {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 10px 0 0;
+  color: #33241b;
+  font-size: 14px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.me-bio.is-empty {
+  color: #9a8778;
+}
+
+.me-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.me-tags span {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 13px;
+  background: #f1e8dc;
+  color: #6b5445;
+  font-size: 12px;
+  line-height: 26px;
+}
+
+/* 還沒放照片：明講，給一顆按鈕。不替人放假照片。 */
+.me-photo-prompt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1.5px dashed #d9c7b4;
+  border-radius: 16px;
+  padding: 10px 12px;
+  color: #33241b;
+  font-size: 14px;
+}
+
+.me-photo-prompt > div {
+  flex: 1;
+  line-height: 1.45;
+}
+
+.me-photo-prompt small {
+  display: block;
+  color: #7d6858;
+  font-size: 12px;
+}
+
+.me-photo-prompt .keycap-btn {
+  flex: none;
+  width: auto;
+  height: 38px;
+  margin: 0 0 3px;
+  padding: 0 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.3), 0 3px 0 #983a1e;
+}
+
+.me-photo-prompt .keycap-btn:not(:disabled):active {
+  transform: translateY(3px);
+  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.3), 0 0 0 #983a1e;
+}
+
+/* 三區（有照片時四區）的入口 */
+.me-rows {
+  padding: 4px 14px;
+}
+
+.me-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-}
-
-.profile-photo-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-/* 編輯 / 取消 切換鈕：有字有 icon，一眼看懂目前是檢視還是編輯 */
-.profile-edit-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  height: 34px;
-  padding: 0 14px;
-  border: none;
-  border-radius: 17px;
-  background: #f3ebe2;
-  color: #8a6a56;
-  font-size: 13px;
-  font-weight: 700;
-  white-space: nowrap;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 0;
+  border: 0;
+  border-bottom: 1.5px solid #f1e8dc;
+  background: none;
+  color: #33241b;
+  font-size: 15px;
+  text-align: left;
   cursor: pointer;
-  flex-shrink: 0;
-  transition: background 0.15s, color 0.15s;
-}
-.profile-edit-toggle:hover { background: #ece0d4; }
-.profile-edit-toggle.editing {
-  background: transparent;
-  color: #b0715a;
-  border: 1.5px solid #e0c4b4;
 }
 
-/* fieldset 重置 + 檢視模式（disabled）：欄位不可改，但保持可讀 */
+.me-row:last-child {
+  border-bottom: 0;
+}
+
+.me-row-text {
+  display: grid;
+  gap: 1px;
+}
+
+.me-row small {
+  color: #7d6858;
+  font-size: 12px;
+}
+
+.me-row svg {
+  flex: none;
+  color: #9a8778;
+}
+
+/* 編輯中的那一區：一格一格往下排，最下面留位置給吸底的儲存鈕 */
 .profile-fields {
-  border: none;
-  margin: 0;
-  padding: 0;
+  display: grid;
+  gap: 12px;
   min-width: 0;
 }
-.profile-fields:disabled .profile-text-input,
-.profile-fields:disabled textarea,
-.profile-fields:disabled select {
-  color: var(--theme-text, #4a3f35);
-  -webkit-text-fill-color: var(--theme-text, #4a3f35);
-  opacity: 1;
-  background: #faf7f2;
-  cursor: default;
-}
-.profile-fields:disabled .ob-tag,
-.profile-fields:disabled button,
-.profile-fields:disabled select { cursor: default; }
-.profile-fields:disabled .ob-tag { opacity: 0.92; }
 
-.profile-eye-btn {
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  border-radius: 50%;
-  border: none;
-  background: var(--theme-card-border);
-  color: #c8785a;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: background 0.15s, color 0.15s;
+.profile-page.is-editing {
+  padding-bottom: 84px;
 }
-.profile-eye-btn:hover { background: rgba(200,120,90,0.18); }
-.profile-eye-btn.active { color: #c8785a; }
+
+[data-theme="dark"] .me-header h1 { color: #e8d5a3; }
+[data-theme="dark"] .me-icon-btn,
+[data-theme="dark"] .me-back { background: rgba(22, 40, 32, 0.8); color: #a8d4cc; }
+[data-theme="dark"] .me-label { color: rgba(168, 212, 204, 0.55); }
+[data-theme="dark"] .me-card { background: rgba(22, 40, 32, 0.6); box-shadow: inset 0 0 0 1px #2a4035; }
+[data-theme="dark"] .me-card-id b,
+[data-theme="dark"] .me-bio,
+[data-theme="dark"] .me-row,
+[data-theme="dark"] .me-photo-prompt { color: #d4ede8; }
+[data-theme="dark"] .me-card-id small,
+[data-theme="dark"] .me-row small,
+[data-theme="dark"] .me-photo-prompt small,
+[data-theme="dark"] .me-bio.is-empty { color: rgba(168, 212, 204, 0.55); }
+[data-theme="dark"] .me-card-peek,
+[data-theme="dark"] .me-tags span { background: rgba(168, 212, 204, 0.12); color: #a8d4cc; }
+[data-theme="dark"] .me-row { border-bottom-color: rgba(168, 212, 204, 0.1); }
+[data-theme="dark"] .me-photo-prompt { border-color: #2a4035; }
+[data-theme="dark"] .me-photo-prompt .keycap-btn,
+[data-theme="dark"] .profile-save-bar .keycap-btn { background: #3d8f5e; color: #e0f5eb; box-shadow: none; }
 
 /* ─── Calendar Date Picker ──────────────────────────────────────────────────── */
 .cal-picker {
@@ -573,22 +766,6 @@
   background: rgba(90, 158, 130, 0.18);
   color: #9fd8c4;
 }
-[data-theme="dark"] .profile-edit-toggle {
-  background: rgba(168,212,204,0.12);
-  color: rgba(212,237,232,0.78);
-}
-[data-theme="dark"] .profile-edit-toggle.editing {
-  background: transparent;
-  color: rgba(212,237,232,0.7);
-  border-color: rgba(168,212,204,0.25);
-}
-[data-theme="dark"] .profile-fields:disabled .profile-text-input,
-[data-theme="dark"] .profile-fields:disabled textarea,
-[data-theme="dark"] .profile-fields:disabled select {
-  color: var(--theme-text, #d4ede8);
-  -webkit-text-fill-color: var(--theme-text, #d4ede8);
-  background: rgba(255,255,255,0.03);
-}
 
 /* 身高/體重：兩欄並排，單位後綴 */
 .profile-field-row { display: flex; gap: 10px; }
@@ -642,22 +819,6 @@
   gap: 10px;
 }
 
-.profile-save-btn {
-  width: 100%;
-  height: 46px;
-  border-radius: 24px;
-  border: none;
-  background: #c8785a;
-  color: #fff;
-  font-size: 15px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: opacity 0.15s;
-}
-.profile-save-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
 
 /* 儲存吸附底部（固定在 nav 上方）*/
 .profile-save-bar {
@@ -874,13 +1035,22 @@
 }
 
 /* ── 樹洞新增貼文頁 ── */
-[data-theme="dark"] .new-post-header {
-  background: rgba(5, 15, 10, 0.96);
-  border-bottom-color: rgba(168, 212, 204, 0.1);
-}
-[data-theme="dark"] .new-post-back { color: #a8d4cc; }
-[data-theme="dark"] .new-post-back:hover { background: rgba(168, 212, 204, 0.1); }
-[data-theme="dark"] .new-post-title { color: #c8e8e0; }
+[data-theme="dark"] .new-post-header { background: var(--theme-bg, #050208); }
+[data-theme="dark"] .new-post-back { background: rgba(22, 40, 32, 0.8); color: #a8d4cc; }
+[data-theme="dark"] .new-post-back:active { background: rgba(168, 212, 204, 0.16); }
+[data-theme="dark"] .new-post-title,
+[data-theme="dark"] .new-post-label { color: #c8e8e0; }
+[data-theme="dark"] .new-post-label small { color: rgba(168, 212, 204, 0.55); }
+[data-theme="dark"] .new-post-more { color: #7ec8bc; }
+[data-theme="dark"] .new-post-header .new-post-send,
+[data-theme="dark"] .new-post-header .new-post-send:not(:disabled):active { background: #3d8f5e; color: #e0f5eb; box-shadow: none; }
+[data-theme="dark"] .new-post-header .new-post-send.is-off,
+[data-theme="dark"] .new-post-header .new-post-send.is-off:not(:disabled):active { background: #1a3028; color: #4a7a5a; box-shadow: none; }
+[data-theme="dark"] .mode-chip { background: rgba(22, 40, 32, 0.6); color: #d4eedd; box-shadow: inset 0 0 0 1px #2a4035; }
+[data-theme="dark"] .mode-chip svg { color: #6b9e80; }
+[data-theme="dark"] .mode-chip.is-on { background: rgba(26, 58, 42, 0.72); color: #d4eedd; box-shadow: inset 0 0 0 1.5px #4caf7d; }
+[data-theme="dark"] .mode-chip.is-on svg { color: #4caf7d; }
+[data-theme="dark"] .post-input-block:focus-within { border-color: #4e9188; }
 
 [data-theme="dark"] .post-input-block {
   background: rgba(22, 40, 32, 0.75);
@@ -910,29 +1080,19 @@
 [data-theme="dark"] .hashtag-text-input::placeholder {
   color: rgba(168, 212, 204, 0.4);
 }
-[data-theme="dark"] .hashtag-dropdown {
-  background: rgba(18, 36, 28, 0.98);
-  border-color: #2a4035;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-}
-[data-theme="dark"] .hashtag-dropdown-item {
-  color: #d4ede8;
-}
-[data-theme="dark"] .hashtag-dropdown-item:hover {
-  background: rgba(168, 212, 204, 0.08);
-}
-[data-theme="dark"] .hashtag-dropdown-item.custom {
-  color: #7ec8bc;
-  border-bottom-color: #2a4035;
-}
 [data-theme="dark"] .hashtag-preset-chip {
-  background: rgba(45, 110, 101, 0.22);
-  border-color: rgba(126, 200, 188, 0.28);
+  background: rgba(22, 40, 32, 0.6);
   color: #a8d4cc;
+  box-shadow: inset 0 0 0 1px #2a4035;
 }
-[data-theme="dark"] .hashtag-preset-chip:hover:not(:disabled) {
-  background: rgba(45, 110, 101, 0.44);
-  border-color: #7ec8bc;
+[data-theme="dark"] .hashtag-preset-chip.is-on {
+  background: rgba(26, 58, 42, 0.72);
+  color: #d4eedd;
+  box-shadow: inset 0 0 0 1.5px #4caf7d;
+}
+[data-theme="dark"] .hashtag-preset-chip.is-new {
+  color: #7ec8bc;
+  box-shadow: inset 0 0 0 1px #7ec8bc;
 }
 [data-theme="dark"] .hashtag-limit-hint { color: rgba(168, 212, 204, 0.5); }
 
@@ -1050,6 +1210,10 @@
   color: #f1fbf5;
 }
 [data-theme="dark"] .cr-time { color: rgba(168, 212, 204, 0.5); }
+[data-theme="dark"] .cr-send { background: #4f9468; color: #f1fbf5; box-shadow: none; }
+[data-theme="dark"] .cr-send:not(:disabled):active { box-shadow: none; }
+[data-theme="dark"] .cr-send:disabled { background: #1a3028; color: #4a7a5a; box-shadow: none; }
+[data-theme="dark"] .cr-input-icon { color: rgba(168, 212, 204, 0.7); }
 
 [data-theme="dark"] .cr-input,
 [data-theme="dark"] .cr-frozen {

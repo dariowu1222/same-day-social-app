@@ -96,11 +96,17 @@ export default function ReportsPage() {
               </span>
             </div>
 
-            {r.targetHidden != null && (
+            {(r.targetHidden != null || r.targetNote) && (
               <div className="field-row">
                 <span className="field-label">內容狀態</span>
                 <span className="field-value">
-                  {r.targetHidden ? '已隱藏，一般使用者與原作者都看不到' : '正常顯示中'}
+                  {/* targetNote：本人已經刪除／收回（內容還會留到哪一天），或貼文作者已經
+                      自己把這則回應藏起來。有這句話的時候它比「正常顯示中」重要——
+                      本人拿掉的內容一般使用者已經看不到了，這裡的快照是唯一看得到的地方。 */}
+                  {r.targetNote
+                    ? r.targetNote
+                    : r.targetHidden ? '已隱藏，一般使用者與原作者都看不到' : '正常顯示中'}
+                  {r.targetNote && r.targetHidden && '；後台已隱藏'}
                 </span>
               </div>
             )}
@@ -159,7 +165,7 @@ export default function ReportsPage() {
                 </div>
                 <div className="page-sub" style={{ marginTop: 6 }}>
                   {r.targetHidden === true
-                    ? '退回會讓這篇重新公開，並把累積的檢舉次數歸零（不然再被檢舉一次就又會自動隱藏）'
+                    ? '退回會讓這則內容重新公開。貼文會把累積的檢舉次數歸零（不然再被檢舉一次就又會自動隱藏）'
                     : '需要停權或封鎖帳號，請點上方被檢舉人進入其詳細頁處置'}
                 </div>
               </div>

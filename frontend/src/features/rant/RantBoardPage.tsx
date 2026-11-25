@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback, useLayoutEffect, useRef } from 'react
 import { useNavigate } from 'react-router-dom'
 import { Plus, Search } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
-import { deleteRant, deleteReply, getRants, likeReply, replyRant, understandRant, unlikeRant, unlikeReply, RANT_PAGE_SIZE } from './api'
-import type { RantPost } from './types'
+import { deleteRant, deleteReply, getRant, getRants, hideReply, likeReply, replyRant, understandRant, unhideReply, unlikeRant, unlikeReply, RANT_PAGE_SIZE } from './api'
+import { withReplyHidden, type RantPost } from './types'
 import { EMPTY_MEDIA, type MediaState } from '../../shared/ui/MediaInput'
 import RantPostCard from './RantPostCard'
 
@@ -23,6 +23,13 @@ export default function RantBoardPage() {
   const [posts, setPosts] = useState<RantPost[]>([])
   const [hasMore, setHasMore] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
+  // 列表只帶每篇「有幾則回應」，回應本身點開才抓。這裡記每一篇抓到哪了：
+  // 沒有記錄＝還沒抓過（posts 裡那一篇的 replies 是空的）。
+  const [threads, setThreads] = useState<Record<string, 'ready' | 'loading' | 'failed'>>({})
+  const threadsRef = useRef<Record<string, 'ready' | 'loading' | 'failed'>>({})
+  // 每一篇上一個動作失敗的說明（目前只有隱藏／取消隱藏會用到）
+  const [actionErrors, setActionErrors] = useState<Record<string, string>>({})
+  const sentinelRef = useRef<HTMLDivElement>(null)
   const [replies, setReplies] = useState<Record<string, string>>({})
   const [replyMedia, setReplyMedia] = useState<Record<string, MediaState>>({})
   // 同時只展開一則的回應區。開另一則，前一則自動收起。
@@ -42,12 +49,50 @@ export default function RantBoardPage() {
     const res = await getRants()
     setPosts(res.data)
     setHasMore(res.data.length === RANT_PAGE_SIZE)
+    // 整頁換成新的摘要了，之前抓過的回應都不在裡面
+    threadsRef.current = {}
+    setThreads({})
   }, [])
+
+  function markThread(postId: string, state: 'ready' | 'loading' | 'failed') {
+    threadsRef.current = { ...threadsRef.current, [postId]: state }
+    setThreads(threadsRef.current)
+  }
+
+  /**
+   * 點開一篇的時候才抓它的回應。
+   *
+   * 沒有回應的貼文不必抓（則數是列表給的）。抓過、正在抓的也不重複抓。
+   * 抓回來的是完整的那一篇，直接把列表裡的那一格換掉。
+   */
+  async function loadThread(postId: string) {
+    const post = posts.find((p) => p.id === postId)
+    if (!post || post.replyCount === 0) return
+    const state = threadsRef.current[postId]
+    if (state === 'ready' || state === 'loading') return
+    markThread(postId, 'loading')
+    try {
+      const res = await getRant(postId)
+      // 等的這段時間裡如果使用者已經按了愛心或送出回應，那支端點回來的是更新的
+      // 一份（updatePost 會把狀態標成 ready）。這時候再拿這一份蓋上去，
+      // 他剛送出的那一則會從畫面上消失。
+      if (threadsRef.current[postId] !== 'loading') return
+      setPosts((prev) => prev.map((p) => (p.id === postId ? res.data : p)))
+      markThread(postId, 'ready')
+    } catch {
+      if (threadsRef.current[postId] === 'loading') markThread(postId, 'failed')
+    }
+  }
 
   useEffect(() => { void loadPosts() }, [loadPosts])
 
+  // 用 ref 擋重複：自動載入的觸發可能在畫面還沒重畫之前連來兩次，
+  // 那時候 loadingMore 這個 state 還是舊的，同一頁會被抓兩遍、接兩遍。
+  const loadingMoreRef = useRef(false)
+
   async function loadMore() {
-    if (loadingMore || !hasMore || posts.length === 0) return
+    if (loadingMoreRef.current || !hasMore || posts.length === 0) return
+    loadingMoreRef.current = true
     setLoadingMore(true)
     try {
       const cursor = posts[posts.length - 1].createdAt
@@ -55,6 +100,7 @@ export default function RantBoardPage() {
       setPosts((prev) => [...prev, ...res.data])
       setHasMore(res.data.length === RANT_PAGE_SIZE)
     } finally {
+      loadingMoreRef.current = false
       setLoadingMore(false)
     }
   }
@@ -65,11 +111,35 @@ export default function RantBoardPage() {
   async function updatePost(action: () => Promise<{ data: RantPost }>) {
     const res = await action()
     setPosts((prev) => prev.map((p) => (p.id === res.data.id ? res.data : p)))
+    // 互動端點回來的是完整的那一篇（連同全部回應），所以這一篇不必再另外抓
+    markThread(res.data.id, 'ready')
   }
 
   async function removePost(rantId: string, action: () => Promise<unknown>) {
     await action()
     setPosts((prev) => prev.filter((p) => p.id !== rantId))
+  }
+
+  /**
+   * 隱藏／取消隱藏別人的回應：畫面先變，再等後端。
+   *
+   * 後端那一趟實測要 0.7–1.6 秒。會按「隱藏」的人通常正看著一句不舒服的話，
+   * 要讓它在按下去的那一刻就消失。失敗就還原，並在這一篇的回應區說一聲——
+   * 不能默默還原，那看起來像是藏了又自己跑出來。
+   */
+  async function setReplyHidden(postId: string, replyId: string, hide: boolean) {
+    const before = posts.find((p) => p.id === postId)
+    setActionErrors((prev) => ({ ...prev, [postId]: '' }))
+    setPosts((prev) => prev.map((p) => (p.id === postId ? withReplyHidden(p, replyId, hide) : p)))
+    try {
+      await updatePost(() => (hide ? hideReply(postId, replyId) : unhideReply(postId, replyId)))
+    } catch {
+      if (before) setPosts((prev) => prev.map((p) => (p.id === postId ? before : p)))
+      setActionErrors((prev) => ({
+        ...prev,
+        [postId]: hide ? '沒有隱藏成功，請再試一次' : '沒有取消成功，請再試一次',
+      }))
+    }
   }
 
   function toggleThread(postId: string, open: boolean) {
@@ -81,7 +151,29 @@ export default function RantBoardPage() {
     const el = openPostId && openPostId !== postId ? document.getElementById(`rant-${postId}`) : null
     anchor.current = el ? { id: postId, top: el.getBoundingClientRect().top } : null
     setOpenPostId(postId)
+    void loadThread(postId)
   }
+
+  // ── 滑到底自動載入下一頁 ──
+  //
+  // 以前要按「載入更多」。現在列表底下放一個看不見的哨兵，它快進到畫面的時候
+  // （還差 600px）就先去抓下一頁，滑到底時多半已經接上了。按鈕還留著：
+  // 抓的時候顯示「載入中」，萬一自動的那一下沒觸發也還按得到。
+  //
+  // 省下的流量跟按按鈕一樣（本來就是一頁 20 篇），這只是少按一下。
+  // loadMore 每次 render 都是新的函式，所以存在 ref 裡，不讓 observer 跟著重建。
+  const loadMoreRef = useRef(loadMore)
+  useEffect(() => { loadMoreRef.current = loadMore })
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el || !hasMore) return
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) void loadMoreRef.current() },
+      { rootMargin: '0px 0px 600px 0px' },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [hasMore, posts.length])
 
   // 前一則如果在被點的這則「上面」，它一收起來，底下的東西會整個往上縮——
   // 手指底下那張卡片就跑掉了，最糟是直接縮出畫面。
@@ -161,6 +253,10 @@ export default function RantBoardPage() {
           <RantPostCard
             key={post.id}
             post={post}
+            repliesState={post.replyCount === 0 ? 'ready' : (threads[post.id] ?? 'loading')}
+            onRetryReplies={() => void loadThread(post.id)}
+            onPrefetchReplies={() => void loadThread(post.id)}
+            actionError={actionErrors[post.id] || undefined}
             open={openPostId === post.id}
             onToggle={(open) => toggleThread(post.id, open)}
             replyText={replies[post.id] ?? ''}
@@ -181,14 +277,18 @@ export default function RantBoardPage() {
             // 滑到第二頁之後按一下就被丟回最上面。
             onLikeReply={(replyId, like) => updatePost(() => (like ? likeReply(post.id, replyId) : unlikeReply(post.id, replyId)))}
             onDeleteReply={(replyId) => updatePost(() => deleteReply(post.id, replyId))}
+            onHideReply={(replyId, hide) => setReplyHidden(post.id, replyId, hide)}
             onHashtagClick={(tag) => navigate('/rant/search', { state: { q: tag } })}
           />
         ))}
 
         {hasMore && posts.length > 0 && (
-          <button className="rant-load-more" type="button" onClick={loadMore} disabled={loadingMore}>
-            {loadingMore ? '載入中⋯' : '載入更多'}
-          </button>
+          <>
+            <div ref={sentinelRef} className="rant-load-sentinel" aria-hidden="true" />
+            <button className="rant-load-more" type="button" onClick={loadMore} disabled={loadingMore}>
+              {loadingMore ? '載入中⋯' : '載入更多'}
+            </button>
+          </>
         )}
       </section>
 

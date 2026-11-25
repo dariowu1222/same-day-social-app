@@ -7,6 +7,8 @@ import { flattenReplies, postImages } from './types'
 import MediaInput, { type MediaState } from '../../shared/ui/MediaInput'
 import PostImageGallery from './PostImageGallery'
 import ReplyItem from './ReplyItem'
+import ReplySortMenu from './ReplySortMenu'
+import { sortReplies, useReplySort } from './replySort'
 import PostMenu from './PostMenu'
 import HeartButton from './HeartButton'
 import { COMPOSE_HINTS, QUICK_REPLIES, getHintSeenSet, markHintSeen, appendQuickReply, pickReplyPlaceholder } from './rantCompose'
@@ -40,6 +42,20 @@ function revealField(el: HTMLElement | null) {
 type Props = {
   post: RantPost
   /**
+   * 這一篇的回應現在的狀態。牆上的列表只帶則數與前三個名字，回應要等點開才抓：
+   * loading 是正在抓、failed 是沒抓到、ready（預設）是 post.replies 已經是完整的。
+   */
+  repliesState?: 'ready' | 'loading' | 'failed'
+  /** 沒抓到的時候再試一次 */
+  onRetryReplies?: () => void
+  /**
+   * 手指（或滑鼠）一按下去就先去抓回應，不等放開。從按下到放開大約有一百毫秒，
+   * 白白等掉很可惜——回應是點開才抓的，這段時間剛好拿來抓。
+   */
+  onPrefetchReplies?: () => void
+  /** 這一篇上一個動作失敗的說明（例如隱藏沒有成功）。顯示在回應區最上面。 */
+  actionError?: string
+  /**
    * 這一則的回應區是不是開著。由列表頁管，不是卡片自己記——
    * 因為「開另一則，前一則自動收起」這件事只有列表頁知道。
    */
@@ -56,16 +72,19 @@ type Props = {
   onReply: (parentReplyId?: string) => Promise<unknown> | void
   onLikeReply: (replyId: string, like: boolean) => Promise<unknown> | void
   onDeleteReply: (replyId: string) => Promise<unknown> | void
+  /** 隱藏／取消隱藏別人的回應。只有自己的貼文才會用到（hide = true 是隱藏） */
+  onHideReply: (replyId: string, hide: boolean) => Promise<unknown> | void
   // 檢舉改由卡片內的 ReportSheet 處理，外層只負責顯示結果訊息
   onReported?: (message: string) => void
-  onDelete: () => void
+  onDelete: () => Promise<unknown> | void
   onHashtagClick?: (tag: string) => void
 }
 
 export default function RantPostCard({
-  post, open, onToggle, replyText, replyMedia,
+  post, repliesState = 'ready', onRetryReplies, onPrefetchReplies, actionError,
+  open, onToggle, replyText, replyMedia,
   onReplyTextChange, onReplyMediaChange,
-  onUnderstand, onReply, onLikeReply, onDeleteReply, onReported, onDelete, onHashtagClick,
+  onUnderstand, onReply, onLikeReply, onDeleteReply, onHideReply, onReported, onDelete, onHashtagClick,
 }: Props) {
   const navigate = useNavigate()
   // 自己按「回應」收起來的時候，回應區多留 CLOSE_MS 播收合動畫。
@@ -93,10 +112,15 @@ export default function RantPostCard({
 
   // 收合態要秀誰的頭像。整串都算（含子回覆），因為旁邊那個數字也是整串的
   // post.replyCount；同一個人回很多則只出現一次，不然會變成三顆一樣的圈。
-  const replyPeople = [...new Set(flattenReplies(post.replies).map((r) => r.nickname))]
+  // 列表給的是摘要時（replyNames），名字由後端先挑好；回應載進來之後就自己算。
+  const replyPeople = post.replyNames ?? [...new Set(flattenReplies(post.replies).map((r) => r.nickname))]
 
-  const shownReplies = post.replies.slice(0, visibleCount)
-  const hiddenReplies = post.replies.length - shownReplies.length
+  // 先排序、再決定先露出前幾則：選了「愛心多的在前」，最多愛心的那幾則就該在最上面，
+  // 而不是把照時間的前幾則拿來重排
+  const replySort = useReplySort()
+  const sortedReplies = sortReplies(post.replies, replySort)
+  const shownReplies = sortedReplies.slice(0, visibleCount)
+  const hiddenReplies = sortedReplies.length - shownReplies.length
 
   useEffect(() => () => window.clearTimeout(closeTimer.current), [])
 
@@ -249,6 +273,7 @@ export default function RantPostCard({
           type="button"
           className="rc-pill rc-reply-toggle"
           aria-expanded={open}
+          onPointerDown={open ? undefined : onPrefetchReplies}
           onClick={() => toggle(true)}
         >
           <MessageCircle size={16} fill={open ? 'currentColor' : 'none'} />
@@ -267,8 +292,8 @@ export default function RantPostCard({
 
           刻意不預覽內容：樹洞的內容是重的，一面牆連續攤開十幾段別人的心事會讓人
           很快過載。「可以掃過去、想進去才進去」這個梯度要留著。 */}
-      {!threadMounted && post.replies.length > 0 && (
-        <button type="button" className="rc-faces" onClick={() => toggle(false)}>
+      {!threadMounted && post.replyCount > 0 && (
+        <button type="button" className="rc-faces" onPointerDown={onPrefetchReplies} onClick={() => toggle(false)}>
           <span className="rc-faces-stack">
             {replyPeople.slice(0, 3).map((nickname) => (
               <span key={nickname} className={`rc-face tone-${avatarTone(nickname)}`}>{avatarLetter(nickname)}</span>
@@ -282,6 +307,25 @@ export default function RantPostCard({
       {threadMounted && (
         <div className={`rc-thread${open ? '' : ' is-closing'}`}>
           <div className="rc-thread-inner">
+            {actionError && <p className="rc-thread-note" role="alert">{actionError}</p>}
+            {/* 回應還在路上。留言框不必等它——想回話的人可以先打字。
+                這行字晚 0.35 秒才出現（寫在 CSS）：多數時候回應在那之前就到了，
+                每次點開都閃一下「載入中」反而讓人覺得慢。 */}
+            {repliesState === 'loading' && post.replies.length === 0 && (
+              <p className="rc-thread-note is-pending" role="status">回應載入中</p>
+            )}
+            {repliesState === 'failed' && (
+              <p className="rc-thread-note" role="alert">
+                回應沒有載入成功
+                {onRetryReplies && (
+                  <button type="button" className="rc-thread-retry" onClick={onRetryReplies}>再試一次</button>
+                )}
+              </p>
+            )}
+            {/* 排序：只有一則的時候沒有東西可排，不畫 */}
+            {post.replies.length > 1 && (
+              <div className="rc-sort-row"><ReplySortMenu /></div>
+            )}
             {shownReplies.length > 0 && (
               <div className="rc-replies">
                 {shownReplies.map((reply, i) => (
@@ -292,6 +336,7 @@ export default function RantPostCard({
                     onReply={openReplyToReply}
                     onLike={onLikeReply}
                     onDelete={onDeleteReply}
+                    onHide={post.isMine ? onHideReply : undefined}
                   />
                 ))}
               </div>

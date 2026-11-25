@@ -25,6 +25,7 @@ public sealed class RantPostRecordConfiguration : IEntityTypeConfiguration<RantP
         builder.Property(x => x.IsHidden).HasColumnName("is_hidden");
         builder.Property(x => x.ReportCount).HasColumnName("report_count");
         builder.Property(x => x.CreatedAt).HasColumnName("created_at");
+        builder.Property(x => x.DeletedAt).HasColumnName("deleted_at");
         builder.HasIndex(x => new { x.IsHidden, x.CreatedAt });
     }
 }
@@ -46,6 +47,9 @@ public sealed class RantReplyRecordConfiguration : IEntityTypeConfiguration<Rant
         builder.Property(x => x.AudioUrl).HasColumnName("audio_data_url");
         builder.Property(x => x.LikeCount).HasColumnName("like_count");
         builder.Property(x => x.CreatedAt).HasColumnName("created_at");
+        builder.Property(x => x.DeletedAt).HasColumnName("deleted_at");
+        builder.Property(x => x.HiddenAt).HasColumnName("hidden_at");
+        builder.Property(x => x.HiddenBy).HasColumnName("hidden_by").HasMaxLength(16);
         builder.HasIndex(x => new { x.RantPostId, x.CreatedAt });
         builder.HasIndex(x => x.ParentReplyId);
     }

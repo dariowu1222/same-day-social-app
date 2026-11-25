@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { MoreVertical, Trash2, Link, Flag } from 'lucide-react'
+import { MoreHorizontal, Trash2, Link, Flag } from 'lucide-react'
+import ConfirmDialog from '../../shared/ui/ConfirmDialog'
 
 type Props = {
   postId: string
   isOwner: boolean
-  onDelete: () => void
+  /** 使用者在確認視窗按下「刪除」之後才會被呼叫。回傳 Promise 的話視窗會等它，失敗就把原因顯示出來 */
+  onDelete: () => Promise<unknown> | void
   /**
    * 有給就在選單裡多一項「檢舉這則」。
    *
@@ -18,6 +20,8 @@ type Props = {
 export default function PostMenu({ postId, isOwner, onDelete, onReport }: Props) {
   const [open, setOpen] = useState(false)
   const [toast, setToast] = useState('')
+  // 確認視窗開著沒
+  const [confirming, setConfirming] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -43,15 +47,22 @@ export default function PostMenu({ postId, isOwner, onDelete, onReport }: Props)
     setOpen(false)
   }
 
+  /**
+   * 刪除先跳確認視窗（參考 Threads）。
+   *
+   * 最早是一按就刪，沒有任何確認；後來改成同一項按兩下，但那要看得懂「字變了」
+   * 是在問你。現在刪掉之後底下的回應會留著（照 Threads 的做法），這件事要在
+   * 按下去之前講清楚——不然作者會以為整串都沒了，之後才發現帶著連結的人還看得到。
+   */
   function handleDelete() {
     setOpen(false)
-    onDelete()
+    setConfirming(true)
   }
 
   return (
     <div className="post-menu-wrap" ref={menuRef}>
       <button className="post-menu-trigger" onClick={() => setOpen((v) => !v)} title="更多">
-        <MoreVertical size={18} />
+        <MoreHorizontal size={18} />
       </button>
 
       {open && (
@@ -70,6 +81,17 @@ export default function PostMenu({ postId, isOwner, onDelete, onReport }: Props)
             </button>
           )}
         </div>
+      )}
+
+      {confirming && (
+        <ConfirmDialog
+          title="刪除貼文？"
+          description="刪掉之後拿不回來。底下的回應會留著，只是看不到你這篇"
+          confirmLabel="刪除"
+          danger
+          onConfirm={onDelete}
+          onClose={() => setConfirming(false)}
+        />
       )}
 
       {toast && <div className="post-menu-toast">{toast}</div>}

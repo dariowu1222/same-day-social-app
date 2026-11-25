@@ -22,24 +22,17 @@
   min-height: calc(100vh - var(--shell-vspace));
 }
 
-@keyframes spin-ring {
-  to { transform: rotate(360deg); }
-}
-
-.match-spinner-ring {
-  width: 52px;
-  height: 52px;
-  border: 3px solid #dbeee9;
-  border-top-color: #6ab8ae;
-  border-radius: 50%;
-  animation: spin-ring 0.9s linear infinite;
+/* 載入中是兩顆圓互相靠近（SyncHero 的 seeking），找到人就合成愛心。
+   以前是一個轉圈圈——跟這個產品在做什麼沒有關係。 */
+.match-loading-mask .sync-hero {
+  --d: 56px;
 }
 
 .match-loading-text {
   margin: 0;
-  color: #7a9e9a;
-  font-size: 15px;
-  font-weight: 500;
+  color: #3e1d0a;
+  font-size: 17px;
+  font-weight: 700;
   letter-spacing: 0.02em;
 }
 
@@ -140,11 +133,16 @@
 }
 
 /* 照片區 */
+/* 照片佔半張卡，但下面的資訊放不下時由照片讓位（最矮讓到 24%，
+   跟展開後的高度一樣，展開／收合才不會在這條線上跳一下）。
+   先前照片固定 50%、不縮，資訊區只能拿剩下的一半：螢幕一矮，
+   「今天想說的話」被壓成半行字，標籤、共鳴指數、看更多整行被切掉。 */
 .swipe-photo-wrap {
   position: relative;
   width: 100%;
   height: 50%;
-  flex-shrink: 0;
+  min-height: 24%;
+  flex-shrink: 1;
   overflow: hidden;
   border-radius: 20px 20px 0 0;
   background: #e8e0d8;
@@ -153,6 +151,7 @@
 
 .swipe-photo-wrap.compressed {
   height: 24%;
+  flex-shrink: 0;
 }
 
 .swipe-photo {
@@ -242,22 +241,73 @@
 }
 
 /* 卡片下方資訊 */
+/* 收合時以內容高度為準、不被壓縮（flex-shrink: 0），多的空間才往下長；
+   上限 76% 是照片最矮 24% 剩下的部分。 */
 .swipe-card-info {
-  flex: 1;
+  flex: 1 0 auto;
+  max-height: 76%;
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding: 17px 18px 14px;
   overflow: hidden;
   cursor: pointer;
-  transition: flex 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* 每一行都不准被壓扁：會壓扁的是有 overflow: hidden 的那幾行（行數截斷的文字），
+   壓下去就是字被從中間切掉。 */
+.swipe-card-info > * {
+  flex-shrink: 0;
 }
 
 .swipe-card-info.expanded {
-  flex: 3;
+  flex: 1 1 0%;
+  max-height: none;
+  min-height: 0;
   overflow-y: auto;
   cursor: default;
   -webkit-overflow-scrolling: touch;
+}
+
+/* ── 收合卡的內容上限 ──
+   資訊區最多拿到卡片的 76%，所以收合時每一塊都要有行數上限，
+   加起來才保證放得下；完整內容展開後看得到。 */
+.swipe-card-info:not(.expanded) > .swipe-bio,
+.swipe-card-info:not(.expanded) > .swipe-resonance-strip > span:last-child {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  white-space: normal;
+  overflow: hidden;
+}
+
+/* 標籤只留一列：收合時最多三個再加「+N」，名字長的話會折到第二列 */
+.swipe-card-info:not(.expanded) > .swipe-tags {
+  max-height: 24px;
+  overflow: hidden;
+}
+
+/* 矮螢幕（卡片大約 530px 以下）：自介和今天想說的話各留一行，行距收一點 */
+@media (max-height: 699px) {
+  .swipe-card-info:not(.expanded) {
+    gap: 8px;
+  }
+
+  .swipe-card-info:not(.expanded) > .swipe-bio,
+  .swipe-card-info:not(.expanded) > .swipe-today-text.clamped {
+    -webkit-line-clamp: 1;
+  }
+}
+
+/* 很矮的螢幕（卡片大約 450px 以下）：共鳴原因也留一行，標籤整列收掉 */
+@media (max-height: 619px) {
+  .swipe-card-info:not(.expanded) > .swipe-resonance-strip > span:last-child {
+    -webkit-line-clamp: 1;
+  }
+
+  .swipe-card-info:not(.expanded) > .swipe-tags {
+    display: none;
+  }
 }
 
 .swipe-collapse-btn {
@@ -420,6 +470,8 @@
   color: #5a7a74;
   font-size: 12px;
   font-weight: 600;
+  /* 行高寫死，一列標籤才是固定的 24px（收合卡靠這個數字只留一列） */
+  line-height: 18px;
 }
 
 .swipe-tag-more {

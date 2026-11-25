@@ -93,11 +93,19 @@
 .today-header h1 {
   margin: 0;
   min-width: 0;
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 800;
-  line-height: 1.35;
-  letter-spacing: -0.01em;
-  color: #7a3a20;
+  line-height: 1.3;
+  letter-spacing: 0;
+  color: #3e1d0a;
+}
+
+/* 標題到內容的距離。以前寫在元件的 inline style 上（gap 44px），樣式檔蓋不掉，
+   矮螢幕光這一段就吃掉半張心情卡的高度。 */
+.today-page.page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .today-entry-card {
@@ -118,55 +126,124 @@
   gap: 10px;
 }
 
+/* ── 心情卡（2026-11 改版）──
+   白底、底下一道實心的邊：跟歡迎頁的按鈕是同一種「按得下去」。
+   選到的那張換成珊瑚色的框和底、右上角蓋一個勾、臉彈一下——
+   以前選了完全沒變化（選取的樣式只寫在夜間主題裡），白天看不出自己選了哪張。 */
 .quick-entry-button {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  min-height: 88px;
   align-items: flex-start;
-  border: none;
-  border-radius: 20px;
-  padding: 14px 14px 12px;
-  color: #2e4240;
+  min-height: 112px;
+  border: 0;
+  border-radius: 18px;
+  padding: 12px 12px 10px;
+  background: #ffffff;
+  color: #33241b;
   text-align: left;
+  box-shadow: inset 0 0 0 1.5px #e6d9ca, 0 3px 0 #dfd0be;
   -webkit-tap-highlight-color: transparent;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-/* 每格情緒色調 — 柔化版 */
-.quick-entry-tired {
-  background: #eef4f8;
-}
-.quick-entry-wronged {
-  background: #f8eeee;
-}
-.quick-entry-talk {
-  background: #faf3e8;
-}
-.quick-entry-good {
-  background: #edf5ef;
-}
-
-.quick-entry-emoji {
-  font-size: 22px;
-  line-height: 1;
-  margin-bottom: 2px;
-}
-
-.quick-entry-button strong {
-  font-size: 16px;
-  font-weight: 700;
-  color: #1a1a1a;
-}
-
-.quick-entry-button span:not(.quick-entry-emoji) {
-  color: #6a6a6a;
-  font-size: 12px;
-  font-weight: 500;
+  transition: transform 0.08s, box-shadow 0.08s;
 }
 
 .quick-entry-button:active {
-  transform: scale(0.96);
+  transform: translateY(3px);
+  box-shadow: inset 0 0 0 1.5px #e6d9ca, 0 0 0 #dfd0be;
+}
+
+.quick-entry-button.selected {
+  background: #fce9e0;
+  box-shadow: inset 0 0 0 2px #c9502f, 0 3px 0 #c9502f;
+}
+
+.quick-entry-button.selected:active {
+  box-shadow: inset 0 0 0 2px #c9502f, 0 0 0 #c9502f;
+}
+
+/* 四張臉（MoodFace） */
+.mood-face {
+  flex: none;
+  display: block;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 6px;
+}
+
+.mood-face-bg {
+  fill: #f6cdbb;
+}
+
+.quick-entry-button.selected .mood-face-bg {
+  fill: #ee8a66;
+}
+
+.quick-entry-button.selected .mood-face {
+  animation: mood-pop 0.4s cubic-bezier(0.3, 1.8, 0.5, 1);
+}
+
+@keyframes mood-pop {
+  0% { transform: scale(0.6) rotate(-14deg); }
+}
+
+.quick-entry-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.quick-entry-title {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #33241b;
+}
+
+.quick-entry-sub {
+  font-size: 12px;
+  font-weight: 500;
+  color: #7d6858;
+}
+
+/* 選到的勾 */
+.quick-entry-check {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #c9502f;
+  transform: scale(0);
+  transition: transform 0.2s cubic-bezier(0.3, 1.8, 0.5, 1);
+}
+
+.quick-entry-check::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 4px;
+  width: 6px;
+  height: 11px;
+  border: solid #ffffff;
+  border-width: 0 2.5px 2.5px 0;
+  transform: rotate(45deg);
+}
+
+.quick-entry-button.selected .quick-entry-check {
+  transform: scale(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quick-entry-button,
+  .quick-entry-check {
+    transition: none;
+  }
+
+  .quick-entry-button.selected .mood-face {
+    animation: none;
+  }
 }
 
 /* 會員測試 AI 開關。測試期放在標題右邊，關掉就走原本的關鍵字分析器。
@@ -361,11 +438,10 @@
 
 .today-note-field > span {
   display: block;
-  margin-bottom: 8px;
+  margin: 0 2px 6px;
   font-size: 13px;
-  font-weight: 600;
-  color: #7a9e9a;
-  letter-spacing: 0.04em;
+  font-weight: 700;
+  color: #33241b;
 }
 
 .today-note-field {
@@ -374,54 +450,99 @@
   flex: 1;
 }
 
+/* 高度寫 80px、再讓它往下長（flex-grow）。只寫 flex: 1 的話，頁面高度不固定時
+   它會用 rows={5} 算出來的 142px 當起點，矮螢幕上送出按鈕就被擠到導覽列後面。 */
 .today-note-field textarea {
-  flex: 1;
+  flex: 1 1 auto;
+  height: 80px;
   min-height: 80px;
-  border: none;
-  border-radius: 16px;
-  padding: 14px 16px;
-  background: #f5ede6;
-  color: #3a2a1e;
+  border: 1.5px solid #e6d9ca;
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: #ffffff;
+  color: #33241b;
   font-size: 15px;
-  line-height: 1.75;
+  /* 輸入框包在 label 裡，不寫的話會繼承到標籤那行的粗體 */
+  font-weight: 400;
+  line-height: 1.6;
   resize: none;
   outline: none;
   width: 100%;
   box-sizing: border-box;
-  transition: background 0.2s;
+  transition: border-color 0.15s;
 }
 
 .today-note-field textarea:focus {
-  background: #ede0d6;
+  border-color: #c9502f;
 }
 
 .today-note-field textarea::placeholder {
-  color: #aac4be;
+  color: #9a8778;
 }
 
-/* 送出按鈕 */
+/* 送出按鈕：外觀是 15-welcome.css 的 .keycap-btn，這裡只管它在這一頁的事。
+   還不能送的時候是淺底深字（.is-off），字直接寫出還缺什麼；按了會晃一下。 */
 .today-submit-btn {
-  width: 100%;
-  padding: 16px;
-  border-radius: 28px;
-  background: linear-gradient(135deg, #f0856a, #d4654a);
-  color: #fff;
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  box-shadow: 0 6px 20px rgba(200, 90, 60, 0.28);
-  -webkit-tap-highlight-color: transparent;
-  transition: opacity 0.15s, transform 0.15s;
+  flex: none;
 }
 
-.today-submit-btn:disabled {
-  background: linear-gradient(135deg, #e8c8bc, #d8b4a8);
-  box-shadow: none;
-  color: rgba(255,255,255,0.7);
+.today-submit-btn.is-off {
+  background: #efe6db;
+  color: #705c4e;
+  box-shadow: 0 4px 0 #dfd0be;
 }
 
-.today-submit-btn:not(:disabled):active {
-  opacity: 0.88;
-  transform: scale(0.98);
+/* 還不能送就不要沉下去——沉下去等於告訴人「按到了」 */
+.today-entry-card .today-submit-btn.is-off:active {
+  transform: none;
+  box-shadow: 0 4px 0 #dfd0be;
+}
+
+/* ── 手機版面 ──
+   桌面版是左右兩欄放在一張白卡裡（17-desktop.css），這一段只管手機。 */
+@media (max-width: 1023px) {
+  /* 外面那張白卡拿掉：心情卡和輸入框自己就是卡片了，卡片裡再放卡片只是多一圈邊 */
+  .today-entry-card {
+    gap: 14px;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+}
+
+/* 矮螢幕（高度 700 以下，例如 18:9 的舊手機扣掉系統列）：心情卡改成臉在左、字在右，
+   一張 64px。直立的版本兩列要 236px，加上輸入框之後送出按鈕會掉到底部導覽列後面，
+   要往下捲才按得到。 */
+@media (max-width: 1023px) and (max-height: 699px) {
+  .quick-entry-button {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    min-height: 64px;
+    padding: 10px 12px;
+  }
+
+  .mood-face {
+    width: 34px;
+    height: 34px;
+    margin-bottom: 0;
+  }
+
+  .quick-entry-check {
+    top: 7px;
+    right: 7px;
+    width: 18px;
+    height: 18px;
+  }
+
+  .quick-entry-check::after {
+    left: 6.5px;
+    top: 3px;
+    width: 5px;
+    height: 9px;
+    border-width: 0 2px 2px 0;
+  }
 }
 

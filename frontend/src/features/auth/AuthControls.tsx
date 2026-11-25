@@ -20,10 +20,16 @@ export function getForgotDescription(step: ForgotStep) {
 export function AuthFrame({ children, variant, onBack, center = false }: { children: ReactNode; variant: 'warm' | 'clean'; onBack?: () => void; center?: boolean }) {
   return (
     <main className={`login-screen ${variant === 'clean' ? 'register-screen' : ''}`}>
+      {/* 登入、註冊、忘記密碼、條款確認共用的頂列：左邊返回、右邊產品名稱，一行。
+          以前是一顆圖示方塊加一行大字的名稱，再往下才是「歡迎回來」和說明——
+          標題區疊了四層，表單被擠到畫面下半。歡迎頁沒有返回，名稱在它自己的版面裡。 */}
       {onBack && (
-        <button className="back-button" type="button" onClick={onBack} aria-label="返回">
-          ←
-        </button>
+        <header className="auth-top">
+          <button className="back-button" type="button" onClick={onBack} aria-label="返回">
+            ‹
+          </button>
+          <BrandLockup />
+        </header>
       )}
       <section className={`login-content${center ? ' login-content--center' : ''}`}>
         {children}
@@ -48,26 +54,6 @@ export function BrandLockup() {
   )
 }
 
-/**
- * 登入、註冊、忘記密碼、條款確認頁上方那一塊：圖標放在圓角方塊裡，名稱在下面。
- *
- * 以前方塊裡是另一張圖（兩個人加一顆愛心），跟歡迎頁、跟產品名稱都對不起來，
- * 同一個產品等於有兩個標誌。現在跟歡迎頁是同一個圖標、同一種名稱寫法。
- * compact 留著是因為呼叫端都還在傳，兩種尺寸的差別在 CSS。
- */
-export function LogoBlock({ compact = false }: { compact?: boolean }) {
-  return (
-    <>
-      <div className={`login-logo ${compact ? 'compact' : ''}`} aria-hidden="true">
-        <BrandMark className="login-logo-mark" />
-      </div>
-      <p className="login-brand">
-        <span className="wm-name">同頻</span>
-        <span className="wm-today">Today</span>
-      </p>
-    </>
-  )
-}
 
 export type FieldIcon = 'mail' | 'user' | 'lock' | 'code' | 'calendar'
 
@@ -144,6 +130,7 @@ function FieldIconView({ icon }: { icon: FieldIcon }) {
   }
 }
 
+// 欄位名稱固定在輸入框上方。名字還叫 Floating 是因為以前它是壓在框線上的浮動標籤。
 export function FloatingField({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="floating-field">
