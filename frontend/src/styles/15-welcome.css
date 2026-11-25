@@ -211,6 +211,34 @@
   text-align: center;
 }
 
+/* 手機上整組內容原本偏上，兩個原因：
+   一、畫面延伸到狀態列底下（Capacitor 的 overlaysWebView），置中是對整個螢幕算的，
+       沒扣掉上面被狀態列佔去的那一段；
+   二、最底下那行版本號也算在置中的那一組裡，等於幫下面多墊了一塊看不太到的東西。
+   所以：上面補回狀態列的高度，版本號拿出來貼在畫面底。桌面版是左右分欄，不套用。 */
+@media (max-width: 1023px) {
+  .welcome-v2 {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+}
+
+/* 一般高度的手機再多往下 12px，讓標題和按鈕落在拇指比較好按的位置。
+   很矮的螢幕（高度 620 以下）上下沒有多餘的空間：再往下會多出可捲動的幾 px，
+   版本號貼底也會壓到「已經有帳號？」，所以那裡只補狀態列、版本號維持跟在後面。 */
+@media (max-width: 1023px) and (min-height: 621px) {
+  .welcome-v2 {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 12px);
+  }
+
+  .welcome-v2 .welcome-version {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    margin: 0;
+  }
+}
+
 /* 登入選單：一顆主色（用 Email 建立帳號），兩個社群登入長得一樣 */
 .auth-options-sheet .keycap-btn { margin-bottom: 4px; }
 
@@ -266,6 +294,11 @@
 .sync-dot-me { transform: translateX(calc(var(--d) * -0.74)); }
 .sync-dot-you { transform: translateX(calc(var(--d) * 0.74)); }
 
+/* 靠近了但還沒碰到（新手引導第二頁）：位移用跟合成愛心同一條曲線，慢一點 */
+.sync-hero.is-near .sync-dot { transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+.sync-hero.is-near .sync-dot-me { transform: translateX(calc(var(--d) * -0.54)); }
+.sync-hero.is-near .sync-dot-you { transform: translateX(calc(var(--d) * 0.54)); }
+
 .sync-bob {
   display: block;
   width: 100%;
@@ -278,6 +311,24 @@
 @keyframes sync-bob {
   0%, 100% { transform: translateY(-4px); }
   50% { transform: translateY(4px); }
+}
+
+/* 正在找（配對載入中）：不再各自上下浮，改成往對方靠一下又退開 */
+.sync-hero.is-seeking .sync-bob {
+  animation: sync-seek-me 0.8s ease-in-out infinite;
+}
+
+.sync-hero.is-seeking .sync-dot-you .sync-bob {
+  animation-name: sync-seek-you;
+  animation-delay: 0s;
+}
+
+@keyframes sync-seek-me {
+  50% { transform: translateX(calc(var(--d) * 0.2)); }
+}
+
+@keyframes sync-seek-you {
+  50% { transform: translateX(calc(var(--d) * -0.2)); }
 }
 
 .sync-ball {
@@ -367,4 +418,152 @@
     animation: none !important;
     transition: none !important;
   }
+}
+
+/* ── 登入、註冊、忘記密碼、條款確認的版面（2026-11-25 改版）──
+   頂列一行（返回＋產品名稱）、標題靠左、欄位名稱在輸入框上方。
+   這幾頁原本的規則在 06-chat-avatar.css，這裡是蓋在上面的那一層。 */
+.auth-top {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  margin: env(safe-area-inset-top, 0px) 0 22px;
+}
+
+.auth-top .back-button {
+  position: static;
+  flex: none;
+}
+
+.auth-top .wm {
+  gap: 7px;
+  margin: 0 0 0 auto;
+}
+
+.auth-top .wm-mark {
+  width: 30px;
+  height: 17px;
+}
+
+.auth-top .wm-name,
+.auth-top .wm-today {
+  font-size: 16px;
+}
+
+.auth-top .wm-today {
+  margin-left: -4px;
+}
+
+/* 標題：登入、忘記密碼用 .auth-title-block，註冊用 .register-heading，長同一個樣子 */
+.auth-title-block,
+.register-heading {
+  display: block;
+  justify-self: stretch;
+  margin: 0 0 6px;
+  text-align: left;
+}
+
+.login-content .auth-title-block h1,
+.login-content .register-heading h1 {
+  margin: 0 0 4px;
+  font-size: 28px;
+  line-height: 1.25;
+  letter-spacing: 0.01em;
+}
+
+.auth-title-block p,
+.register-heading p {
+  margin: 0;
+  color: #6b5445;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* 欄位：名稱在上、輸入框在下 */
+.floating-field {
+  display: grid;
+  gap: 6px;
+  padding-top: 0;
+  text-align: left;
+}
+
+.floating-field > span {
+  position: static;
+  padding: 0 2px;
+  background: none;
+  color: #33241b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.login-field input,
+.auth-card .login-field input,
+.register-form .login-field input {
+  height: 50px;
+  border: 1.5px solid #e6d9ca;
+  border-radius: 14px;
+  padding: 0 46px;
+  background: #ffffff;
+  color: #33241b;
+  font-size: 16px;
+  box-shadow: none;
+}
+
+.login-field input:focus {
+  border-color: #c9502f;
+  box-shadow: none;
+}
+
+.login-field .field-icon {
+  left: 14px;
+}
+
+/* 欄位下方的說明（例如密碼規則） */
+.floating-field > .field-help {
+  font-size: 12px;
+  font-weight: 400;
+  color: #7d6858;
+}
+
+/* 記住我／忘記密碼：同一列，一左一右 */
+.login-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: -2px;
+}
+
+.login-options .remember-row {
+  margin: 0;
+  color: #33241b;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.remember-row input {
+  accent-color: #c9502f;
+}
+
+.login-options .forgot-button,
+.auth-switch button {
+  padding: 0;
+  color: #33241b;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: #c9502f;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+
+.auth-switch {
+  justify-self: stretch;
+  margin: 14px 0 0;
+  color: #33241b;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
 }

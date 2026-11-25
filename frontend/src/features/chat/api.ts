@@ -20,8 +20,14 @@ export async function markChatRead(chatRoomId: string) {
   return request<boolean>(apiPath`/api/chats/${chatRoomId}/read`, { method: 'POST' })
 }
 
-export async function getMessages(chatRoomId: string) {
-  return request<ChatMessage[]>(apiPath`/api/chats/${chatRoomId}/messages`)
+// 後端一頁給幾則（ChatService.DefaultMessageLimit）。拿到滿滿一頁＝前面可能還有。
+export const CHAT_PAGE_SIZE = 50
+
+// before：只要這個時間點之前的訊息，給「往上滑載入更早的」用。
+// 傳上一頁最舊那一則的 createdAt，原樣送回去就好。
+export async function getMessages(chatRoomId: string, before?: string) {
+  const query = before ? `?${new URLSearchParams({ before }).toString()}` : ''
+  return request<ChatMessage[]>(apiPath`/api/chats/${chatRoomId}/messages` + query)
 }
 
 // 只有「引用哪一則」。引用的是誰、說了什麼由伺服器查原訊息決定，

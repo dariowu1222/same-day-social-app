@@ -289,8 +289,13 @@ export type ModerationReport = {
   reviewedBy?: string | null
   reviewedAt?: string | null
   resolution?: string | null
-  /** 這篇現在是不是隱藏中。只有 RANT_POST 有值，其他型別是 null。 */
+  /** 這則內容現在是不是被後台隱藏中。樹洞貼文與樹洞回應有值，其他型別是 null。 */
   targetHidden?: boolean | null
+  /**
+   * 被檢舉內容目前的特別狀態，一句給人看的話：作者已刪除、回應的人已收回
+   * （各自保留到哪一天）、貼文作者已自己隱藏。沒有特別狀態就沒有這一欄。
+   */
+  targetNote?: string | null
   /** 處理結果有沒有寄信成功。null = 沒寄、true = 都寄出去了、false = 有失敗。 */
   outcomeMailSent?: boolean | null
 }

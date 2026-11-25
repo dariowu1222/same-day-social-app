@@ -261,6 +261,78 @@ public sealed class ReportService
             .ToDictionary(x => x.Id, x => x.IsHidden);
     }
 
+    /// <summary>
+    /// 這批檢舉指向的樹洞貼文／回應現在的狀態，給後台看的一句話。沒有特別狀態的不在字典裡。
+    ///
+    /// 刪除與收回改成保留 30 天之後，後台需要知道「這則已經被本人拿掉了」——
+    /// 不然審核的人看到的是一筆正常的檢舉，按下「隱藏內容」卻什麼都沒發生。
+    /// 也順便告訴他貼文作者是不是已經自己把回應藏起來了。
+    /// </summary>
+    public Dictionary<string, string> RantTargetNotes(IEnumerable<string> postIds, IEnumerable<string> replyIds)
+    {
+        var notes = new Dictionary<string, string>();
+        if (db == null) return notes;
+
+        var posts = postIds.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().ToList();
+        if (posts.Count > 0)
+        {
+            foreach (var row in db.RantPosts.AsNoTracking()
+                         .Where(x => posts.Contains(x.Id) && x.DeletedAt != null)
+                         .Select(x => new { x.Id, x.DeletedAt })
+                         .ToList())
+            {
+                notes[row.Id] = $"作者已於 {Day(row.DeletedAt!.Value)} 刪除這篇，內容保留到 {Day(row.DeletedAt.Value.AddDays(RetentionDays))}";
+            }
+        }
+
+        var replies = replyIds.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().ToList();
+        if (replies.Count > 0)
+        {
+            foreach (var row in db.RantReplies.AsNoTracking()
+                         .Where(x => replies.Contains(x.Id) && (x.DeletedAt != null || x.HiddenAt != null))
+                         .Select(x => new { x.Id, x.DeletedAt, x.HiddenAt, x.HiddenBy })
+                         .ToList())
+            {
+                if (row.DeletedAt != null)
+                {
+                    notes[row.Id] = $"回應的人已於 {Day(row.DeletedAt.Value)} 收回，內容保留到 {Day(row.DeletedAt.Value.AddDays(RetentionDays))}";
+                }
+                else if (row.HiddenBy == RantReplyHiddenBy.Author)
+                {
+                    notes[row.Id] = "貼文作者已經自己隱藏這則（回應的人自己還看得到）";
+                }
+            }
+        }
+
+        return notes;
+
+        // 後台是台灣時間在看的
+        static string Day(DateTimeOffset at) => at.ToOffset(TimeSpan.FromHours(8)).ToString("yyyy-MM-dd");
+    }
+
+    /// <summary>樹洞內容刪除／收回後的保留天數。跟 RantService.PurgeDeleted 的預設值是同一個數字。</summary>
+    private const int RetentionDays = 30;
+
+    /// <summary>
+    /// 這批檢舉指向的樹洞回應現在是不是被後台隱藏中。
+    ///
+    /// 只算後台藏的（hidden_by = ADMIN）。貼文作者自己藏的不算：那種回應的人自己
+    /// 還看得到，後台仍然可以再按一次「隱藏內容」把它升級成誰都看不到。
+    /// </summary>
+    public Dictionary<string, bool> HiddenRantReplies(IEnumerable<string> replyIds)
+    {
+        if (db == null) return [];
+
+        var ids = replyIds.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().ToList();
+        if (ids.Count == 0) return [];
+
+        return db.RantReplies.AsNoTracking()
+            .Where(x => ids.Contains(x.Id))
+            .Select(x => new { x.Id, x.HiddenAt, x.HiddenBy })
+            .ToList()
+            .ToDictionary(x => x.Id, x => x.HiddenAt != null && x.HiddenBy != RantReplyHiddenBy.Author);
+    }
+
     /// <summary>同一被檢舉人累積的未駁回檢舉數，供審核時判斷是否累犯。</summary>
     public int CountAgainstUser(string userId)
     {
@@ -388,10 +460,24 @@ public sealed class ReportService
         return record.ToDomain();
     }
 
-    /// <summary>目前只有樹洞貼文支援隱藏；其他型別的處置留待後續擴充。</summary>
+    /// <summary>樹洞貼文與樹洞回應支援隱藏；私訊與使用者的處置在別的地方。</summary>
     private void SetTargetHidden(string targetType, string targetId, bool hidden)
     {
         if (db == null) return;
+
+        if (targetType == ReportTargetType.RANT_REPLY.ToString())
+        {
+            // 後台藏的回應誰都看不到，貼文作者也不能取消（見 RantService.Assemble）。
+            // 原本如果是貼文作者自己藏的，這裡會把它升級成後台藏的。
+            // 退回＝兩個欄位一起清掉，連作者先前自己藏的也放出來：後台已經判定
+            // 這則沒有問題，作者還是不想看的話可以自己再藏一次。
+            var reply = db.RantReplies.FirstOrDefault(x => x.Id == targetId);
+            if (reply == null) return;
+            reply.HiddenAt = hidden ? reply.HiddenAt ?? DateTimeOffset.UtcNow : null;
+            reply.HiddenBy = hidden ? RantReplyHiddenBy.Admin : null;
+            return;
+        }
+
         if (targetType != ReportTargetType.RANT_POST.ToString()) return;
 
         var post = db.RantPosts.FirstOrDefault(x => x.Id == targetId);
@@ -461,10 +547,17 @@ public sealed class ReportService
         return new PurgeOutcome(stale.Count, true);
     }
 
-    /// <summary>這則檢舉的標的現在是不是隱藏中。非樹洞貼文一律 false（還不支援隱藏）。</summary>
+    /// <summary>這則檢舉的標的現在是不是被後台隱藏中。樹洞貼文與回應以外一律 false（不支援隱藏）。</summary>
     private bool IsTargetHidden(string targetType, string targetId)
     {
-        if (db == null || targetType != ReportTargetType.RANT_POST.ToString()) return false;
+        if (db == null) return false;
+        if (targetType == ReportTargetType.RANT_REPLY.ToString())
+        {
+            return db.RantReplies.AsNoTracking().Any(x =>
+                x.Id == targetId && x.HiddenAt != null && x.HiddenBy != RantReplyHiddenBy.Author);
+        }
+
+        if (targetType != ReportTargetType.RANT_POST.ToString()) return false;
         return db.RantPosts.AsNoTracking().Any(x => x.Id == targetId && x.IsHidden);
     }
 

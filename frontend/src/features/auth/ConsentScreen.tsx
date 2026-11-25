@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { AuthFrame, LogoBlock, AuthNotice, FloatingField, LegalModal } from './AuthControls'
+import { AuthFrame, AuthNotice, FloatingField, LegalModal } from './AuthControls'
 import BirthdayField from './BirthdayField'
 import type { LegalDoc } from './legalDocuments'
 import type { ConsentAnswer } from './api'
@@ -95,7 +95,6 @@ export default function ConsentScreen({ heading, description, onSubmit, exitProm
 
   return (
     <AuthFrame variant="clean" onBack={onBack}>
-      <LogoBlock compact />
       <section className="register-heading">
         <h1>{heading}</h1>
         <p>{description}</p>

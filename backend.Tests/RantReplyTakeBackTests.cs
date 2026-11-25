@@ -34,7 +34,8 @@ public sealed class RantReplyTakeBackTests
         Assert.Null(error);
         Assert.Equal(["theirs"], post!.Replies.Select(x => x.Id));
         Assert.Equal(1, post.ReplyCount);
-        Assert.False(db.RantReplies.Any(x => x.Id == "mine"));
+        // 收回不是刪列：對所有人隱形，列留著 30 天（見 RantSoftDeleteTests）
+        Assert.NotNull(db.RantReplies.Single(x => x.Id == "mine").DeletedAt);
     }
 
     /// <summary>「不是你的」和「不存在」要回同一個錯，不能讓人拿來探測 replyId。</summary>

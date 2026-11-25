@@ -13,52 +13,31 @@ import {
   RELATIONSHIP_OPTIONS,
   type DistanceMode,
 } from './profileFields'
-import slide1 from '../../assets/1.webp'
-import slide2 from '../../assets/2.webp'
-import slide3 from '../../assets/3.webp'
-import slide4 from '../../assets/4.webp'
-import slide5 from '../../assets/5.webp'
+import SyncHero from '../../shared/ui/SyncHero'
 
 // 定位說明頁排在功能介紹之後、填資料之前：
 // 看完介紹才知道這個 App 在做什麼，這時候問定位才有理由；
 // 排在填資料之前，後面「你在哪個縣市」就能直接帶入，不用再選一次。
 type Phase = 'slides' | 'location' | 'setup' | 'intent'
 
+// 功能介紹三頁，畫面上是同一對圓走完一個故事：
+// 各自一邊（今天過得怎麼樣）→ 靠近（遇見同頻的人）→ 合成愛心（兩個人都同頻才開始聊）。
+// 跟歡迎頁、配對成立用的是同一組角色。
+//
+// 以前是五頁、每頁一張插圖（窗邊的咖啡、筆記本……），跟產品其他地方不是同一個畫風；
+// 最後一頁還在介紹已經下架的「小任務」。
 const SLIDES = [
   {
-    img: slide1,
-    bg: 'linear-gradient(160deg, #fff3d8 0%, #ffe4bb 100%)',
-    accent: '#ef8968',
-    title: '今天，你過得怎麼樣？',
-    desc: '同頻 Today 從每天一件小事開始，讓你慢慢認識和你同頻的人',
+    title: ['今天，', '你過得怎麼樣？'],
+    desc: '每天寫一句話、選一個心情，像跟朋友說話一樣就好',
   },
   {
-    img: slide2,
-    bg: 'linear-gradient(160deg, #e8f5f0 0%, #d7efe9 100%)',
-    accent: '#4e9188',
-    title: '記下今天的故事',
-    desc: '不用長篇大論，一句話、一個心情，就能開始你的今日共鳴',
+    title: ['遇見今天', '跟你同頻的人'],
+    desc: '我們找出今天和你有共鳴的人，並且告訴你為什麼是他',
   },
   {
-    img: slide3,
-    bg: 'linear-gradient(160deg, #fff8d8 0%, #fef0b0 100%)',
-    accent: '#e8a645',
-    title: '找到同頻的人',
-    desc: '系統根據你的今日記錄，配對有共鳴的人，不強迫、不勉強',
-  },
-  {
-    img: slide4,
-    bg: 'linear-gradient(160deg, #eaf5f0 0%, #c8e8e0 100%)',
-    accent: '#4e9188',
-    title: '說說心裡話',
-    desc: '樹洞讓你匿名傾訴今天的煩惱，有人懂你，有人陪你',
-  },
-  {
-    img: slide5,
-    bg: 'linear-gradient(160deg, #fff3d8 0%, #ffe4bb 100%)',
-    accent: '#ef8968',
-    title: '低壓開始，慢慢認識',
-    desc: '透過小任務和聊天，用自己的步調認識新朋友',
+    title: ['兩個人都同頻，', '才開始聊'],
+    desc: '不想配對的日子，也可以把話放進樹洞，會有人接住',
   },
 ]
 
@@ -184,7 +163,6 @@ export default function OnboardingOverlay({ user, onComplete }: Props) {
     onComplete()
   }
 
-  const trackX = -current * 100 + (dragOffset / window.innerWidth) * 100
   const slide = SLIDES[current]
 
   if (phase === 'location') {
@@ -434,28 +412,28 @@ export default function OnboardingOverlay({ user, onComplete }: Props) {
   }
 
   return (
-    <div className="onboarding-overlay">
+    <div className="onboarding-overlay ob-intro">
+      {/* 跳過的是功能介紹，不是定位說明頁——那一頁有自己的「先不用」 */}
+      <button className="ob-skip-btn" type="button" onClick={() => setPhase('location')}>
+        跳過
+      </button>
+
+      {/* 左右滑也能換頁；畫面本身不跟著手指移動，只有兩顆圓會動 */}
       <div
-        className="ob-slides-viewport"
+        className="ob-intro-main"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
-        style={{ touchAction: 'pan-y', cursor: dragging ? 'grabbing' : 'grab' }}
+        style={{ touchAction: 'pan-y' }}
       >
-        <div
-          className={`ob-track${dragging ? ' dragging' : ''}`}
-          style={{ transform: `translateX(${trackX}%)` }}
-        >
-          {SLIDES.map((s, i) => (
-            <div key={i} className="ob-slide" style={{ background: s.bg }}>
-              <div className="ob-slide-visual" style={{ boxShadow: `0 20px 60px ${s.accent}30` }}>
-                <img src={s.img} alt="" draggable={false} />
-              </div>
-              <h2 className="ob-slide-title" style={{ color: '#3e1d0a' }}>{s.title}</h2>
-              <p className="ob-slide-desc">{s.desc}</p>
-            </div>
-          ))}
+        <div className="ob-intro-stage" aria-hidden="true">
+          <p className={`ob-intro-note${current === 0 ? ' is-on' : ''}`}>加班到九點，走出公司才發現在下雨</p>
+          <SyncHero near={current === 1} merged={current === 2} />
+        </div>
+        <div className="ob-intro-text" key={current}>
+          <h2 className="ob-slide-title">{slide.title[0]}<br />{slide.title[1]}</h2>
+          <p className="ob-slide-desc">{slide.desc}</p>
         </div>
       </div>
 
@@ -466,27 +444,15 @@ export default function OnboardingOverlay({ user, onComplete }: Props) {
               key={i}
               type="button"
               className={`ob-dot${i === current ? ' active' : ''}`}
-              style={i === current ? { background: slide.accent } : undefined}
               onClick={() => setCurrent(i)}
               aria-label={`第 ${i + 1} 頁`}
             />
           ))}
         </div>
-
-        <div className="ob-actions">
-          {/* 跳過的是功能介紹，不是定位說明頁——那一頁有自己的「先不用」 */}
-          <button className="ob-skip-btn" type="button" onClick={() => setPhase('location')}>
-            跳過
-          </button>
-          <button
-            className="ob-next-btn"
-            type="button"
-            style={{ background: slide.accent }}
-            onClick={goNext}
-          >
-            {current === total - 1 ? '開始設定 →' : '下一頁'}
-          </button>
-        </div>
+        <button className="keycap-btn" type="button" onClick={goNext}>
+          {current === total - 1 ? '開始設定' : '下一頁'}
+          <span className="keycap-arrow" aria-hidden="true" />
+        </button>
       </div>
     </div>
   )

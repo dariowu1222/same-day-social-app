@@ -487,39 +487,151 @@
   background: #6e3820;
 }
 
-/* ── 新增貼文頁 ── */
+/* ── 新增貼文頁（2026-11 改版）──
+   標題列跟頁面同一個底色、不畫底線；返回是一顆圓鈕，右邊是送出。 */
 .new-post-header {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 16px;
-  border-bottom: 1px solid #e8e0d0;
-  background: #fffcf7;
+  /* 左右不另外留白：外層 .app-shell 已經有 16px，再加一層內容會比其他頁窄一圈 */
+  padding: 6px 0 10px;
   position: sticky;
   top: 0;
   z-index: 10;
+  background: var(--theme-bg, #fbf6ef);
 }
 
 .new-post-back {
-  background: none;
-  border: none;
-  padding: 6px;
-  cursor: pointer;
-  color: #2d4a47;
-  display: flex;
-  align-items: center;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0 0 3px;
+  border: 0;
   border-radius: 50%;
+  background: #f1e8dc;
+  color: #33241b;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
 }
 
-.new-post-back:hover {
-  background: #f0ebe0;
+.new-post-back:active {
+  background: #e9dccc;
 }
 
 .new-post-title {
   flex: 1;
-  font-size: 16px;
-  font-weight: 600;
-  color: #2d4a47;
+  font-size: 20px;
+  font-weight: 700;
+  color: #33241b;
+}
+
+/* 送出：外觀是 15-welcome.css 的 .keycap-btn，這裡把它縮成標題列用的小顆 */
+.new-post-header .new-post-send {
+  flex: none;
+  width: auto;
+  height: 38px;
+  margin: 0 0 3px;
+  padding: 0 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.3), 0 3px 0 #983a1e;
+}
+
+.new-post-header .new-post-send:not(:disabled):active {
+  transform: translateY(3px);
+  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.3), 0 0 0 #983a1e;
+}
+
+.new-post-header .new-post-send.is-off,
+.new-post-header .new-post-send.is-off:not(:disabled):active {
+  background: #efe6db;
+  color: #705c4e;
+  box-shadow: 0 3px 0 #dfd0be;
+  transform: none;
+}
+
+/* 每一區的小標：左邊標題、右邊補充或動作 */
+.new-post-section {
+  display: grid;
+  gap: 8px;
+}
+
+.new-post-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0 2px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #33241b;
+}
+
+.new-post-label small {
+  font-size: 12px;
+  font-weight: 400;
+  color: #7d6858;
+}
+
+.new-post-more {
+  padding: 2px 4px;
+  border: 0;
+  background: none;
+  color: #c9502f;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* 想被怎麼回應：六顆直接攤開，選到的是珊瑚色的框 */
+.mode-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mode-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 18px;
+  background: #ffffff;
+  color: #33241b;
+  font-size: 14px;
+  white-space: nowrap;
+  box-shadow: inset 0 0 0 1.5px #e6d9ca;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.08s;
+}
+
+.mode-chip svg {
+  flex: none;
+  color: #9a8778;
+}
+
+.mode-chip:active {
+  transform: scale(0.95);
+}
+
+.mode-chip.is-on {
+  background: #fce9e0;
+  color: #983a1e;
+  font-weight: 700;
+  box-shadow: inset 0 0 0 2px #c9502f;
+}
+
+.mode-chip.is-on svg {
+  color: #c9502f;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mode-chip { transition: none; }
 }
 
 .new-post-submit {
@@ -545,10 +657,10 @@
 }
 
 .new-post-body {
-  padding: 16px;
+  padding: 6px 0 16px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 18px;
 }
 
 /* ── 樹洞搜尋欄 ── */
@@ -685,3 +797,25 @@
    日夜模式切換
    ══════════════════════════════════════════════════════════════ */
 
+/* ── 作者刪掉的貼文（詳情頁）──
+   原本貼文的位置只留一塊虛線框，底下別人的回應照常顯示。 */
+.detail-thread-post.detail-deleted {
+  margin: 14px 14px 6px;
+  padding: 20px 16px;
+  border: 1.5px dashed var(--rc-soft-2, #e6d9ca);
+  border-radius: 16px;
+  text-align: center;
+}
+
+.detail-deleted-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--rc-strong-muted, #6b5445);
+}
+
+.detail-deleted-sub {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--rc-muted, #8a7a6a);
+}

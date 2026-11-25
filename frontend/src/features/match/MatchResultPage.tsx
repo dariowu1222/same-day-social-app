@@ -12,6 +12,7 @@ import { getProfile, updateProfile } from '../profile/api'
 import { getZodiac, getAge } from '../profile/profileUtils'
 import type { MatchResult, PartnerQuota } from './types'
 import AgeRangeSlider, { AGE_FLOOR, AGE_CEIL } from '../../shared/ui/AgeRangeSlider'
+import SyncHero from '../../shared/ui/SyncHero'
 
 type EnrichedMatch = Omit<MatchResult, 'photos' | 'interests' | 'personalityTags' | 'appearanceTags'> & {
   photos: string[]
@@ -93,6 +94,7 @@ function SwipeCard({
   onSwipe: (dir: SwipeDir) => void
 }) {
   const cardRef = useRef<HTMLDivElement>(null)
+  const photoRef = useRef<HTMLDivElement>(null)
   const startX = useRef(0)
   const startY = useRef(0)
   const currentX = useRef(0)
@@ -104,6 +106,22 @@ function SwipeCard({
 
   const THRESHOLD = 80
   const TAP_THRESHOLD = 8
+
+  // 展開個人資料。矮螢幕上照片區會被資訊擠到比 50% 矮，但 CSS 過場是從
+  // 「寫的高度」（50%）算起、不是從畫面上實際的高度——不先釘住的話，
+  // 展開的第一格照片會彈回 50% 再縮下去。所以先把現在的實際高度寫成起點
+  // （關掉過場寫、強制算一次版面），再放手讓它過場到展開後的 24%。
+  const expandProfile = () => {
+    const photo = photoRef.current
+    if (photo) {
+      photo.style.transition = 'none'
+      photo.style.height = `${photo.getBoundingClientRect().height}px`
+      void photo.offsetHeight
+      photo.style.transition = ''
+      photo.style.height = ''
+    }
+    setShowProfile(true)
+  }
 
   function onPointerDown(e: React.PointerEvent) {
     if (!isTop || showProfile) return
@@ -152,7 +170,7 @@ function SwipeCard({
           return
         }
         if (!showProfile) {
-          setShowProfile(true)
+          expandProfile()
           setDragX(0)
           return
         }
@@ -207,7 +225,7 @@ function SwipeCard({
       <div className="swipe-label swipe-label-like" style={{ opacity: likeOpacity }}>同頻 ✦</div>
       <div className="swipe-label swipe-label-nope" style={{ opacity: nopeOpacity }}>跳過 ✕</div>
 
-      <div className={`swipe-photo-wrap${showProfile ? ' compressed' : ''}`}>
+      <div ref={photoRef} className={`swipe-photo-wrap${showProfile ? ' compressed' : ''}`}>
         <img
           key={photoIndex}
           src={match.photos[photoIndex]}
@@ -230,7 +248,7 @@ function SwipeCard({
 
       <div
         className={`swipe-card-info${showProfile ? ' expanded' : ''}`}
-        onClick={() => isTop && !showProfile && setShowProfile(true)}
+        onClick={() => isTop && !showProfile && expandProfile()}
       >
         <div className="swipe-name-row">
           <h2 className="swipe-name">{match.nickname}</h2>
@@ -516,6 +534,8 @@ function PreferenceSheet({ userId, onClose, onApplied }: { userId: string; onClo
 export default function MatchResultPage({ onBack, onGoToRant, moodLabel, pendingEntry }: Props) {
   const { user } = useAuth()
   const [phase, setPhase] = useState<'loading' | 'tutorial' | 'done'>('loading')
+  // 載入完、有找到人時，停一拍讓兩顆圓合成愛心並報出人數，再進卡片。0 表示還在找（或沒找到）。
+  const [foundCount, setFoundCount] = useState(0)
   const [matches, setMatches] = useState<EnrichedMatch[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const navigate = useNavigate()
@@ -545,7 +565,8 @@ export default function MatchResultPage({ onBack, onGoToRant, moodLabel, pending
   const pendingRef = useRef<Set<string>>(new Set())
 
   const loadMatches = useCallback(async () => {
-    if (!user) return
+    let count = 0
+    if (!user) return count
 
     // 上次沒送出去的右滑先補送。後端的 Like 是冪等的（已右滑過就不再發通知），
     // 所以重送安全；不補的話那幾次同頻等於從未發生，對方永遠配不到。
@@ -577,20 +598,33 @@ export default function MatchResultPage({ onBack, onGoToRant, moodLabel, pending
       // 而伺服器根本沒收到那次同頻。
       const skip = readPassedIds()
       pendingRef.current.forEach((id) => skip.add(id))
-      setMatches(res.data.filter((m) => !skip.has(m.matchId)).map(mapMatch))
+      const list = res.data.filter((m) => !skip.has(m.matchId)).map(mapMatch)
+      setMatches(list)
+      count = list.length
     } catch {
       setMatches([])
     }
     setCurrentIndex(0)
     setLastDir(null)
+    return count
   }, [user, pendingEntry])
 
   useEffect(() => {
+    let cancelled = false
     void (async () => {
-      await loadMatches()
+      const count = await loadMatches()
+      if (cancelled) return
+      // 有找到人：兩顆圓合成愛心、報出人數，停 1.3 秒再進卡片（合成 0.55 秒＋跳一下 0.45 秒）。
+      // 關掉動態效果的人不必等這一拍。
+      if (count > 0 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        setFoundCount(count)
+        await new Promise((resolve) => setTimeout(resolve, 1300))
+        if (cancelled) return
+      }
       const seen = localStorage.getItem(TUTORIAL_KEY)
       setPhase(seen ? 'done' : 'tutorial')
     })()
+    return () => { cancelled = true }
   }, [loadMatches])
 
   // 額度只在進頁面時問一次。它不會因為「套用並重新配對」而改變，
@@ -695,8 +729,10 @@ export default function MatchResultPage({ onBack, onGoToRant, moodLabel, pending
 
       {phase === 'loading' && (
         <div className="match-loading-mask">
-          <div className="match-spinner-ring" />
-          <p className="match-loading-text">正在尋找今天同頻的人…</p>
+          <SyncHero seeking merged={foundCount > 0} />
+          <p className="match-loading-text" aria-live="polite">
+            {foundCount > 0 ? `找到 ${foundCount} 位同頻的人` : '正在找今天跟你同頻的人'}
+          </p>
         </div>
       )}
 
@@ -777,7 +813,7 @@ export default function MatchResultPage({ onBack, onGoToRant, moodLabel, pending
         <PreferenceSheet
           userId={user.userId}
           onClose={() => setPrefOpen(false)}
-          onApplied={() => { setPhase('loading'); void loadMatches().then(() => setPhase('done')) }}
+          onApplied={() => { setFoundCount(0); setPhase('loading'); void loadMatches().then(() => setPhase('done')) }}
         />
       )}
     </div>

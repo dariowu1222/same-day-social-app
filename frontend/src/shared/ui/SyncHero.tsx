@@ -10,9 +10,14 @@ const SPARKS = [20, 80, 140, 200, 260, 320]
  * 兩顆滑到一起、綠的那顆變成同一個顏色、底下長出一個菱形——兩個圓加一個
  * 轉 45 度的方塊，正好是一顆愛心的形狀，不必另外畫一張圖。
  *
+ * near 是「靠近了但還沒碰到」，新手引導的第二頁用。
+ *
+ * seeking 是「正在找」：兩顆圓不再各自上下浮，改成左右往對方靠一下又退開，
+ * 用在配對載入中；找到了再把 merged 設成 true，就接著合成愛心。
+ *
  * 全部只動 transform 和 opacity（樣式在 15-welcome.css）。
  */
-export default function SyncHero({ merged }: { merged: boolean }) {
+export default function SyncHero({ merged, seeking = false, near = false }: { merged: boolean; seeking?: boolean; near?: boolean }) {
   const root = useRef<HTMLDivElement>(null)
 
   // 兩顆圓平常各自上下浮動，而且刻意錯開半拍。要合成愛心時必須先回到同一條線上，
@@ -44,7 +49,7 @@ export default function SyncHero({ merged }: { merged: boolean }) {
   )
 
   return (
-    <div ref={root} className={`sync-hero${merged ? ' is-merged' : ''}`} aria-hidden="true">
+    <div ref={root} className={`sync-hero${seeking ? ' is-seeking' : ''}${near ? ' is-near' : ''}${merged ? ' is-merged' : ''}`} aria-hidden="true">
       <span className="sync-diamond" />
       <span className="sync-dot sync-dot-me">{ball}</span>
       <span className="sync-dot sync-dot-you">{ball}</span>

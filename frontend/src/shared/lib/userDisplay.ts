@@ -31,19 +31,3 @@ export function getAge(birthday: string): number {
   if (m < 0 || (m === 0 && today.getDate() < day)) age--
   return age
 }
-
-// 照片失效／未設定時的防呆頭像：依使用者 ID 穩定挑一隻動物。
-const FALLBACK_ANIMALS = ['🦊', '🐻', '🐰', '🐱', '🐶', '🐼', '🐨', '🐸', '🦝', '🐯', '🦁', '🐹', '🐧', '🦉', '🐢', '🦔']
-
-export function animalFor(seed: string): string {
-  let hash = 0
-  for (let i = 0; i < seed.length; i++) {
-    hash = (hash * 31 + seed.charCodeAt(i)) | 0
-  }
-  return FALLBACK_ANIMALS[Math.abs(hash) % FALLBACK_ANIMALS.length]
-}
-
-// ── 測試用假頭像：正式環境會改用帳號實際上傳的 photoDataUrls[0]（之後刪除）──
-export function testAvatarPhoto(seed: string): string {
-  return `https://picsum.photos/seed/chat_${encodeURIComponent(seed)}/200/200`
-}

@@ -1,0 +1,230 @@
+/* ── 功能選單與確認視窗（shared/ui/ActionMenu、ConfirmDialog）──
+   兩個都畫在 body 底下（portal），所以顏色不能靠 .rant-page 那組 --rc-* 變數，
+   自己帶一份，日夜各一。 */
+:root {
+  --menu-bg: #ffffff;
+  --menu-line: #eadfd1;
+  --menu-ink: #33241b;
+  --menu-muted: #8a7a6a;
+  --menu-soft: #f6efe6;
+  --menu-danger: #c0392b;
+  --menu-shadow: 0 8px 28px rgba(60, 40, 20, 0.18);
+  --menu-mask: rgba(40, 32, 24, 0.45);
+}
+
+[data-theme="dark"] {
+  --menu-bg: #14221c;
+  --menu-line: rgba(168, 212, 204, 0.16);
+  --menu-ink: #d4ede8;
+  --menu-muted: rgba(168, 212, 204, 0.62);
+  --menu-soft: rgba(255, 255, 255, 0.08);
+  --menu-danger: #ff7b6b;
+  --menu-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+  --menu-mask: rgba(0, 0, 0, 0.6);
+}
+
+/* ── 「⋯」按鈕 ── */
+.action-menu-trigger {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--menu-muted);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.action-menu-trigger:active,
+.action-menu-trigger[aria-expanded="true"] {
+  background: var(--menu-soft);
+  color: var(--menu-ink);
+}
+
+/* 帶字的按鈕（回應排序那顆）：膠囊，不是圓 */
+.action-menu-trigger.has-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: auto;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 15px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* ── 選單本身 ── */
+.action-menu {
+  position: fixed;
+  z-index: 300;
+  min-width: 190px;
+  max-width: min(280px, calc(100vw - 16px));
+  padding: 6px;
+  border-radius: 16px;
+  background: var(--menu-bg);
+  box-shadow: var(--menu-shadow), inset 0 0 0 1px var(--menu-line);
+  animation: action-menu-in 0.12s ease-out;
+}
+
+@keyframes action-menu-in {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+}
+
+.action-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--menu-ink);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.action-menu-item:active { background: var(--menu-soft); }
+.action-menu-item.is-danger { color: var(--menu-danger); }
+
+.action-menu-item:disabled {
+  color: var(--menu-muted);
+  cursor: default;
+}
+
+/* 組與組之間的線：畫在項目上緣，左右留一點，不頂到選單邊 */
+.action-menu-item.is-separated {
+  margin-top: 7px;
+  position: relative;
+}
+
+.action-menu-item.is-separated::before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  top: -4px;
+  height: 1px;
+  background: var(--menu-line);
+}
+
+.action-menu-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.action-menu-hint {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--menu-muted);
+}
+
+.action-menu-icon {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+}
+
+/* ── 確認視窗 ── */
+.confirm-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 310;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--menu-mask);
+  animation: confirm-mask-in 0.14s ease-out;
+}
+
+.confirm-dialog {
+  width: 100%;
+  max-width: 300px;
+  border-radius: 18px;
+  background: var(--menu-bg);
+  box-shadow: var(--menu-shadow);
+  overflow: hidden;
+  text-align: center;
+  animation: confirm-in 0.16s ease-out;
+}
+
+.confirm-body {
+  padding: 22px 20px 18px;
+}
+
+.confirm-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--menu-ink);
+}
+
+.confirm-desc {
+  margin: 8px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--menu-muted);
+}
+
+.confirm-error {
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--menu-danger);
+}
+
+/* 兩顆並排、中間一條線，上面也一條線 */
+.confirm-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-top: 1px solid var(--menu-line);
+}
+
+.confirm-btn {
+  min-height: 50px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--menu-ink);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.confirm-btn + .confirm-btn { border-left: 1px solid var(--menu-line); }
+.confirm-btn:active { background: var(--menu-soft); }
+.confirm-btn:disabled { opacity: 0.6; cursor: default; }
+.confirm-btn.is-primary { font-weight: 700; }
+.confirm-btn.is-danger { color: var(--menu-danger); }
+
+@keyframes confirm-mask-in {
+  from { opacity: 0; }
+}
+
+@keyframes confirm-in {
+  from { opacity: 0; transform: scale(0.96); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .action-menu,
+  .confirm-mask,
+  .confirm-dialog { animation: none; }
+}

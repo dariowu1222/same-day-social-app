@@ -37,8 +37,11 @@ public sealed class ModerationController(ReportService reports, AdminAccessServi
 
         // 這批檢舉指向的貼文現在是不是隱藏中。審核的人要看得到目前狀態，
         // 才知道該按「隱藏」還是「退回」——以前這張清單完全沒有這個資訊。
-        var hidden = reports.HiddenRantPosts(
-            queue.Where(r => r.TargetType == ReportTargetType.RANT_POST).Select(r => r.TargetId));
+        var postIds = queue.Where(r => r.TargetType == ReportTargetType.RANT_POST).Select(r => r.TargetId).ToList();
+        var replyIds = queue.Where(r => r.TargetType == ReportTargetType.RANT_REPLY).Select(r => r.TargetId).ToList();
+        var hidden = reports.HiddenRantPosts(postIds);
+        var hiddenReplies = reports.HiddenRantReplies(replyIds);
+        var notes = reports.RantTargetNotes(postIds, replyIds);
 
         var dto = queue.Select(r => new ModerationReportDto(
             r.Id,
@@ -55,8 +58,15 @@ public sealed class ModerationController(ReportService reports, AdminAccessServi
             r.ReviewedBy,
             r.ReviewedAt,
             r.Resolution,
-            r.TargetType == ReportTargetType.RANT_POST ? hidden.GetValueOrDefault(r.TargetId) : null,
-            r.OutcomeMailSent)).ToList();
+            r.TargetType switch
+            {
+                ReportTargetType.RANT_POST => hidden.GetValueOrDefault(r.TargetId),
+                // 查不到（已經過了保留期、整列清掉了）就給 null：沒有東西可以藏
+                ReportTargetType.RANT_REPLY => hiddenReplies.TryGetValue(r.TargetId, out var isHidden) ? isHidden : null,
+                _ => null,
+            },
+            r.OutcomeMailSent,
+            notes.GetValueOrDefault(r.TargetId))).ToList();
 
         reports.LogAudit(CallerId, "VIEW_QUEUE", null, $"status={status}, 筆數={dto.Count}");
         return ApiResponse<List<ModerationReportDto>>.Ok(dto);
@@ -96,7 +106,7 @@ public sealed record ModerationReportDto(
     DateTimeOffset? ReviewedAt,
     string? Resolution,
     /// <summary>
-    /// 這篇現在是不是隱藏中。只有 RANT_POST 有值，其他型別為 null（還不支援隱藏）。
+    /// 這則內容現在是不是被後台隱藏中。樹洞貼文與樹洞回應有值，其他型別為 null（不支援隱藏）。
     /// 後台靠它決定要顯示「隱藏內容」還是「退回給作者」。
     /// </summary>
     bool? TargetHidden,
@@ -104,7 +114,12 @@ public sealed record ModerationReportDto(
     /// 處理結果有沒有寄信成功。null = 沒寄（SELF_HARM，或兩邊都查不到信箱）、
     /// true = 該寄的都寄出去了、false = 有人沒寄成功。
     /// </summary>
-    bool? OutcomeMailSent);
+    bool? OutcomeMailSent,
+    /// <summary>
+    /// 被檢舉內容目前的特別狀態，一句給人看的話：作者已刪除、回應的人已收回（各自
+    /// 保留到哪一天）、貼文作者已自己隱藏。沒有特別狀態是 null。
+    /// </summary>
+    string? TargetNote = null);
 
 public sealed record ReviewReportRequest(
     ReportStatus Status,

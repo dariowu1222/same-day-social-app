@@ -16,7 +16,16 @@ const OUT_DIR = join(root, 'docs/legal')
 
 const CONTACT_EMAIL = 'tongpintoday@gmail.com'
 const APP_NAME = '同頻 Today'
+// 首頁與刪除帳號說明這兩頁的日期（它們的內容寫在這支腳本裡）。
+// 隱私權政策與服務條款各用自己那份文件的 updated——以前四頁共用這一個常數，
+// 而它沒有跟著條文更新，重跑一次就會把兩份文件的日期改回舊的。
 const UPDATED = '2026-08-29'
+
+// '2026 年 11 月 25 日' → '2026-11-25'。對不上格式就退回上面那個常數。
+function isoDate(zh) {
+  const m = /(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/.exec(zh ?? '')
+  return m ? `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}` : UPDATED
+}
 
 // TS 檔內容就是純物件字面值，去掉型別標註後即可直接求值
 const source = readFileSync(SRC, 'utf8')
@@ -84,7 +93,7 @@ footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);
   color:var(--ink-faint);font-size:13px}
 `
 
-function page({ title, body }) {
+function page({ title, body, updated = UPDATED }) {
   return `<!doctype html>
 <html lang="zh-Hant">
 <head>
@@ -105,7 +114,7 @@ function page({ title, body }) {
   <a href="./account-deletion.html">刪除帳號</a>
 </nav>
 ${body}
-<footer>${APP_NAME}　聯絡信箱：<a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a>　最後更新：${UPDATED}</footer>
+<footer>${APP_NAME}　聯絡信箱：<a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a>　最後更新：${updated}</footer>
 </main>
 </body>
 </html>
@@ -123,7 +132,7 @@ function docBody(doc) {
     .join('\n')
   return `<p class="eyebrow">${APP_NAME}</p>
 <h1>${esc(doc.title)}</h1>
-<p class="meta">最後更新：${UPDATED}</p>
+<p class="meta">最後更新：${isoDate(doc.updated)}</p>
 ${sections}`
 }
 
@@ -187,8 +196,8 @@ const indexBody = `<p class="eyebrow">${APP_NAME}</p>
 
 const files = [
   ['index.html', page({ title: '使用者條款與資料說明', body: indexBody })],
-  ['privacy.html', page({ title: privacyDocument.title, body: docBody(privacyDocument) })],
-  ['terms.html', page({ title: termsDocument.title, body: docBody(termsDocument) })],
+  ['privacy.html', page({ title: privacyDocument.title, body: docBody(privacyDocument), updated: isoDate(privacyDocument.updated) })],
+  ['terms.html', page({ title: termsDocument.title, body: docBody(termsDocument), updated: isoDate(termsDocument.updated) })],
   ['account-deletion.html', page({ title: '刪除帳號與資料', body: deletionBody })],
 ]
 

@@ -98,6 +98,10 @@ if (string.IsNullOrWhiteSpace(databaseConnectionString) && !builder.Environment.
 }
 if (!string.IsNullOrWhiteSpace(databaseConnectionString))
 {
+    // 連線字串沒寫的連線池設定在這裡補：留幾條連線不關、定時送 keepalive。
+    // 不補的話 20 秒沒人用連線就全部關掉，下一個請求要先花 0.3–0.4 秒重建。
+    databaseConnectionString = SameDaySocialApp.Infrastructure.Persistence.ConnectionPoolDefaults.Apply(databaseConnectionString);
+
     builder.Services.AddDbContext<AppDbContext>(options =>
     {
         options.UseNpgsql(databaseConnectionString, npgsqlOptions =>

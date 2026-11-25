@@ -43,16 +43,58 @@ public sealed class MatchService
         logger = services.GetService<ILogger<MatchService>>();
     }
 
+    /// <summary>
+    /// 今天的牌堆。這是開 App 之後第一個打的端點。
+    ///
+    /// 讀資料的方式在 2026-11-25 換過，結果不變。以前是：
+    ///   ・整張 users 表原封不動讀進來（每個人的照片網址陣列、自我介紹、所有欄位）
+    ///   ・所有不是 PRIVATE 的 today_entries 全部讀進來，再在這裡挑每個人最新的一筆
+    ///   ・暫停配對的名單、表態過的名單、封鎖名單各查一次，回來再比對
+    /// 使用者愈多、用得愈久，這支就愈慢，而它偏偏是第一眼。
+    ///
+    /// 現在是：
+    ///   ・自己：一列
+    ///   ・候選：暫停、已表態、封鎖、（有指定的話）性別在資料庫裡就濾掉，
+    ///     而且只拿算分要用的八個欄位（見 CandidateQuery）
+    ///   ・今日記錄：資料庫只回每個人最新的那一筆（見 LatestEntriesQuery）
+    ///   ・完整的個人資料：只有最後真的要發出去的那幾張才讀
+    ///
+    /// 算分、排序、偏好的硬界線、帳號狀態的判斷一行都沒動，還是在這裡用同一批函式做。
+    /// </summary>
     public List<MatchResponse> GetTodayMatches(string userId)
     {
-        var users = LoadUsers();
+        return db != null ? TodayMatchesFromDb(db, userId) : TodayMatchesFromFiles(userId);
+    }
 
-        // 登入者的交友意圖（想認識的對象、年齡範圍）→ 用來篩選候選
-        var me = users.FirstOrDefault(x => x.Id == userId);
-        if (me == null)
+    private List<MatchResponse> TodayMatchesFromDb(AppDbContext context, string userId)
+    {
+        var meRecord = context.Users.AsNoTracking().FirstOrDefault(x => x.Id == userId);
+        if (meRecord == null)
         {
             return [];
         }
+
+        // 登入者的交友意圖（想認識的對象、年齡範圍）→ 用來篩選候選
+        var me = meRecord.ToDomain();
+
+        // 暫停配對：本人暫停則不配對；其他暫停者在 CandidateQuery 裡濾掉
+        if (context.UserSettings.AsNoTracking().Any(x => x.UserId == userId && x.PauseMatching))
+        {
+            return [];
+        }
+
+        // 帳號狀態：註銷／封鎖／停權中的人不該出現在任何人的牌堆。
+        //
+        // 判斷走 AccountStateService（請求閘門用的是同一個），停權到期就回到牌堆：
+        // users.status 要等排程把它寫回 ACTIVE 才會變，不能只看那個欄位。
+        // 所以這一條留在這裡判斷，不推進 SQL——在查詢裡先用 status = 'ACTIVE' 砍一刀的話，
+        // 期滿的人根本到不了這個判斷。
+        var now = DateTimeOffset.UtcNow;
+        var pool = CandidateQuery(context, userId, WantedGender(me), now.AddDays(-PassCooldownDays))
+            .ToList()
+            .Where(x => AccountStateService.IsActive(x.AccountStatus, x.SuspendedUntil, now))
+            .Select(x => x.ToUser())
+            .ToList();
 
         // 候選池從「使用者」出發，不是從「今日」出發。
         //
@@ -61,28 +103,174 @@ public sealed class MatchService
         // 任何人的牌堆裡——而且 onboarding 只收個人資料、不會建立今日記錄，
         // 所以一個剛註冊完、資料填得完整的人，什麼都沒做錯就是隱形的，
         // app 裡也沒有任何地方會告訴他。今日有發就當加分素材，沒發也要能被看到。
-        var latestEntries = LoadMatchableEntries()
+        //
+        // 同一個人同一個時間點有兩筆時資料庫會兩筆都回，所以這裡還是要 MaxBy 收成一筆。
+        var latestEntries = LatestEntriesQuery(context)
+            .ToList()
+            .Select(x => x.ToDomain())
             .GroupBy(x => x.UserId)
             .ToDictionary(g => g.Key, g => g.MaxBy(x => x.CreatedAt)!);
 
         // 自己的今日同樣可有可無：有就拿來比對事件與情緒，沒有就只比個人資料。
         latestEntries.TryGetValue(userId, out var current);
 
-        // 暫停配對：本人暫停則不配對；其他暫停者也不出現在候選
+        // 年齡範圍是硬界線：湊不滿一副牌就發幾張算幾張，不放寬來補。
+        // 放寬過的卡片在畫面上和其他人長得一模一樣，使用者只會看到自己
+        // 明明設了 25–30 卻跑出 33 歲的人，結論是偏好設定沒有用。
+        // BuildDeck 不只是 Take(DeckSize)：使用者今天情緒吃力時會保留幾張
+        // 給看起來還有餘裕的人，避免整副牌變成一面負面的鏡子。
+        var deck = BuildDeck(RankCandidates(pool, current, latestEntries, me), TraitsOf(current, me));
+        if (deck.Count == 0) return [];
+
+        // 卡片上要顯示的完整資料（照片、自我介紹、個性……）只為這幾張讀。
+        var deckIds = deck.Select(x => x.UserId).ToList();
+        var deckUsers = context.Users.AsNoTracking()
+            .Where(x => deckIds.Contains(x.Id))
+            .ToList()
+            .Select(x => x.ToDomain())
+            .ToList();
+
+        // 落地只發生在這裡，而且只對真的要發出去的這幾張。
+        // 先前是在算分階段對「每一位候選」寫一列，所以 matches 有列不代表
+        // 使用者看過那個人——任何靠「列是否存在」判斷已滑過的作法都會失效。
+        return ApplyDisplayScore(MaterializeDeck(userId, current, deck, deckUsers));
+    }
+
+    /// <summary>
+    /// 候選池：除了自己以外，還沒被下面幾條排除的人。
+    ///
+    ///  ・暫停配對的人
+    ///  ・我已經表態過的人：右滑（UserLiked）是永久表態；左滑（PassedAt）只排除冷卻期內——
+    ///    對方的「今天」會變，配對理由跟著變，而且候選池小的時候這是唯一的回血來源
+    ///  ・封鎖關係的兩個方向：我封鎖的人、以及封鎖我的人
+    ///  ・我指定了想認識的性別時，性別不符或沒填的人（跟 MatchesPreferences 同一條規則；
+    ///    那邊照樣會再比一次，這裡只是不讓那些列過網路）
+    ///
+    /// 年齡、地區不在這裡濾：年齡的邊界要照 AgeRules 算、地區要經過 TaiwanAreas 的正規化，
+    /// 兩者在 SQL 裡重寫一份就會有兩套規則。帳號狀態也不在這裡濾，理由見呼叫端。
+    ///
+    /// 只拿算分與篩選用得到的欄位。照片網址陣列、自我介紹那些要等牌堆定了才讀。
+    ///
+    /// internal static：測試要拿它去確認 Npgsql 翻得出 SQL（記憶體資料庫什麼都翻得過，
+    /// 真的資料庫不一定）。
+    /// </summary>
+    internal static IQueryable<CandidateRow> CandidateQuery(
+        AppDbContext context, string userId, string? wantGender, DateTimeOffset passCutoff)
+    {
+        var query = context.Users.AsNoTracking()
+            .Where(u => u.Id != userId)
+            .Where(u => !context.UserSettings.Any(s => s.UserId == u.Id && s.PauseMatching))
+            .Where(u => !context.Matches.Any(m =>
+                m.UserId == userId
+                && m.MatchedUserId == u.Id
+                && (m.UserLiked || (m.PassedAt != null && m.PassedAt > passCutoff))))
+            .Where(u => !context.UserBlocks.Any(b =>
+                (b.BlockerId == userId && b.BlockedId == u.Id)
+                || (b.BlockedId == userId && b.BlockerId == u.Id)));
+
+        if (wantGender != null)
+        {
+            query = query.Where(u => u.Gender == wantGender);
+        }
+
+        return query.Select(u => new CandidateRow
+        {
+            Id = u.Id,
+            Status = u.Status,
+            SuspendedUntil = u.SuspendedUntil,
+            Gender = u.Gender,
+            Birthday = u.Birthday,
+            LocationArea = u.LocationArea,
+            InterestTags = u.InterestTags,
+            ValueTags = u.ValueTags,
+        });
+    }
+
+    /// <summary>
+    /// 每個人最新的一筆非 PRIVATE 今日記錄，由資料庫挑。
+    ///
+    /// 以前是把所有非 PRIVATE 的今日記錄全部讀回來再挑——一個人每天發一筆，
+    /// 用一年就是三百多筆，而要的只有最後那一筆。today_entries 有 (user_id, created_at)
+    /// 索引，這句走得到。
+    /// </summary>
+    internal static IQueryable<TodayEntryRecord> LatestEntriesQuery(AppDbContext context)
+    {
+        var isPrivate = Visibility.PRIVATE.ToString();
+        var visible = context.TodayEntries.AsNoTracking().Where(x => x.Visibility != isPrivate);
+        var latestAt = visible
+            .GroupBy(x => x.UserId)
+            .Select(g => new { UserId = g.Key, At = g.Max(x => x.CreatedAt) });
+
+        return from entry in visible
+               join latest in latestAt
+                   on new { entry.UserId, At = entry.CreatedAt } equals new { latest.UserId, latest.At }
+               select entry;
+    }
+
+    /// <summary>候選池查詢回來的一列：算分與篩選要用的欄位，其餘不拿。</summary>
+    internal sealed class CandidateRow
+    {
+        public string Id { get; init; } = "";
+        public string Status { get; init; } = "";
+        public DateTimeOffset? SuspendedUntil { get; init; }
+        public string? Gender { get; init; }
+        public DateOnly? Birthday { get; init; }
+        public string? LocationArea { get; init; }
+        public string[] InterestTags { get; init; } = [];
+        public string[] ValueTags { get; init; } = [];
+
+        /// <summary>
+        /// 跟 RecordMapper.ToDomain 同一種解析：不分大小寫，認不得的值當 ACTIVE。
+        /// 換讀法不該順便換掉這條規則，所以照抄而不是改用比較嚴的那個多載。
+        /// </summary>
+        public AccountStatus AccountStatus
+            => Enum.TryParse<AccountStatus>(Status, true, out var parsed) ? parsed : AccountStatus.ACTIVE;
+
+        /// <summary>
+        /// 包成 User 交給既有的算分函式。沒拿的欄位維持預設值——RankCandidates、
+        /// MatchesPreferences、TraitsOf 只讀這裡填的這幾個。
+        /// </summary>
+        public User ToUser() => new()
+        {
+            Id = Id,
+            Gender = Gender,
+            Birthday = Birthday,
+            LocationArea = LocationArea,
+            InterestTags = InterestTags.ToList(),
+            ValueTags = ValueTags.ToList(),
+            Status = AccountStatus,
+            SuspendedUntil = SuspendedUntil,
+        };
+    }
+
+    /// <summary>
+    /// JSON 儲存模式的牌堆（沒有資料庫時）。整批讀進來再比對，跟資料庫那條在 2026-11-25
+    /// 以前的做法一樣——這個模式發不出 token，實際上走不到，留著是為了兩種儲存模式
+    /// 的規則不要分岔。
+    /// </summary>
+    private List<MatchResponse> TodayMatchesFromFiles(string userId)
+    {
+        var users = LoadUsers();
+
+        var me = users.FirstOrDefault(x => x.Id == userId);
+        if (me == null)
+        {
+            return [];
+        }
+
+        var latestEntries = LoadMatchableEntries()
+            .GroupBy(x => x.UserId)
+            .ToDictionary(g => g.Key, g => g.MaxBy(x => x.CreatedAt)!);
+
+        latestEntries.TryGetValue(userId, out var current);
+
         var pausedUserIds = LoadPausedUserIds();
         if (pausedUserIds.Contains(userId))
         {
             return [];
         }
 
-        // 已表態過的人（右滑永久、左滑在冷卻期內）與封鎖關係，都不該再出現。
         var excluded = LoadExcludedUserIds(userId);
-
-        // 帳號狀態：註銷／封鎖／停權中的人不該出現在任何人的牌堆。
-        //
-        // 判斷走 AccountStateService（請求閘門用的是同一個），停權到期就回到牌堆：
-        // users.status 要等排程把它寫回 ACTIVE 才會變，不能只看那個欄位。
-        // 名單用的是已經載好的 users，不另外查一次資料庫。
         var now = DateTimeOffset.UtcNow;
 
         var pool = users
@@ -92,16 +280,7 @@ public sealed class MatchService
                         && !excluded.Contains(x.Id))
             .ToList();
 
-        // 年齡範圍是硬界線：湊不滿一副牌就發幾張算幾張，不放寬來補。
-        // 放寬過的卡片在畫面上和其他人長得一模一樣，使用者只會看到自己
-        // 明明設了 25–30 卻跑出 33 歲的人，結論是偏好設定沒有用。
-        // BuildDeck 不只是 Take(DeckSize)：使用者今天情緒吃力時會保留幾張
-        // 給看起來還有餘裕的人，避免整副牌變成一面負面的鏡子。
         var deck = BuildDeck(RankCandidates(pool, current, latestEntries, me), TraitsOf(current, me));
-
-        // 落地只發生在這裡，而且只對真的要發出去的這幾張。
-        // 先前是在算分階段對「每一位候選」寫一列，所以 matches 有列不代表
-        // 使用者看過那個人——任何靠「列是否存在」判斷已滑過的作法都會失效。
         return ApplyDisplayScore(MaterializeDeck(userId, current, deck, users));
     }
 
@@ -119,8 +298,7 @@ public sealed class MatchService
     {
         if (me == null || candidate == null) return true;
 
-        // "不限"、空值、以及任何對不到男/女的字串都視為沒有指定。
-        var wantGender = me.LookingFor switch { "男生" => "男", "女生" => "女", _ => (string?)null };
+        var wantGender = WantedGender(me);
         if (wantGender != null)
         {
             if (string.IsNullOrWhiteSpace(candidate.Gender)) return false;
@@ -137,6 +315,13 @@ public sealed class MatchService
 
         return WithinMyArea(me, candidate);
     }
+
+    /// <summary>
+    /// 我想認識的性別，換成 users.gender 存的值。沒有指定回 null：
+    /// "不限"、空值、以及任何對不到男/女的字串都視為沒有指定。
+    /// </summary>
+    private static string? WantedGender(User me)
+        => me.LookingFor switch { "男生" => "男", "女生" => "女", _ => null };
 
     /// <summary>
     /// 地區偏好：依縣市，或依距離，擇一。
@@ -689,36 +874,43 @@ public sealed class MatchService
 
         if (db != null)
         {
-            var existing = db.Matches.AsNoTracking()
+            // 既有的列連 id 一起拿。以前只拿「有沒有」，寫完再整批重讀一次取 id——
+            // 而同一副牌重複打開（回到今日頁、重新整理）是最常見的情況，那時候
+            // 一列都不用寫，重讀那一次純粹是多跑一趟。
+            var ids = db.Matches.AsNoTracking()
                 .Where(x => x.UserId == userId && wanted.Contains(x.MatchedUserId))
-                .Select(x => x.MatchedUserId)
-                .ToHashSet();
+                .Select(x => new { x.MatchedUserId, x.Id })
+                .ToList()
+                .ToDictionary(x => x.MatchedUserId, x => x.Id);
 
             var added = new List<MatchRecordEntity>();
             foreach (var candidate in deck)
             {
-                if (existing.Contains(candidate.UserId)) continue;
+                if (ids.ContainsKey(candidate.UserId)) continue;
                 var entity = NewMatch(userId, current, candidate).ToRecord();
                 db.Matches.Add(entity);
                 added.Add(entity);
             }
 
-            if (added.Count > 0)
+            if (added.Count == 0) return ids;
+
+            try
             {
-                try
+                db.SaveChanges();
+                // 整批是同一個 transaction，走到這裡代表每一列都真的寫進去了
+                foreach (var entity in added) ids[entity.MatchedUserId] = entity.Id;
+                return ids;
+            }
+            catch (DbUpdateException ex)
+            {
+                logger?.LogWarning(ex, "配對候選落地衝突，改用資料庫既有列 userId={UserId}", userId);
+                foreach (var entity in added)
                 {
-                    db.SaveChanges();
-                }
-                catch (DbUpdateException ex)
-                {
-                    logger?.LogWarning(ex, "配對候選落地衝突，改用資料庫既有列 userId={UserId}", userId);
-                    foreach (var entity in added)
-                    {
-                        db.Entry(entity).State = EntityState.Detached;
-                    }
+                    db.Entry(entity).State = EntityState.Detached;
                 }
             }
 
+            // 只有撞到才重讀：那一批整個 rollback 了，哪幾列是別的請求寫進去的要問資料庫
             return db.Matches.AsNoTracking()
                 .Where(x => x.UserId == userId && wanted.Contains(x.MatchedUserId))
                 .ToDictionary(x => x.MatchedUserId, x => x.Id);

@@ -39,11 +39,18 @@ public sealed class ChatsController(ChatService chatService, MediaUrlPolicy medi
     }
 
     [HttpGet("{chatRoomId}/messages")]
-    public ActionResult<ApiResponse<List<ChatMessage>>> GetMessages(string chatRoomId, [FromQuery] int? limit = null)
+    public ActionResult<ApiResponse<List<ChatMessage>>> GetMessages(
+        string chatRoomId, [FromQuery] int? limit = null, [FromQuery] string? before = null)
     {
         if (!IsMember(chatRoomId)) return Forbid();
+
+        // before：上一頁最舊那一則的 createdAt，原樣送回來（往上滑載入更早的訊息）。
+        // 解析不了就當作沒帶，回最新的一頁——跟樹洞的 cursor 同一個處理方式。
+        DateTimeOffset? cursor = DateTimeOffset.TryParse(before, out var parsed) ? parsed : null;
         return ApiResponse<List<ChatMessage>>.Ok(
-            limit.HasValue ? chatService.GetMessages(chatRoomId, limit.Value) : chatService.GetMessages(chatRoomId));
+            limit.HasValue
+                ? chatService.GetMessages(chatRoomId, limit.Value, cursor)
+                : chatService.GetMessages(chatRoomId, before: cursor));
     }
 
     /// <summary>

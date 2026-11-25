@@ -317,3 +317,58 @@ h3 {
   display: none;
 }
 
+/* ── 分頁的程式碼還在路上（見 shared/lib/lazyPage.tsx）──
+   前 0.4 秒什麼都不顯示：趁空檔預抓過之後，絕大多數時候一瞬間就好，
+   每次切頁都閃一下「載入中」反而比較吵。 */
+.route-fallback {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 6px;
+  min-height: 60vh;
+  text-align: center;
+}
+
+.route-fallback-text {
+  margin: 0;
+  font-size: 14px;
+  color: #8a7a6a;
+  opacity: 0;
+  animation: route-fallback-in 0.2s ease-out 0.4s forwards;
+}
+
+.route-fallback.is-failed .route-fallback-text {
+  font-size: 16px;
+  font-weight: 700;
+  color: #33241b;
+  opacity: 1;
+  animation: none;
+}
+
+.route-fallback-sub {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: #8a7a6a;
+}
+
+.route-fallback-btn {
+  width: auto;
+  padding: 0 24px;
+}
+
+@keyframes route-fallback-in {
+  to { opacity: 1; }
+}
+
+[data-theme="dark"] .route-fallback-text,
+[data-theme="dark"] .route-fallback-sub {
+  color: rgba(168, 212, 204, 0.62);
+}
+
+[data-theme="dark"] .route-fallback.is-failed .route-fallback-text {
+  color: #d4ede8;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-fallback-text { animation: none; opacity: 1; }
+}

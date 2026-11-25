@@ -16,14 +16,13 @@ import {
 } from './api'
 import ConsentScreen, { TermsRow } from './ConsentScreen'
 import BirthdayField from './BirthdayField'
-import SyncHero from './SyncHero'
+import SyncHero from '../../shared/ui/SyncHero'
 import { isAdultBirthday } from '../profile/profileUtils'
 import type { DemoUser } from './types'
 import type { LegalDoc } from './legalDocuments'
 import { APP_VERSION_LABEL } from '../../shared/lib/appVersion'
 import {
   AuthFrame,
-  LogoBlock,
   BrandLockup,
   AuthField,
   AuthNotice,
@@ -632,7 +631,6 @@ export default function LoginPage({ onAuthenticated }: Props) {
   if (mode === 'forgot') {
     return (
       <AuthFrame variant="warm" onBack={() => setMode('login')}>
-        <LogoBlock compact />
         <section className="auth-title-block">
           <h1>忘記密碼</h1>
           <p>{getForgotDescription(forgotStep)}</p>
@@ -756,10 +754,9 @@ export default function LoginPage({ onAuthenticated }: Props) {
   if (mode === 'register') {
     return (
       <AuthFrame variant="clean" onBack={() => setMode('login')}>
-        <LogoBlock compact />
         <section className="register-heading">
           <h1>建立帳號</h1>
-          <p>加入同頻 Today，開啟你的共鳴旅程</p>
+          <p>填好下面幾項就能開始</p>
         </section>
 
         {registerStep === 'form' ? (
@@ -775,7 +772,7 @@ export default function LoginPage({ onAuthenticated }: Props) {
                 icon="user"
                 value={registerName}
                 onChange={handleRegisterNameChange}
-                placeholder="請輸入你的暱稱"
+                placeholder="想被怎麼稱呼"
                 autoComplete="nickname"
                 suffix={`${registerName.length}/20`}
                 error={registerNameError}
@@ -787,7 +784,7 @@ export default function LoginPage({ onAuthenticated }: Props) {
                 icon="mail"
                 value={registerEmail}
                 onChange={handleRegisterEmailChange}
-                placeholder="請輸入可收信的 Email"
+                placeholder="you@example.com"
                 inputMode="email"
                 autoComplete="email"
                 error={registerEmailError}
@@ -799,7 +796,7 @@ export default function LoginPage({ onAuthenticated }: Props) {
                 icon="lock"
                 value={password}
                 onChange={handlePasswordChange}
-                placeholder="請設定 8 碼以上，含英文與數字"
+                placeholder="設一組密碼"
                 type={showRegisterPassword ? 'text' : 'password'}
                 autoComplete="new-password"
                 error={passwordError}
@@ -813,6 +810,8 @@ export default function LoginPage({ onAuthenticated }: Props) {
                 onAction={() => setShowRegisterPassword(!showRegisterPassword)}
               />
               <PasswordHint state={registerPasswordHint.state} rules={passwordRuleStates(password)} />
+              {/* 規則寫在欄位下面、一直看得到。以前塞在提示字裡，字太長被右邊的眼睛圖示切掉 */}
+              <span className="field-help">8 碼以上，要有英文和數字</span>
             </FloatingField>
             <PasswordStrength password={password} />
             <FloatingField label="確認密碼">
@@ -820,7 +819,7 @@ export default function LoginPage({ onAuthenticated }: Props) {
                 icon="lock"
                 value={confirmPassword}
                 onChange={handleConfirmPasswordChange}
-                placeholder="請再次輸入密碼"
+                placeholder="再輸入一次"
                 type={showRegisterPassword ? 'text' : 'password'}
                 autoComplete="new-password"
                 error={confirmPasswordError}
@@ -857,7 +856,7 @@ export default function LoginPage({ onAuthenticated }: Props) {
             <AuthNotice message={authMessage} error={authError} />
 
             <button className="register-submit" type="submit" disabled={submitting || registerName.trim().length === 0}>
-              {submitting && <span className="btn-spinner" aria-hidden="true" />}{submitting ? '寄送中' : '建立帳號'}
+              {submitting && <span className="btn-spinner" aria-hidden="true" />}{submitting ? '寄送中' : registerName.trim().length === 0 ? '先填暱稱' : '建立帳號'}
             </button>
           </form>
         ) : (
@@ -900,49 +899,60 @@ export default function LoginPage({ onAuthenticated }: Props) {
 
   return (
     <AuthFrame variant="warm" onBack={() => { resetStatus(); setMode('welcome') }}>
-      <LogoBlock compact />
-      <h1 className="login-main-title">歡迎回來</h1>
-      <p className="login-subtitle">用 Email 登入同頻 Today</p>
+      <section className="auth-title-block">
+        <h1>歡迎回來</h1>
+        <p>用 Email 登入</p>
+      </section>
 
       <form className="login-form" onSubmit={(event) => { event.preventDefault(); submitLogin() }}>
-        <AuthField
-          icon="mail"
-          value={email}
-          onChange={handleEmailChange}
-          placeholder="Email"
-          inputMode="email"
-          autoComplete="email"
-          error={loginEmailError}
-          onBlur={() => { if (email && !isValidEmail(email)) setLoginEmailError('請輸入有效的 Email 格式') }}
-        />
-        <AuthField
-          icon="lock"
-          value={password}
-          onChange={setPassword}
-          placeholder="密碼"
-          type={showPassword ? 'text' : 'password'}
-          autoComplete="current-password"
-          isPasswordToggle
-          isPasswordVisible={showPassword}
-          onAction={() => setShowPassword(!showPassword)}
-        />
-        <label className="remember-row">
-          <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />
-          記住我
-        </label>
+        <FloatingField label="Email">
+          <AuthField
+            icon="mail"
+            value={email}
+            onChange={handleEmailChange}
+            placeholder="you@example.com"
+            inputMode="email"
+            autoComplete="email"
+            error={loginEmailError}
+            onBlur={() => { if (email && !isValidEmail(email)) setLoginEmailError('請輸入有效的 Email 格式') }}
+          />
+        </FloatingField>
+        <FloatingField label="密碼">
+          <AuthField
+            icon="lock"
+            value={password}
+            onChange={setPassword}
+            placeholder="你的密碼"
+            type={showPassword ? 'text' : 'password'}
+            autoComplete="current-password"
+            isPasswordToggle
+            isPasswordVisible={showPassword}
+            onAction={() => setShowPassword(!showPassword)}
+          />
+        </FloatingField>
+        <div className="login-options">
+          <label className="remember-row">
+            <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />
+            記住我
+          </label>
+          <button className="forgot-button" type="button" onClick={openForgot}>
+            忘記密碼
+          </button>
+        </div>
         <AuthNotice message={authMessage} error={authError} />
+        {/* 還不能按的時候，字直接寫出還缺什麼 */}
         <button className="primary-login-button" type="submit" disabled={submitting || email.trim().length === 0 || password.length === 0}>
-          {submitting && <span className="btn-spinner" aria-hidden="true" />}{submitting ? '登入中' : '登入'}
+          {submitting && <span className="btn-spinner" aria-hidden="true" />}
+          {submitting ? '登入中' : email.trim().length === 0 || password.length === 0 ? '先填 Email 和密碼' : '登入'}
         </button>
       </form>
 
-      <button className="forgot-button" type="button" onClick={openForgot}>
-        忘記密碼？
-      </button>
-
-      <button className="outline-login-button" type="button" onClick={() => { resetStatus(); setMode('register') }}>
-        建立帳號
-      </button>
+      <p className="auth-switch">
+        還沒有帳號？
+        <button type="button" onClick={() => { resetStatus(); setMode('register') }}>
+          建立帳號
+        </button>
+      </p>
     </AuthFrame>
   )
 }

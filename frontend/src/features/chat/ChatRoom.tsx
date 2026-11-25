@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 // import { useNavigate } from 'react-router-dom' // 任務功能暫時下架（後端保留）
 import { Capacitor } from '@capacitor/core'
 import {
@@ -9,7 +9,7 @@ import {
 import type { ChatMessage, ChatRoom as ChatRoomType, ChatMemberSetting, PeerState, ChatPeer } from './types'
 import type { QuoteInfo } from './api'
 import type { UserProfile } from '../profile/types'
-import { getAge, getZodiac, ZODIAC_ICON, testAvatarPhoto } from '../../shared/lib/userDisplay'
+import { getAge, getZodiac, ZODIAC_ICON } from '../../shared/lib/userDisplay'
 import { uploadMedia, uploadErrorMessage } from '../../shared/api/media'
 import { useAudioRecorder } from '../../shared/hooks/useAudioRecorder'
 import VoiceDraftPlayer from './VoiceDraftPlayer'
@@ -27,6 +27,10 @@ type Props = {
   otherUserId: string
   currentUserId: string
   messages: ChatMessage[]
+  /** 畫面上最舊那一則之前還有沒有訊息。有的話滑到頂會自動載入，頂端也有一顆按鈕。 */
+  hasOlder?: boolean
+  loadingOlder?: boolean
+  onLoadOlder?: () => void | Promise<void>
   draft: string
   onDraftChange: (value: string) => void
   // 實際接的是 async 的 submitContent；宣告回傳 Promise 才能在多圖時依序送出、保住順序
@@ -73,7 +77,8 @@ type RenderRow =
 
 export default function ChatRoom({
   room, otherProfile, peer = null, otherUserId, currentUserId,
-  messages, draft, onDraftChange, onSendContent, onRecall,
+  messages, hasOlder = false, loadingOlder = false, onLoadOlder,
+  draft, onDraftChange, onSendContent, onRecall,
   setting, reported = false, expired = false, peerState = null,
   onUpdateSetting, onLeave, onBlock, onReport, onBack,
 }: Props) {
@@ -156,7 +161,7 @@ export default function ChatRoom({
     || peer?.nickname?.trim()
     || `同頻對話 ${otherUserId.slice(-4)}`
   // 正式環境會改用帳號實際 photoDataUrls[0]；目前測試先給寫死照片，照片失效時 Avatar 會退回動物頭像。
-  const avatarPhoto = otherProfile?.photoDataUrls?.[0] ?? peer?.photoUrl ?? testAvatarPhoto(otherUserId)
+  const avatarPhoto = otherProfile?.photoDataUrls?.[0] ?? peer?.photoUrl ?? null
   // 對方的年齡與星座由後端算好再給，完整的出生年月日不會送到這裡。
   // 後面那半是退路：還沒更新的舊後端給的是整個生日，那就照舊自己算。
   const legacyBirthday = otherProfile?.birthday
@@ -171,11 +176,83 @@ export default function ChatRoom({
     : messages
   const rows = buildRows(shownMessages, currentUserId)
 
+  // ── 往上滑載入更早的訊息 ──
+  //
+  // 新的一頁是接在最前面的，畫面上原本的東西會被整段往下推。不處理的話，
+  // 使用者正在看的那一則會從眼前跳走。做法：載入前記下「畫面上第一則」那個元素
+  // 和它現在的位置，載入後看它被推到哪裡，差多少就把捲動量補回多少。
+  //
+  // 量的是元素實際位置的差，不是內容高度的差：有些瀏覽器會自己補（scroll anchoring），
+  // 有些情況不會（剛好捲在最頂的時候）。量位置的話，瀏覽器補過了差就是 0，
+  // 不會補成兩倍；載入期間剛好有新訊息進來、使用者自己又滑了一下，也都不影響。
+  const olderAnchor = useRef<{ el: Element; top: number; firstId: string | undefined } | null>(null)
+  // 這一次訊息變多是因為往前接了一頁，不是有新訊息——不要捲到底
+  const skipStickToBottom = useRef(false)
+
+  function requestOlder() {
+    const body = bodyRef.current
+    // 搜尋開著的時候不自動載：畫面上是篩過的結果，往前接一頁看不出發生了什麼
+    if (!body || !hasOlder || loadingOlder || !onLoadOlder || chatSearch != null) return
+    const first = body.querySelector('.cr-row')
+    olderAnchor.current = first
+      ? { el: first, top: first.getBoundingClientRect().top, firstId: messages[0]?.id }
+      : null
+    void onLoadOlder()
+  }
+
+  // 現在是不是「貼著底」。圖片載入完會把內容撐高，貼著底的時候要跟著補到底（見 handleMediaLoad）
+  const pinnedToBottom = useRef(true)
+
+  function handleBodyScroll() {
+    const body = bodyRef.current
+    if (!body) return
+    pinnedToBottom.current = body.scrollHeight - body.scrollTop - body.clientHeight < 80
+    const anchor = olderAnchor.current
+    if (anchor) {
+      // 還在等那一頁回來：使用者繼續滑的話，跟著更新「載入前的位置」
+      anchor.top = anchor.el.getBoundingClientRect().top
+      return
+    }
+    // 離頂端不到兩三則的距離就先去抓，滑到頂的時候多半已經回來了
+    if (body.scrollTop < 160) requestOlder()
+  }
+
+  // 用 layout effect：要在瀏覽器把新的一頁畫出來之前就把位置補好，不然會先閃一格
+  useLayoutEffect(() => {
+    const anchor = olderAnchor.current
+    const body = bodyRef.current
+    if (!anchor || !body || loadingOlder) return
+    olderAnchor.current = null
+    if (messages[0]?.id === anchor.firstId) return   // 沒有接到東西（已經到頭，或抓失敗）
+    skipStickToBottom.current = true
+    if (!anchor.el.isConnected) return
+    const pushed = anchor.el.getBoundingClientRect().top - anchor.top
+    if (pushed !== 0) body.scrollTop += pushed
+  }, [loadingOlder, messages])
+
   // 訊息更新後捲到底
   useEffect(() => {
+    if (skipStickToBottom.current) {
+      skipStickToBottom.current = false
+      return
+    }
     const el = bodyRef.current
     if (el) el.scrollTop = el.scrollHeight
+    pinnedToBottom.current = true
   }, [messages.length, room.id])
+
+  /**
+   * 訊息裡的圖片載入完成。
+   *
+   * 圖片沒有預先留高度，載完才把內容撐開——而「捲到底」是在它載完之前做的。
+   * 實測一間最後幾則是圖片的房間，進去之後停在離底部六百多像素的地方，
+   * 最新的訊息要自己往下滑才看得到。貼著底的時候，圖片一載完就再補到底；
+   * 使用者已經往上滑去看舊訊息的話不動他。
+   */
+  function handleMediaLoad() {
+    const el = bodyRef.current
+    if (el && pinnedToBottom.current) el.scrollTop = el.scrollHeight
+  }
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
     if (event.key === 'Enter' && !event.nativeEvent.isComposing && draft.trim()) {
@@ -422,7 +499,7 @@ export default function ChatRoom({
         <div className="cr-safety-banner">
           <ShieldCheck size={16} strokeWidth={2} className="cr-safety-banner-ic" />
           <span className="cr-safety-banner-text">注意安全：不要匯款或透露金融資訊，個資與聯絡方式等信任後再分享</span>
-          <button className="cr-safety-banner-close" type="button" onClick={dismissSafetyBanner}>我知道了，不再顯示</button>
+          <button className="cr-safety-banner-close" type="button" onClick={dismissSafetyBanner}>知道了</button>
         </div>
       )}
 
@@ -444,9 +521,16 @@ export default function ChatRoom({
       )}
 
       {/* 訊息區 */}
-      <div className="cr-body" ref={bodyRef}>
+      <div className="cr-body" ref={bodyRef} onScroll={handleBodyScroll} onLoadCapture={handleMediaLoad}>
         {rows.length === 0 && (
           <p className="cr-empty">還沒有訊息，慢慢說，不急</p>
+        )}
+        {/* 滑到頂會自動載入；這顆是給「滑不動」的情況用的——訊息很短、一頁還填不滿
+            畫面時根本沒有東西可以滑，以及用鍵盤或讀屏的人。 */}
+        {hasOlder && chatSearch == null && (
+          <button type="button" className="cr-older" onClick={requestOlder} disabled={loadingOlder}>
+            {loadingOlder ? '載入中' : '看更早的訊息'}
+          </button>
         )}
         {rows.map((row) =>
           row.kind === 'date' ? (

@@ -352,15 +352,22 @@ public sealed class ChatService
     /// 不依發話者的帳號狀態過濾：對方被封鎖之後把他說過的話從歷史裡抽掉，
     /// 剩下的是一段只有自己在講話的對話，連自己當初為什麼那樣回都看不懂了。
     /// 而且被害人常常正需要那段紀錄去檢舉或報案。見類別上方的說明。
+    ///
+    /// before 有值＝只要這個時間點「之前」的訊息，往上滑載入更早的那一頁用。
+    /// 以前沒有這個參數：進房只拿得到最近 50 則，而且沒有任何辦法再往前——
+    /// 聊超過 50 則的對話，前面那些在 App 裡就看不到了。
+    /// 游標用時間而不是 id：chat_messages 的 id 是隨機字串，沒有先後。
     /// </summary>
-    public List<ChatMessage> GetMessages(string chatRoomId, int limit = DefaultMessageLimit)
+    public List<ChatMessage> GetMessages(string chatRoomId, int limit = DefaultMessageLimit, DateTimeOffset? before = null)
     {
         limit = Math.Clamp(limit, 1, MaxMessageLimit);
 
         if (db != null)
         {
-            return db.ChatMessages.AsNoTracking()
-                .Where(x => x.ChatRoomId == chatRoomId)
+            var query = db.ChatMessages.AsNoTracking().Where(x => x.ChatRoomId == chatRoomId);
+            if (before.HasValue) query = query.Where(x => x.CreatedAt < before.Value);
+
+            return query
                 .OrderByDescending(x => x.CreatedAt)
                 .Take(limit)
                 .ToList()
@@ -370,7 +377,7 @@ public sealed class ChatService
         }
 
         return storage.ReadCollection<ChatMessage>("chatMessages")
-            .Where(x => x.ChatRoomId == chatRoomId)
+            .Where(x => x.ChatRoomId == chatRoomId && (!before.HasValue || x.CreatedAt < before.Value))
             .OrderByDescending(x => x.CreatedAt)
             .Take(limit)
             .OrderBy(x => x.CreatedAt)

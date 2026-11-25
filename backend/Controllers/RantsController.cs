@@ -20,16 +20,20 @@ public sealed class RantsController(RantService rantService, MediaUrlPolicy medi
     private const int MaxReplyLength = 1000;
 
     [HttpGet]
-    public ActionResult<ApiResponse<List<RantPost>>> Get([FromQuery] string? cursor, [FromQuery] int limit = 20)
+    public ActionResult<ApiResponse<List<RantPost>>> Get(
+        [FromQuery] string? cursor, [FromQuery] int limit = 20, [FromQuery] string? replies = null)
     {
         DateTimeOffset? c = DateTimeOffset.TryParse(cursor, out var parsed) ? parsed : null;
-        return ApiResponse<List<RantPost>>.Ok(Mine(rantService.GetPublicPosts(c, limit)));
+        // replies=summary：不送回應內容，只送則數和前三個名字（見 RantService.GetPublicPosts）。
+        // 新版 App 會帶；沒帶的是已經上架的舊版，照舊把回應整包送回去。
+        var summary = string.Equals(replies, "summary", StringComparison.OrdinalIgnoreCase);
+        return ApiResponse<List<RantPost>>.Ok(Mine(rantService.GetPublicPosts(c, limit, CallerId, summary)));
     }
 
     [HttpGet("{rantId}")]
     public ActionResult<ApiResponse<RantPost>> GetOne(string rantId)
     {
-        var post = rantService.GetPost(rantId);
+        var post = rantService.GetPost(rantId, CallerId);
         return post == null
             ? NotFound(ApiResponse<RantPost>.Fail("RANT_NOT_FOUND", "找不到這篇樹洞文章"))
             : ApiResponse<RantPost>.Ok(Mine(post));
@@ -153,8 +157,40 @@ public sealed class RantsController(RantService rantService, MediaUrlPolicy medi
             return Conflict(ApiResponse<RantPost>.Fail(error, "已經有人回應這一則了，沒辦法收回"));
         }
 
+        if (error != null)
+        {
+            return NotFound(ApiResponse<RantPost>.Fail(RantService.ReplyNotFound, "找不到這則回應，或不是你發的"));
+        }
+
+        // 收回成功但 post 是 null：貼文已經被作者刪掉，而這是底下最後一則回應，
+        // 整串沒有東西可看了。那不是失敗，data 給 null。
         return post == null
-            ? NotFound(ApiResponse<RantPost>.Fail(RantService.ReplyNotFound, "找不到這則回應，或不是你發的"))
+            ? new ApiResponse<RantPost> { Success = true }
+            : ApiResponse<RantPost>.Ok(Mine(post));
+    }
+
+    /// <summary>
+    /// 貼文作者隱藏自己貼文底下的一則回應。回傳更新後的整篇。
+    /// 誰看得到、誰看不到寫在 RantService.SetReplyHidden 與 Assemble。
+    /// </summary>
+    [Authorize]
+    [EnableRateLimiting("write")]
+    [HttpPost("{rantId}/replies/{replyId}/hide")]
+    public ActionResult<ApiResponse<RantPost>> HideReply(string rantId, string replyId)
+        => SetReplyHidden(rantId, replyId, hidden: true);
+
+    /// <summary>取消隱藏。只能取消自己藏的；後台藏的不行。</summary>
+    [Authorize]
+    [EnableRateLimiting("write")]
+    [HttpDelete("{rantId}/replies/{replyId}/hide")]
+    public ActionResult<ApiResponse<RantPost>> UnhideReply(string rantId, string replyId)
+        => SetReplyHidden(rantId, replyId, hidden: false);
+
+    private ActionResult<ApiResponse<RantPost>> SetReplyHidden(string rantId, string replyId, bool hidden)
+    {
+        var (post, error) = rantService.SetReplyHidden(rantId, replyId, CallerId!, hidden);
+        return error != null || post == null
+            ? NotFound(ApiResponse<RantPost>.Fail(RantService.ReplyNotFound, "找不到這則回應，或這不是你的貼文"))
             : ApiResponse<RantPost>.Ok(Mine(post));
     }
 
@@ -220,8 +256,7 @@ public sealed class RantsController(RantService rantService, MediaUrlPolicy medi
     /// </summary>
     private List<RantPost> Mine(List<RantPost> posts)
     {
-        var callerId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-                       ?? User.FindFirst("sub")?.Value;
+        var callerId = CallerId;
         if (string.IsNullOrEmpty(callerId))
         {
             return posts;
@@ -229,6 +264,7 @@ public sealed class RantsController(RantService rantService, MediaUrlPolicy medi
 
         foreach (var post in posts)
         {
+            // 作者刪掉的貼文 UserId 是空的（見 RantService.Assemble），這裡一定是 false
             post.IsMine = post.UserId == callerId;
             MarkReplies(post.Replies);
         }
@@ -244,6 +280,10 @@ public sealed class RantsController(RantService rantService, MediaUrlPolicy medi
             }
         }
     }
+
+    /// <summary>現在在看的人。兩支 GET 沒有 [Authorize]，未登入時是 null。</summary>
+    private string? CallerId => User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                                ?? User.FindFirst("sub")?.Value;
 
     /// <summary>
     /// 圖片、縮圖、語音都必須是自家物件儲存發出來的。

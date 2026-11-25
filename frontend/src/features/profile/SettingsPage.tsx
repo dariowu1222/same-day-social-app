@@ -69,7 +69,8 @@ export default function SettingsPage() {
 
   return (
     <div className="page settings-page">
-      <header className="page-header">
+      <header className="me-header is-sub">
+        <button className="me-back" type="button" onClick={() => navigate('/profile')} aria-label="返回">‹</button>
         <h1>設定</h1>
       </header>
 
@@ -90,7 +91,19 @@ export default function SettingsPage() {
                   aria-checked={preference === value}
                   className={`appearance-opt${preference === value ? ' selected' : ''}`}
                   disabled={isAnimating}
-                  onClick={() => setPreference(value)}
+                  onClick={(e) => {
+                    const icon = e.currentTarget.querySelector('svg')
+                    const spread = setPreference(value)
+                    // 圖示跟著轉進來（月亮轉出來、太陽升起來）。
+                    // 一定要有延遲、而且延遲期間不能先套第一格（不設 fill）——
+                    // 否則圖示縮小變淡的那一格會被拍進舊畫面的快照，整段過場都停在那裡。
+                    if (spread && icon) {
+                      icon.animate(
+                        [{ transform: 'rotate(-90deg) scale(0.4)', opacity: 0.3 }, { transform: 'none', opacity: 1 }],
+                        { duration: 620, delay: 240, easing: 'cubic-bezier(0.3, 1.5, 0.5, 1)' },
+                      )
+                    }
+                  }}
                 >
                   <Icon size={19} strokeWidth={1.9} />
                   <span>{label}</span>

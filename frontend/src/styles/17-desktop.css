@@ -242,7 +242,7 @@
     gap: 7px;
   }
 
-  .today-page .quick-entry-emoji { font-size: 26px; }
+  .today-page .mood-face { width: 46px; height: 46px; }
   .today-page .quick-entry-title { font-size: 17px; }
   .today-page .quick-entry-sub { font-size: 13.5px; }
 
@@ -263,10 +263,11 @@
 
   .today-page .today-submit-btn {
     grid-area: submit;
-    padding: 16px;
     font-size: 16.5px;
-    border-radius: 14px;
   }
+
+  /* 桌面寬度夠，標題一行放得下，不需要手機那個斷行 */
+  .today-title-br { display: none; }
 
   /* 心靈小語在桌面跨兩欄放底部，不佔用主要動線 */
   .today-page .soul-note {
@@ -439,4 +440,22 @@
 
   .login-screen .login-main-title { font-size: 34px; }
   .login-screen .login-subtitle { font-size: 17px; }
+
+  /* 登入、註冊、忘記密碼不是歡迎頁那種左右兩欄：只有一張表單，放在中間一欄。
+     以前沿用上面的兩欄格線，標題、表單、連結被自動排成左一塊右一塊。 */
+  .login-screen .login-content:not(.login-content--center) {
+    grid-template-columns: minmax(0, 420px);
+    gap: 16px;
+    justify-content: center;
+    align-content: center;
+    min-height: calc(100dvh - 120px);
+    padding-top: 0;
+    padding-bottom: 48px;
+  }
+
+  .login-screen .auth-top {
+    max-width: 1320px;
+    margin: 0 auto;
+    padding: 24px clamp(48px, 7vw, 120px) 0;
+  }
 }

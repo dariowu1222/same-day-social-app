@@ -1,12 +1,13 @@
+import type { MouseEvent } from 'react'
 import { useTheme } from '../../shared/theme/ThemeContext'
+import MoodFace, { type MoodKind } from './MoodFace'
 
 export type TodayQuickEntry = {
-  key: string
+  key: MoodKind
   label: string
   helper: string
   prompt: string
   responseMode: string
-  emoji: string
 }
 
 export type SoulNote = {
@@ -63,7 +64,6 @@ const quickEntries: TodayQuickEntry[] = [
     helper: '想先被接住',
     prompt: '今天其實有點累，想找個人聽我說說...',
     responseMode: 'COMFORT_ME',
-    emoji: '🌧',
   },
   {
     key: 'wronged',
@@ -71,7 +71,6 @@ const quickEntries: TodayQuickEntry[] = [
     helper: '想被理解',
     prompt: '今天有件事讓我覺得有點委屈，明明...',
     responseMode: 'COMFORT_ME',
-    emoji: '🥺',
   },
   {
     key: 'talk',
@@ -79,7 +78,6 @@ const quickEntries: TodayQuickEntry[] = [
     helper: '不用急著解決',
     prompt: '今天有個瞬間，我突然很想找人說說...',
     responseMode: 'JUST_LISTEN',
-    emoji: '💬',
   },
   {
     key: 'good',
@@ -87,7 +85,6 @@ const quickEntries: TodayQuickEntry[] = [
     helper: '分享一點亮光',
     prompt: '今天有一件小事讓我覺得還不錯...',
     responseMode: 'SHARE_GOOD_NEWS',
-    emoji: '✨',
   },
 ]
 
@@ -107,6 +104,26 @@ export default function TodayEntryForm({
   // 文字欄為選填（未來付費配對功能），只要選卡即可送出
   const canSubmit = hasSelectedEntry
 
+  // 還沒選心情就按送出：按鈕左右晃一下，表示「有收到，但還不能送」。
+  // 所以按鈕不用 disabled——disabled 的按鈕按了完全沒反應，分不出是還不能按
+  // 還是沒按到；上面的字會直接寫出還缺什麼。
+  function handleSubmitClick(e: MouseEvent<HTMLButtonElement>) {
+    if (canSubmit) {
+      onSubmit()
+      return
+    }
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    e.currentTarget.animate(
+      [
+        { transform: 'translateX(0)' },
+        { transform: 'translateX(-5px)' },
+        { transform: 'translateX(5px)' },
+        { transform: 'translateX(0)' },
+      ],
+      { duration: 300 },
+    )
+  }
+
   return (
     <section className="today-entry-card">
       <div className="quick-entry-grid" aria-label="快速選擇今天的感覺">
@@ -115,6 +132,7 @@ export default function TodayEntryForm({
             key={entry.key}
             type="button"
             className={`quick-entry-button quick-entry-${entry.key}${selectedEntryKey === entry.key ? ' selected' : ''}`}
+            aria-pressed={selectedEntryKey === entry.key}
             onClick={(e) => {
               if (mode === 'night') {
                 const rect = e.currentTarget.getBoundingClientRect()
@@ -123,9 +141,12 @@ export default function TodayEntryForm({
               onQuickEntrySelect(entry)
             }}
           >
-            <span className="quick-entry-emoji">{entry.emoji}</span>
-            <strong>{entry.label}</strong>
-            <span>{entry.helper}</span>
+            <span className="quick-entry-check" aria-hidden="true" />
+            <MoodFace kind={entry.key} />
+            <span className="quick-entry-text">
+              <strong className="quick-entry-title">{entry.label}</strong>
+              <span className="quick-entry-sub">{entry.helper}</span>
+            </span>
           </button>
         ))}
       </div>
@@ -183,11 +204,13 @@ export default function TodayEntryForm({
       {/* 沒有送出中狀態：按下去就導到滑卡頁，等待由那邊的載入畫面吸收。
           重複送出由 TodayPage 的 submittedRef 擋，不靠 disabled。 */}
       <button
-        className="today-submit-btn"
-        onClick={onSubmit}
-        disabled={!canSubmit}
+        type="button"
+        className={`keycap-btn today-submit-btn${canSubmit ? '' : ' is-off'}`}
+        aria-disabled={!canSubmit}
+        onClick={handleSubmitClick}
       >
-        找找今天懂我的人
+        {canSubmit ? '找找今天懂我的人' : '先選一個心情'}
+        {canSubmit && <span className="keycap-arrow" aria-hidden="true" />}
       </button>
     </section>
   )

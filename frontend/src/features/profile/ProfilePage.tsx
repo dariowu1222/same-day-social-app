@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react"
-import { Plus, X, Eye, Check, Pencil, LocateFixed } from "lucide-react"
+import { Plus, X, Check, LocateFixed, Bell, Settings, ChevronRight } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 import { useAuth } from "../auth/AuthContext"
 import { getProfile, updateProfile } from "./api"
 import { CalendarPicker } from "./CalendarPicker"
@@ -158,12 +159,46 @@ function CompactTagPicker({ options, values, onToggle, editing }: {
 
 const MAX_PHOTOS = 6
 
-// 測試用假照片，無自上傳照片時顯示（之後刪除）
-const TEST_PHOTOS = [
-  "https://picsum.photos/seed/profile_a/400/500",
-  "https://picsum.photos/seed/profile_b/400/500",
-  "https://picsum.photos/seed/profile_c/400/500",
-]
+type Section = null | 'photos' | 'basic' | 'about' | 'prefs'
+
+const SECTION_TITLE: Record<Exclude<Section, null>, string> = {
+  photos: '照片',
+  basic: '基本資料',
+  about: '關於我',
+  prefs: '配對偏好',
+}
+
+// 註冊時存的是 MALE／FEMALE／PRIVATE，這一頁的選項是「男」「女」。
+// 這裡只負責顯示時對得起來，不改存的值——兩邊的值要不要統一是另一件事。
+function genderLabel(value: string) {
+  if (value === 'MALE') return '男'
+  if (value === 'FEMALE') return '女'
+  return value
+}
+
+/** 沒放照片時代表自己的那顆圓（珊瑚色＝我），跟聊天室裡對方的綠色那顆是一對。 */
+function MeAvatar() {
+  return (
+    <svg viewBox="0 0 40 40" aria-hidden="true">
+      <rect width="40" height="40" fill="#fbe3d8" />
+      <circle cx="20" cy="22" r="13" fill="#c9502f" />
+      <ellipse cx="17.4" cy="20" rx="1.6" ry="2.2" fill="#33241b" />
+      <ellipse cx="23.6" cy="20" rx="1.6" ry="2.2" fill="#33241b" />
+    </svg>
+  )
+}
+
+function SectionRow({ title, desc, onClick }: { title: string; desc: string; onClick: () => void }) {
+  return (
+    <button className="me-row" type="button" onClick={onClick}>
+      <span className="me-row-text">
+        {title}
+        <small>{desc}</small>
+      </span>
+      <ChevronRight size={18} strokeWidth={2} aria-hidden="true" />
+    </button>
+  )
+}
 
 export default function ProfilePage() {
   const { user, setUser } = useAuth()
@@ -202,7 +237,11 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
-  const [isEditing, setIsEditing] = useState(false)
+  // 目前在編輯哪一區；null 是總覽（先看到別人眼中的自己）。
+  // 以前整頁就是一長串表單，要先按「編輯」才能改，而且看不到自己在別人眼中的樣子。
+  const [section, setSection] = useState<Section>(null)
+  const isEditing = section !== null
+  const navigate = useNavigate()
   const [toast, setToast] = useState('')
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -265,7 +304,9 @@ export default function ProfilePage() {
         setVoiceFirst(res.data.voiceFirst ?? false)
         setMeetSoon(res.data.meetSoon ?? false)
         const loaded = res.data.photoDataUrls ?? []
-        setPhotos(loaded.length > 0 ? loaded : TEST_PHOTOS)
+        // 沒放照片就是空的。以前這裡會塞三張外部網站的隨機風景照，還標成「主照片」——
+        // 使用者會以為自己放了照片，而且每次打開這頁都把請求送到外站。
+        setPhotos(loaded)
       })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -379,8 +420,8 @@ export default function ProfilePage() {
       if (nextNickname && nextNickname !== user.nickname) {
         setUser({ ...user, nickname: nextNickname })
       }
-      setIsEditing(false)
-      showToast('已儲存 ✓')
+      setSection(null)
+      showToast('已儲存')
     } catch (err) {
       showToast(err instanceof Error ? err.message : '儲存失敗')
     }
@@ -389,54 +430,116 @@ export default function ProfilePage() {
 
   if (!user) return null
 
-  return (
-    <div className="page profile-page">
-      <header className="page-header">
-        <h1>{user.nickname}</h1>
-      </header>
+  function openSection(next: Exclude<Section, null>) {
+    setLocateNote('')
+    setSection(next)
+  }
 
-      {/* Photos */}
-      <section className="panel profile-photos-panel">
-        <div className="profile-section-header">
+  // 離開編輯不存：把畫面上改過的值丟掉，重新讀一次
+  function cancelEdit() {
+    setLocateNote('')
+    setSection(null)
+    setPhotosDirty(false)
+    loadProfile()
+  }
+
+  const meta = [
+    birthday ? `${getAge(birthday)}` : '',
+    birthday ? getZodiac(birthday) : '',
+    locationArea,
+  ].filter(Boolean).join(' · ')
+
+  return (
+    <div className={`page profile-page${isEditing ? ' is-editing' : ''}`}>
+      {section === null ? (
+        <header className="me-header">
+          <h1>我的</h1>
+          {/* 通知和設定收在這裡。以前設定佔底部導覽一格，通知中心則完全沒有入口。 */}
+          <button className="me-icon-btn" type="button" onClick={() => navigate('/notifications')} aria-label="通知">
+            <Bell size={21} strokeWidth={2} />
+          </button>
+          <button className="me-icon-btn" type="button" onClick={() => navigate('/settings')} aria-label="設定">
+            <Settings size={21} strokeWidth={2} />
+          </button>
+        </header>
+      ) : (
+        <header className="me-header is-sub">
+          <button className="me-back" type="button" onClick={cancelEdit} aria-label="返回，不儲存">‹</button>
+          <h1>{SECTION_TITLE[section]}</h1>
+        </header>
+      )}
+
+      {section === null && (
+        <>
+          <p className="me-label">別人看到的你</p>
+          <section className="me-card">
+            <button className="me-card-main" type="button" onClick={() => setShowPreview(true)}>
+              <span className="me-avatar">
+                {photos[0] ? <img src={photos[0]} alt="" /> : <MeAvatar />}
+              </span>
+              <span className="me-card-id">
+                <b>{nickname || user.nickname}</b>
+                {meta && <small>{meta}</small>}
+              </span>
+              <span className="me-card-peek">預覽</span>
+            </button>
+            {loading ? (
+              <div className="profile-loading-bar" />
+            ) : (
+              <p className={`me-bio${bio ? '' : ' is-empty'}`}>{bio || '還沒寫自我介紹'}</p>
+            )}
+            {interestTags.length > 0 && (
+              <div className="me-tags">
+                {interestTags.slice(0, 6).map(tag => <span key={tag}>{tag}</span>)}
+                {interestTags.length > 6 && <span>+{interestTags.length - 6}</span>}
+              </div>
+            )}
+          </section>
+
+          {!loading && photos.length === 0 && (
+            <div className="me-photo-prompt">
+              <div>
+                還沒放照片
+                <small>放一張，別人比較容易記得你</small>
+              </div>
+              <button
+                className="keycap-btn"
+                type="button"
+                onClick={() => { openSection('photos'); fileInputRef.current?.click() }}
+              >
+                加照片
+              </button>
+            </div>
+          )}
+
+          <section className="me-card me-rows">
+            {photos.length > 0 && (
+              <SectionRow title="照片" desc={`${photos.length} 張，第一張是主照片`} onClick={() => openSection('photos')} />
+            )}
+            <SectionRow title="基本資料" desc="暱稱、生日、性別、所在縣市" onClick={() => openSection('basic')} />
+            <SectionRow title="關於我" desc="自我介紹、興趣、個性、外貌" onClick={() => openSection('about')} />
+            <SectionRow title="配對偏好" desc="想認識誰、年齡、距離" onClick={() => openSection('prefs')} />
+          </section>
+        </>
+      )}
+
+      {section === 'photos' && (
+        <section className="panel profile-photos-panel">
           <p className="setting-section-title profile-field-label" style={{ marginBottom: 0 }}>
             照片 <span className="profile-hint">· 第一張為主照片，可拖曳排序</span>
           </p>
-          <div className="profile-photo-actions">
-            <button
-              className={`profile-edit-toggle${isEditing ? ' editing' : ''}`}
-              type="button"
-              onClick={() => {
-                // 定位的結果訊息只對「這一次編輯」有意義，進出編輯模式都清掉
-                setLocateNote('')
-                if (isEditing) { setIsEditing(false); loadProfile() }
-                else setIsEditing(true)
-              }}
-            >
-              {isEditing ? '取消' : <><Pencil size={15} strokeWidth={2.2} /> 編輯</>}
-            </button>
-            <button
-              className={`profile-eye-btn${showPreview ? ' active' : ''}`}
-              type="button"
-              onClick={() => setShowPreview(true)}
-              aria-label="預覽我的卡"
-            >
-              <Eye size={26} strokeWidth={2} />
-            </button>
-          </div>
-        </div>
-        <div className="profile-photo-grid" style={{ marginTop: 12 }}>
-          {photos.map((src, i) => (
-            <div
-              key={i}
-              className="profile-photo-cell"
-              draggable={isEditing}
-              onDragStart={() => { dragIndex.current = i }}
-              onDragOver={e => e.preventDefault()}
-              onDrop={() => dropPhoto(i)}
-            >
-              <img src={src} alt={`照片 ${i + 1}`} />
-              {i === 0 && <span className="profile-photo-main">主照片</span>}
-              {isEditing && (
+          <div className="profile-photo-grid" style={{ marginTop: 12 }}>
+            {photos.map((src, i) => (
+              <div
+                key={i}
+                className="profile-photo-cell"
+                draggable
+                onDragStart={() => { dragIndex.current = i }}
+                onDragOver={e => e.preventDefault()}
+                onDrop={() => dropPhoto(i)}
+              >
+                <img src={src} alt={`照片 ${i + 1}`} />
+                {i === 0 && <span className="profile-photo-main">主照片</span>}
                 <button
                   className="profile-photo-remove"
                   type="button"
@@ -445,31 +548,34 @@ export default function ProfilePage() {
                 >
                   <X size={14} strokeWidth={2.5} />
                 </button>
-              )}
-            </div>
-          ))}
-          {isEditing && photos.length < MAX_PHOTOS && (
-            <button
-              className="profile-photo-add"
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              aria-label="新增照片"
-            >
-              <Plus size={24} strokeWidth={1.8} />
-            </button>
-          )}
-        </div>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          multiple
-          style={{ display: 'none' }}
-          onChange={e => { if (e.target.files) handleAddPhotos(e.target.files) }}
-        />
-      </section>
+              </div>
+            ))}
+            {photos.length < MAX_PHOTOS && (
+              <button
+                className="profile-photo-add"
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                aria-label="新增照片"
+              >
+                <Plus size={24} strokeWidth={1.8} />
+              </button>
+            )}
+          </div>
+        </section>
+      )}
 
-      <fieldset className="profile-fields" disabled={!isEditing}>
+      {/* 檔案選擇器一直都在：總覽上的「加照片」也要點得到它 */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        style={{ display: 'none' }}
+        onChange={e => { if (e.target.files) handleAddPhotos(e.target.files); e.target.value = '' }}
+      />
+
+      {section === 'basic' && (
+        <div className="profile-fields">
       {/* 暱稱 */}
       <section className="panel">
         <FieldLabel title="暱稱" required />
@@ -485,7 +591,8 @@ export default function ProfilePage() {
       {/* 性別（必填，鎖定不可改）*/}
       <section className="panel">
         <FieldLabel title="性別" required />
-        <SingleChips options={GENDER_OPTIONS} value={gender} onChange={setGender} allowClear={false} disabled />
+        {/* 選過就鎖住；還沒有值的人（例如用社群帳號註冊）要能選一次，不然這頁永遠存不了 */}
+        <SingleChips options={GENDER_OPTIONS} value={genderLabel(gender)} onChange={setGender} allowClear={false} disabled={!!gender} />
       </section>
 
       {/* Birthday */}
@@ -520,6 +627,11 @@ export default function ProfilePage() {
         )}
       </section>
 
+        </div>
+      )}
+
+      {section === 'about' && (
+        <div className="profile-fields">
       {/* Bio */}
       <section className="panel">
         <FieldLabel title="自我介紹" optional />
@@ -630,6 +742,11 @@ export default function ProfilePage() {
         <SingleChips options={BLOOD_OPTIONS} value={bloodType} onChange={setBloodType} />
       </section>
 
+        </div>
+      )}
+
+      {section === 'prefs' && (
+        <div className="profile-fields">
       {/* ── 交友意圖 ──
           註：後端 MatchService.MatchesPreferences 用 lookingFor、ageMin/ageMax 與地區
           （distanceKm 或 preferredArea，擇一）篩選候選，都是硬界線。
@@ -707,18 +824,19 @@ export default function ProfilePage() {
           <button type="button" className={`ob-tag${meetSoon ? ' selected' : ''}`} onClick={() => setMeetSoon(v => !v)}>願意線下快見</button>
         </div>
       </section>
-      </fieldset>
+        </div>
+      )}
 
-      {/* 儲存：吸附底部（僅編輯模式） */}
+      {/* 儲存：吸附底部（僅編輯時） */}
       {isEditing && (
         <div className="profile-save-bar">
           <button
-            className="profile-save-btn"
+            className="keycap-btn"
             type="button"
             disabled={saving || loading}
             onClick={save}
           >
-            {saving ? '儲存中⋯' : '儲存變更'}
+            {saving ? '儲存中' : '儲存'}
           </button>
         </div>
       )}
@@ -736,7 +854,7 @@ export default function ProfilePage() {
           relationship={relationship}
           photos={photos}
           onClose={() => setShowPreview(false)}
-          onGoAddPhoto={() => setTimeout(() => fileInputRef.current?.click(), 300)}
+          onGoAddPhoto={() => { openSection('photos'); setTimeout(() => fileInputRef.current?.click(), 300) }}
         />
       )}
     </div>

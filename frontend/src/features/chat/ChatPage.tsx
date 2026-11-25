@@ -3,7 +3,7 @@ import { Search, X, MoreVertical, Pin, PinOff, LogOut, Flag } from 'lucide-react
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import {
-  getChatOverview, getMessages, sendMessage, recallMessage,
+  getChatOverview, getMessages, CHAT_PAGE_SIZE, sendMessage, recallMessage,
   getMemberSettings, updateChatSetting, leaveChatRoom, blockChatUser, reportChatUser,
   type QuoteInfo,
 } from './api'
@@ -14,7 +14,6 @@ import ChatRoom from './ChatRoom'
 import ReportSheet from '../report/ReportSheet'
 import Avatar from '../../shared/ui/Avatar'
 import { ApiError } from '../../shared/api/httpClient'
-import { testAvatarPhoto } from '../../shared/lib/userDisplay'
 import { useChatRealtime } from './ChatRealtimeContext'
 import { enablePush } from '../../shared/push/push'
 import { readChatCache, writeChatCache } from './chatCache'
@@ -56,6 +55,14 @@ export default function ChatPage() {
   const [profiles, setProfiles] = useState<Record<string, UserProfile>>(restored?.profiles ?? {})
   const [settings, setSettings] = useState<Record<string, ChatMemberSetting>>(restored?.settings ?? {})
   const [messages, setMessages] = useState<ChatMessage[]>([])
+  // 往上滑載入更早的訊息：前面還有沒有、現在是不是正在抓
+  const [hasOlder, setHasOlder] = useState(false)
+  const [loadingOlder, setLoadingOlder] = useState(false)
+  const loadingOlderRef = useRef(false)
+  const messagesRef = useRef<ChatMessage[]>([])
+  // 這間房已經往上載過更早的訊息了。之後重抓「最新的一頁」時，
+  // 不能拿那一頁的則數去改寫 hasOlder（見 loadMessages）
+  const olderLoadedRoomRef = useRef<string | null>(null)
   // 載入中與「真的沒有聊天室」是兩回事。先前沒有這個旗標，使用者在等待的
   // 那幾秒看到的是「還沒有聊天室」——等於 App 明確告訴他沒有對話。
   const [loaded, setLoaded] = useState(restored != null)
@@ -97,6 +104,8 @@ export default function ChatPage() {
   useEffect(() => {
     activeRoomIdRef.current = activeRoomId
   }, [activeRoomId])
+
+  useEffect(() => { messagesRef.current = messages }, [messages])
 
   useEffect(() => {
     roomsRef.current = rooms
@@ -164,6 +173,9 @@ export default function ChatPage() {
     if (!activeRoomId) return
     // 秒開：先用 loadRooms already 抓好的快取立即上畫面，再背景抓最新覆蓋。
     setMessages(roomMessagesRef.current[activeRoomId] ?? [])
+    // 換了一間房：「前面還有沒有」要等這間房的第一頁回來才知道
+    setHasOlder(false)
+    olderLoadedRoomRef.current = null
     loadMessages(activeRoomId)
 
   }, [activeRoomId])
@@ -232,8 +244,55 @@ export default function ChatPage() {
     setMessages((prev) => {
       // 伺服器不知道本地還在送出/送失敗的訊息，覆蓋前要留下來
       const pending = prev.filter((m) => m.status === 'sending' || m.status === 'failed')
-      return [...response.data, ...pending]
+      // 往上滑載進來的更早訊息也要留下來：這裡抓的只是最新的一頁，
+      // 回前景、重新連線都會再抓一次，不留的話滑上去看到一半的舊訊息會整段不見。
+      const first = response.data[0]
+      const firstAt = first ? Date.parse(first.createdAt) : NaN
+      const fresh = new Set(response.data.map((m) => m.id))
+      const older = Number.isNaN(firstAt)
+        ? []
+        : prev.filter((m) => !m.status && !fresh.has(m.id) && Date.parse(m.createdAt) < firstAt)
+      return [...older, ...response.data, ...pending]
     })
+    // 拿到滿滿一頁＝前面可能還有。已經往上載過的房間不動這個值：
+    // 那時候「還有沒有」是上一次往上載的結果說了算，不是最新這一頁。
+    if (olderLoadedRoomRef.current !== roomId) {
+      setHasOlder(response.data.length >= CHAT_PAGE_SIZE)
+    }
+  }
+
+  /**
+   * 往上滑：載入比畫面上最舊那一則更早的一頁，接在最前面。
+   *
+   * 以前進房只拿得到最近 50 則，而且沒有辦法再往前——聊超過 50 則的對話，
+   * 前面那些在 App 裡就看不到了。捲動位置由 ChatRoom 自己顧（它知道畫面上的東西
+   * 被往下推了多少），這裡只管資料。
+   */
+  async function loadOlder() {
+    const roomId = activeRoomIdRef.current
+    if (!roomId || loadingOlderRef.current) return
+    // 最舊的一則「真的」訊息。本地還在送的不算——它沒有伺服器的時間
+    const oldest = messagesRef.current.find((m) => !m.status)
+    if (!oldest) return
+
+    loadingOlderRef.current = true
+    setLoadingOlder(true)
+    try {
+      const response = await getMessages(roomId, oldest.createdAt)
+      // 抓取期間使用者可能已切走
+      if (activeRoomIdRef.current !== roomId) return
+      olderLoadedRoomRef.current = roomId
+      setMessages((prev) => {
+        const known = new Set(prev.map((m) => m.id))
+        return [...response.data.filter((m) => !known.has(m.id)), ...prev]
+      })
+      setHasOlder(response.data.length >= CHAT_PAGE_SIZE)
+    } catch {
+      setToast('更早的訊息沒有載入成功，請再試一次')
+    } finally {
+      loadingOlderRef.current = false
+      setLoadingOlder(false)
+    }
   }
 
   async function submitContent(content: string, quote?: QuoteInfo) {
@@ -458,6 +517,9 @@ export default function ChatPage() {
         otherUserId={otherUserId}
         currentUserId={user.userId}
         messages={messages}
+        hasOlder={hasOlder}
+        loadingOlder={loadingOlder}
+        onLoadOlder={loadOlder}
         draft={draft}
         onDraftChange={setDraft}
         onSendContent={submitContent}
@@ -624,7 +686,7 @@ type ChatSummary = {
   room: ChatRoomType
   title: string
   otherUserId: string
-  avatarPhoto: string
+  avatarPhoto: string | null
   preview: string
   lastAt: Date
   timeLabel: string
@@ -785,7 +847,7 @@ function buildRoomSummary(room: ChatRoomType, messages: ChatMessage[], peers: Re
     title,
     otherUserId,
     // 正式環境用帳號 photoDataUrls[0]；測試先給寫死照片，失效時 Avatar 退回動物頭像
-    avatarPhoto: peer?.photoUrl ?? testAvatarPhoto(otherUserId),
+    avatarPhoto: peer?.photoUrl ?? null,
     preview: formatMessagePreview(lastMessage, currentUserId, title),
     lastAt,
     timeLabel: formatRelativeTime(lastAt),

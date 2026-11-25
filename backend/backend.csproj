@@ -31,4 +31,9 @@
     <PackageReference Include="Serilog.Sinks.OpenTelemetry" Version="4.2.0" />
   </ItemGroup>
 
+  <!-- 測試要拿 internal 的查詢組裝函式去確認 Npgsql 翻得出 SQL（見 backend.Tests/QueryTranslationTests.cs） -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="backend.Tests" />
+  </ItemGroup>
+
 </Project>

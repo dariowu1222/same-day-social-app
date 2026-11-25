@@ -67,6 +67,108 @@
   cursor: not-allowed;
 }
 
+/* ── 主題切換：入夜與清晨（View Transitions）────────────────
+   入夜＝夜色從天上緩緩降下來，然後螢火蟲一隻一隻亮起。
+   清晨＝光從地平線往上漫開，畫面由微亮到全亮，一顆柔和的太陽升起後淡掉。
+
+   做法：瀏覽器拍下新舊兩張畫面，新的那張疊在上面，用一道「邊緣很柔」的遮罩
+   慢慢露出來。露出來的是真的新畫面，不是一片純色，所以過場中途文字一直讀得到。
+   遮罩的邊緣位置是一個註冊過的自訂屬性（--theme-edge），這樣漸層才能逐格補間。
+
+   不支援 View Transitions 的舊 WebView 走下面那組整片蓋上去的舊過場。 */
+@property --theme-edge {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+html[data-theme-switch]::view-transition-old(root),
+html[data-theme-switch]::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+/* 入夜：由上往下，邊緣是三分之一個螢幕高的漸層——像天色暗下來，不是拉下一塊布 */
+html[data-theme-switch="to-night"]::view-transition-new(root) {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(var(--theme-edge) - 36vh), transparent var(--theme-edge));
+  mask-image: linear-gradient(to bottom, #000 calc(var(--theme-edge) - 36vh), transparent var(--theme-edge));
+  animation: theme-dusk 1300ms cubic-bezier(0.45, 0, 0.3, 1) both;
+}
+
+@keyframes theme-dusk {
+  from { --theme-edge: 0px; }
+  to   { --theme-edge: 136vh; }
+}
+
+/* 清晨：以畫面底邊中點為圓心往上漫開；同時整張畫面從偏暗慢慢亮到正常 */
+html[data-theme-switch="to-day"]::view-transition-new(root) {
+  -webkit-mask-image: radial-gradient(circle at 50% 100%, #000 calc(var(--theme-edge) - 32vh), transparent var(--theme-edge));
+  mask-image: radial-gradient(circle at 50% 100%, #000 calc(var(--theme-edge) - 32vh), transparent var(--theme-edge));
+  animation:
+    theme-dawn 1400ms cubic-bezier(0.3, 0, 0.2, 1) both,
+    theme-brighten 1400ms ease-out both;
+}
+
+@keyframes theme-dawn {
+  from { --theme-edge: 0px; }
+  to   { --theme-edge: calc(var(--theme-r) + 32vh); }
+}
+
+@keyframes theme-brighten {
+  from { filter: brightness(0.8) saturate(0.9); }
+  to   { filter: brightness(1) saturate(1); }
+}
+
+/* ── 清晨的太陽（ThemeTransitionOverlay 的 .dawn-sky）──
+   一團沒有硬邊的暖光從底下升到畫面三分之一高，然後淡掉；底部另有一層薄薄的晨曦。
+   都很淡、不擋點擊，兩秒內結束——是氣氛，不是要人停下來看的東西。 */
+.dawn-sky {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.dawn-haze {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 55vh;
+  background: linear-gradient(to top, rgba(255, 196, 120, 0.4), rgba(255, 214, 160, 0.15) 45%, rgba(255, 230, 190, 0));
+  animation: dawn-haze 2000ms ease-out both;
+}
+
+@keyframes dawn-haze {
+  0%   { opacity: 0; }
+  25%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.dawn-sun {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 280px;
+  height: 280px;
+  margin-left: -140px;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    rgba(255, 238, 196, 0.72) 0%,
+    rgba(255, 210, 130, 0.5) 22%,
+    rgba(255, 178, 92, 0.2) 48%,
+    rgba(255, 170, 80, 0) 70%);
+  animation: dawn-sun-rise 2000ms cubic-bezier(0.2, 0.6, 0.3, 1) both;
+}
+
+@keyframes dawn-sun-rise {
+  0%   { transform: translateY(70%); opacity: 0; }
+  20%  { opacity: 1; }
+  65%  { opacity: 0.85; }
+  100% { transform: translateY(-46vh); opacity: 0; }
+}
+
 /* ── Transition Overlay（共用容器） ─────────────────────────── */
 .theme-overlay {
   position: fixed;
@@ -179,6 +281,25 @@
   animation: fireflyFloat var(--fd, 8s) ease-in-out var(--delay, 0s) infinite;
 }
 
+/* 剛入夜：螢火蟲一隻一隻亮起來（每隻晚 45ms，從夜色降到一半的時候開始），
+   亮起來的同時往上浮一小段。用 translate 屬性而不是 transform——
+   transform 已經被平常那個飄動的動畫佔用了，兩個寫在一起會互相蓋掉。
+   容器平常進場是整片 1.2 秒淡入，這時候改由每一隻自己亮，所以把那個關掉。 */
+.global-night-effects.is-arriving {
+  animation: none;
+}
+
+.global-night-effects.is-arriving .global-firefly {
+  animation:
+    fireflyFloat var(--fd, 8s) ease-in-out var(--delay, 0s) infinite,
+    firefly-arrive 1400ms ease-out calc(600ms + var(--i, 0) * 45ms) backwards;
+}
+
+@keyframes firefly-arrive {
+  from { opacity: 0; translate: 0 28px; }
+  to   { translate: 0 0; }
+}
+
 /* ── 夜間全域背景色 ────────────────────────────────────────── */
 [data-theme="dark"] body {
   background: #050208;
@@ -252,6 +373,8 @@
 }
 
 [data-theme="dark"] .quick-entry-button {
+  /* 白天那道實心的邊不帶進夜間：夜間的卡是半透明的玻璃，底下再墊一道實心邊會浮起來 */
+  box-shadow: none;
   background: rgba(22, 40, 32, 0.6);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
@@ -267,15 +390,25 @@
 [data-theme="dark"] .quick-entry-button.selected {
   background: rgba(26, 58, 42, 0.72);
   border: 1.5px solid #4caf7d;
+  box-shadow: none;
 }
 
-[data-theme="dark"] .quick-entry-button strong {
+[data-theme="dark"] .quick-entry-button:active,
+[data-theme="dark"] .quick-entry-button.selected:active {
+  box-shadow: none;
+}
+
+[data-theme="dark"] .quick-entry-check {
+  background: #4caf7d;
+}
+
+[data-theme="dark"] .quick-entry-title {
   color: #d4eedd;
   font-size: 14px;
   font-weight: 500;
 }
 
-[data-theme="dark"] .quick-entry-button span:not(.quick-entry-emoji) {
+[data-theme="dark"] .quick-entry-sub {
   color: #6b9e80;
   font-size: 11px;
 }
@@ -312,10 +445,21 @@
   box-shadow: 0 4px 16px rgba(60, 140, 80, 0.3);
 }
 
-[data-theme="dark"] .today-submit-btn:disabled {
+[data-theme="dark"] .today-submit-btn:disabled,
+[data-theme="dark"] .today-submit-btn.is-off,
+[data-theme="dark"] .today-entry-card .today-submit-btn.is-off:active {
   background: #1a3028;
   color: #4a7a5a;
   box-shadow: none;
+}
+
+/* 箭頭跟著夜間的綠色按鈕走，不留白天的珊瑚色 */
+[data-theme="dark"] .today-submit-btn .keycap-arrow::after {
+  border-color: #3d8f5e;
+}
+
+[data-theme="dark"] .match-loading-text {
+  color: #d4eedd;
 }
 
 [data-theme="dark"] .soul-note {
